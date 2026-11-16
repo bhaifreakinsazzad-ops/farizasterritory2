@@ -183,3 +183,104 @@ INSERT INTO public.product_assets (product_sku, asset_key, asset_url, ratio, lab
 INSERT INTO public.product_assets (product_sku, asset_key, asset_url, ratio, label) VALUES ('CAT-018', 'detailA', 'assets/products/CAT-018/detailA.webp', 'r11', 'Detail A · close-up') ON CONFLICT (product_sku, asset_key) DO UPDATE SET asset_url = EXCLUDED.asset_url;
 INSERT INTO public.product_assets (product_sku, asset_key, asset_url, ratio, label) VALUES ('CAT-018', 'detailB', 'assets/products/CAT-018/detailB.webp', 'r11', 'Detail B · close-up') ON CONFLICT (product_sku, asset_key) DO UPDATE SET asset_url = EXCLUDED.asset_url;
 INSERT INTO public.product_assets (product_sku, asset_key, asset_url, ratio, label) VALUES ('CAT-018', 'aiStylingPreview', 'assets/products/CAT-018/aiStylingPreview.webp', 'r45', 'AI styling preview') ON CONFLICT (product_sku, asset_key) DO UPDATE SET asset_url = EXCLUDED.asset_url;
+
+-- ==============================================================================
+-- 5. Seed Coupons & Promotional Discounts
+-- ==============================================================================
+
+INSERT INTO public.coupons (code, discount_type, discount_value, min_spend, max_discount, is_active, notes)
+VALUES 
+  ('FIRST25', 'percentage', 25.00, 2000.00, 500.00, true, 'First-order 25% discount (Max ৳500)'),
+  ('FREESHIP', 'free_shipping', 150.00, 3000.00, 150.00, true, 'Free delivery on orders above ৳3,000'),
+  ('FARIZA200', 'fixed', 200.00, 2000.00, 200.00, true, '৳200 flat boutique welcome voucher')
+ON CONFLICT (code) DO UPDATE SET
+  discount_value = EXCLUDED.discount_value,
+  min_spend = EXCLUDED.min_spend,
+  is_active = EXCLUDED.is_active;
+
+-- ==============================================================================
+-- 6. Seed Sample Active & Fulfilled Customer Orders
+-- ==============================================================================
+
+INSERT INTO public.orders (
+  order_ref, customer_name, customer_phone, customer_address, delivery_zone, 
+  delivery_fee, subtotal, discount_code, discount_amount, total, payment_method, 
+  items, status, courier_name, tracking_number, customer_notes, status_history
+) VALUES 
+(
+  'FT-261115-8821', 
+  'Tahmina Akter', 
+  '01712345678', 
+  'House 42, Road 7, Block D, Mirpur 12, Dhaka', 
+  'dhaka', 
+  80.00, 
+  2350.00, 
+  'FIRST25', 
+  500.00, 
+  1930.00, 
+  'Cash on Delivery (COD)',
+  '[{"sku":"CAT-001","title":"Magenta Plum Printed Three Piece","price":2350,"qty":1,"image":"assets/products/CAT-001/main.webp"}]'::jsonb,
+  'pending',
+  'Steadfast Courier',
+  '',
+  'Please deliver in afternoon between 3 PM to 6 PM',
+  '[{"status":"pending","note":"Order inquiry placed via web store","time":"2026-11-15T10:15:00Z"}]'::jsonb
+),
+(
+  'FT-261114-4190', 
+  'Nusrat Jahan', 
+  '01898765432', 
+  'Flat 4B, Green Heritage, Nasirabad Housing, Chittagong', 
+  'outside_dhaka', 
+  150.00, 
+  4200.00, 
+  'FREESHIP', 
+  150.00, 
+  4200.00, 
+  'Cash on Delivery (COD)',
+  '[{"sku":"CAT-002","title":"Emerald Teal Batik","price":2150,"qty":1,"image":"assets/products/CAT-002/main.webp"},{"sku":"CAT-003","title":"Dusty Mauve Floral Batik","price":2050,"qty":1,"image":"assets/products/CAT-003/main.webp"}]'::jsonb,
+  'confirmed',
+  'Steadfast Courier',
+  'STF-98231',
+  'Confirmed via WhatsApp. Fabric verified.',
+  '[{"status":"pending","note":"Order placed","time":"2026-11-14T14:30:00Z"},{"status":"confirmed","note":"Confirmed via WhatsApp with customer","time":"2026-11-14T16:00:00Z"}]'::jsonb
+),
+(
+  'FT-261112-6534', 
+  'Sharmin Sultana', 
+  '01911223344', 
+  'House 15, Road 3, Dhanmondi, Dhaka', 
+  'dhaka', 
+  80.00, 
+  1850.00, 
+  NULL, 
+  0.00, 
+  1930.00, 
+  'Cash on Delivery (COD)',
+  '[{"sku":"CAT-004","title":"Forest Elegance","price":1850,"qty":1,"image":"assets/products/CAT-004/main.webp"}]'::jsonb,
+  'shipped',
+  'Pathao Courier',
+  'PTH-647190',
+  'Leave with building security if not answering phone',
+  '[{"status":"pending","time":"2026-11-12T09:00:00Z"},{"status":"confirmed","time":"2026-11-12T11:00:00Z"},{"status":"shipped","note":"Handed over to Pathao Courier hub","time":"2026-11-13T10:30:00Z"}]'::jsonb
+),
+(
+  'FT-261110-3108', 
+  'Farhana Islam', 
+  '01755667788', 
+  'Zindabazar Point, Sylhet Sadar, Sylhet', 
+  'outside_dhaka', 
+  150.00, 
+  2250.00, 
+  'FARIZA200', 
+  200.00, 
+  2200.00, 
+  'Cash on Delivery (COD)',
+  '[{"sku":"CAT-017","title":"Electric Blue Mirror Blossom","price":2250,"qty":1,"image":"assets/products/CAT-017/main.webp"}]'::jsonb,
+  'delivered',
+  'Steadfast Courier',
+  'STF-87102',
+  'Customer loved the embroidery! Paid COD in full.',
+  '[{"status":"pending","time":"2026-11-10T12:00:00Z"},{"status":"confirmed","time":"2026-11-10T13:30:00Z"},{"status":"shipped","time":"2026-11-11T10:00:00Z"},{"status":"delivered","note":"Delivered and cash collected","time":"2026-11-13T16:45:00Z"}]'::jsonb
+)
+ON CONFLICT (order_ref) DO NOTHING;

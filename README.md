@@ -15,26 +15,35 @@ The platform is designed to be **100% production-ready for general public access
 
 ---
 
-## ✨ Key Features
+## ✨ Key Features & Facilities
 
 ### 🛍️ Luxury Boutique Storefront (`index.html`)
 - **Curated Collections**: 5 boutique lines (Aarong Seller Label, Alfi Boutique Batik, Mome Noir, Zam Zam Swiss Lawn, Cotton Mirror & Embroidery).
 - **18 Studio-Verified Pieces**: Detailed bilingual descriptions (English & Bengali), authentic fabric breakdown (Kameez, Salwar, Dupatta), and verified BDT pricing (৳1,650 – ৳2,450).
 - **140 High-Resolution WebP Images**: 8 custom perspectives/crops per product (Main, Original, Alternate, Social Square 1:1, Story/Reel 9:16, Close-up Detail A & B, and AI Styling Illustrations).
-- **Interactive Trio Hero Carousel & 3D Fluid Lightbox**: Touch-friendly, 60fps hardware-accelerated fluid zoom using Motion.dev & Anime.js.
+- **Interactive Hero Carousel & 3D Fluid Lightbox**: Touch-friendly, 60fps hardware-accelerated fluid zoom using Motion.dev & Anime.js.
 - **Inquiry & Checkout Engine**: Fast client bag, Dhaka (৳80) / Outside Dhaka (৳150) delivery calculation, Cash on Delivery support, and automated unique order reference generation (`FT-YYMMDD-XXXX`).
+- **Promotional Coupons & Voucher Codes**: Real-time discount application at checkout (`FIRST25` for up to 25% off, `FREESHIP` for free shipping, `FARIZA200` for ৳200 welcome gift).
+- **Live Customer Order Tracking (`#/track` & `#/track/:ref`)**: Dedicated order lookup page where customers can enter their Order Reference or phone number to view live verification, workshop tailoring, and courier tracking status!
+
+### 📊 Comprehensive Boutique Admin Dashboard (`admin.html`)
+- **Multi-Tab Command Center**:
+  - 📦 **Orders & Inquiries Pipeline**: Filter by status (`Pending`, `Confirmed`, `Processing`, `Shipped`, `Delivered`, `Cancelled`) and zone (`Dhaka` / `Outside Dhaka`), search by customer name, phone or reference, and view line item breakdowns.
+  - 🖨️ **Print Invoice & Packing Slips**: One-click generation of branded, print-ready A4/thermal invoice receipts with customer delivery addresses, line items, and courier COD cash collection amounts.
+  - 🚚 **Courier Dispatch Helper**: Formatted one-click copy for pasting into **Steadfast Courier**, **Pathao Courier**, or **RedX** merchant panels.
+  - 💬 **One-Click WhatsApp Templates**: Pre-filled customer outreach messages for Order Confirmation, Courier Tracking ID, and Delivery Complete.
+  - 📝 **Manual Order Creation**: Form for the boutique team to manually enter orders placed over phone calls, Facebook DMs, or physical visits.
+  - 📥 **Export to CSV**: Download all orders into an Excel/Google Sheets-compatible `.csv` file.
+  - 👗 **Product Catalog & Stock Controls**: View all 18 pieces, check pricing, and toggle in-stock/out-of-stock.
+  - 🏷️ **Coupon Code Manager**: Create, edit, and toggle discount vouchers with minimum spend and percentage/fixed rules.
+  - 👥 **Customer CRM**: Searchable directory of past shoppers with order counts, lifetime spend, and direct WhatsApp chat links.
+  - ⚙️ **Storefront & Database Settings**: Manage Supabase keys, WhatsApp number, Facebook Messenger handle, Meta Pixel ID, and promo announcement bar.
 
 ### 🗄️ Supabase Cloud Database Integration
 - **Real-time Order Recording**: Every customer order inquiry is automatically stored in the Supabase PostgreSQL `orders` table.
-- **Relational Catalog Architecture**: Normalized schema with `collections`, `products`, `product_assets`, `orders`, and `store_settings`.
+- **Relational Catalog Architecture**: Normalized schema with `collections`, `products`, `product_assets`, `coupons`, `orders`, and `store_settings`.
 - **Row Level Security (RLS)**: Public read access for catalog browsing, public insert access for shopper orders, and authenticated admin privileges.
 - **Offline-First Resilience**: If the database key is pending or offline, orders are safely stored in browser `localStorage` and queued for sync.
-
-### 📊 Boutique Admin & Order Management Dashboard (`admin.html`)
-- **Live Order Stream**: View incoming orders in real time with customer name, phone number, address, ordered pieces, and total amount.
-- **One-Click Order Status Updates**: Transition orders through `pending` ➔ `confirmed` ➔ `processing` ➔ `shipped` ➔ `delivered` ➔ `cancelled` with instant database update.
-- **Customer Outreach**: Click-to-call and one-click WhatsApp customer confirmation link.
-- **Configuration Hub**: Manage Supabase keys, store WhatsApp number, Facebook page, and Meta Pixel ID in one central place.
 
 ### 🎯 Ready for Advertising & Growth
 - **Built-in Meta Pixel (Facebook Pixel)**: Automatic tracking for `PageView`, `ViewContent`, `AddToCart`, `InitiateCheckout`, and `Lead` / `Purchase` events.
@@ -48,8 +57,8 @@ The platform is designed to be **100% production-ready for general public access
 
 ```
 .
-├── index.html                  # Main production boutique web storefront
-├── admin.html                  # Boutique Order & Catalog Management Dashboard
+├── index.html                  # Main production boutique web storefront (with Order Tracking & Coupons)
+├── admin.html                  # Full-featured Boutique Admin Dashboard & Order Command Center
 ├── ghl-bundle.html             # GoHighLevel custom code drop-in block
 ├── assets/
 │   ├── css/
@@ -66,7 +75,7 @@ The platform is designed to be **100% production-ready for general public access
 ├── supabase/
 │   ├── migrations/
 │   │   └── 01_initial_schema.sql # PostgreSQL schema DDL with RLS and indexes
-│   └── seed.sql                # Seed script with all 5 collections and 18 products
+│   └── seed.sql                # Seed script with 5 collections, 18 products, coupons & sample orders
 ├── docs/
 │   ├── SUPABASE_SETUP.md       # Step-by-step database setup guide
 │   ├── ADVERTISING_GUIDE.md    # Meta Pixel & Facebook Ad campaign setup guide
@@ -82,7 +91,6 @@ The platform is designed to be **100% production-ready for general public access
 ## 🚀 Quick Start Guide
 
 ### 1. Run Locally
-Clone this repository and serve using any local static server:
 ```bash
 git clone https://github.com/notrealenginellc/Fariza-s-Territory.git
 cd Fariza-s-Territory
@@ -92,16 +100,16 @@ npm start
 # Or using Python
 python -m http.server 3000
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) for the storefront and [http://localhost:3000/admin.html](http://localhost:3000/admin.html) for the admin dashboard.
 
 ---
 
 ### 2. Configure Supabase Database
 1. Go to your Supabase project: [https://supabase.com/dashboard/project/vjbhrdclcnxevunskodm](https://supabase.com/dashboard/project/vjbhrdclcnxevunskodm)
 2. In the **SQL Editor**, execute `supabase/migrations/01_initial_schema.sql`.
-3. In the **SQL Editor**, execute `supabase/seed.sql` to populate all 18 products.
+3. In the **SQL Editor**, execute `supabase/seed.sql` to populate products, coupons, and orders.
 4. Copy your project **anon key** from **Project Settings ➔ API**.
-5. Open `admin.html` in your browser, paste the anon key, and click **Save Configuration**.
+5. Open `admin.html`, go to **Store Settings**, paste the anon key, and click **Save Changes**.
 6. Full guide available in [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md).
 
 ---
@@ -116,10 +124,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## 🌐 Deployment Options
 
-- **Vercel**: Run `vercel` or link this repository in your Vercel dashboard. Configured via `vercel.json`.
-- **Netlify**: Run `netlify deploy` or link this repository in Netlify. Configured via `netlify.toml`.
-- **GitHub Pages**: Go to **Settings ➔ Pages** and set source to branch `main` root `/`.
-- **GoHighLevel**: Copy `ghl-bundle.html` directly into any GHL Custom HTML block.
+- **Vercel**: Configured via `vercel.json` (`/admin` routes directly to `admin.html`).
+- **Netlify**: Configured via `netlify.toml` with caching rules.
+- **GitHub Pages**: Source branch `main` root `/`.
+- **GoHighLevel**: Copy `ghl-bundle.html` directly into any GHL Custom HTML element.
 
 ---
 

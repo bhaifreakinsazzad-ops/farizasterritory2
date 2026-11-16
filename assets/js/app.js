@@ -1100,6 +1100,150 @@ function skuMessage(sku){
   const p=bySku(sku);
   return `Hello Fariza's Territory! I'm interested in:\n${p.sku} — ${p.title} (${p.collection.name})\nPlease share the price, sizing and availability. Thank you!`;
 }
+
+/* ================= ORDER TRACKING PAGE ================= */
+function pageTrack(paramRef){
+  const defaultRef = paramRef || (state.lastInquiry && state.lastInquiry.ref) || "";
+  return `
+  <div class="page-head"><div class="container">
+    <span class="overline" data-reveal>Real-time order lookup</span>
+    <h1 class="h-display" data-reveal style="--d:.06s;margin-top:12px">Track Your Order</h1>
+    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">Enter your Order Reference (e.g. <b>FT-261115-8821</b>) or your contact phone number to view live verification, tailoring and courier delivery updates.</p>
+  </div></div>
+  <div class="page-body"><div class="container" style="max-width:860px">
+    <div class="panel" data-reveal style="margin-bottom:24px">
+      <form id="track-form" onsubmit="event.preventDefault();handleTrackSearch();" style="display:flex;gap:10px;flex-wrap:wrap">
+        <input id="track-input" type="text" value="${esc(defaultRef)}" placeholder="Enter Order Ref (e.g. FT-261115-8821) or Phone" style="flex:1;min-width:260px;padding:12px 16px;border-radius:10px;border:1.5px solid var(--kantha);background:var(--surface);color:var(--ink);font-family:inherit;font-size:15px">
+        <button type="submit" class="btn btn-ink" style="padding:12px 24px"><span>Check Status</span>${IC.arrow}</button>
+      </form>
+    </div>
+    <div id="track-result-wrap"></div>
+    <div id="recent-orders-wrap" style="margin-top:28px"></div>
+  </div></div>`;
+}
+
+async function handleTrackSearch(){
+  const inp = document.getElementById("track-input");
+  const q = inp ? inp.value.trim() : "";
+  const wrap = document.getElementById("track-result-wrap");
+  if(!wrap) return;
+  if(!q){
+    wrap.innerHTML = '<div class="notice alert">${IC.alert}<span>Please enter a valid order reference or phone number.</span></div>';
+    return;
+  }
+  wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink2)">Searching boutique records...</div>';
+  
+  const order = await window.FT_SUPABASE.getOrderByRef(q);
+  if(!order){
+    wrap.innerHTML = `<div class="panel" style="text-align:center;padding:36px">
+      <div style="font-size:32px;margin-bottom:12px">🔍</div>
+      <h3 style="font-size:20px;margin:0 0 10px">Order Not Found</h3>
+      <p class="small" style="color:var(--ink2);max-width:440px;margin:0 auto 18px">We could not locate an inquiry matching "<b>${esc(q)}</b>". Please check the spelling or send a message directly to our seller team on WhatsApp.</p>
+      <a href="https://wa.me/8801700000000?text=Hello%20Fariza%27s%20Territory%2C%20I%20am%20checking%20the%20status%20of%20my%20order%20${encodeURIComponent(q)}" target="_blank" rel="noopener" class="btn btn-line btn-sm">${IC.wa}<span>Inquire on WhatsApp</span></a>
+    </div>`;
+    return;
+  }
+  
+  renderTrackCard(order, wrap);
+}
+
+function renderTrackCard(order, wrap){
+  const st = order.status || 'pending';
+  const steps = [
+    { key: 'pending', label: 'Inquiry Placed', desc: 'Received & pending boutique confirmation' },
+    { key: 'confirmed', label: 'Confirmed', desc: 'Fabric verified & sizing confirmed' },
+    { key: 'processing', label: 'Processing', desc: 'Inspected & prepared at Mirpur workshop' },
+    { key: 'shipped', label: 'Dispatched', desc: order.courier_name ? (order.courier_name + (order.tracking_number ? ' #' + order.tracking_number : '')) : 'Handed over to courier' },
+    { key: 'delivered', label: 'Delivered', desc: 'Package delivered & cash collected' }
+  ];
+  
+  const stepIdx = { 'pending':0, 'confirmed':1, 'processing':2, 'shipped':3, 'delivered':4, 'cancelled':-1 }[st] || 0;
+  
+  let itemsHtml = '';
+  if(Array.isArray(order.items)){
+    itemsHtml = order.items.map(it => `
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line)">
+        ${it.image ? `<img src="${it.image}" style="width:48px;height:60px;object-fit:cover;border-radius:6px;">` : ''}
+        <div style="flex:1">
+          <div style="font-weight:600">${esc(it.title || it.sku)}</div>
+          <small style="color:var(--ink2)">SKU: ${esc(it.sku)} · Qty: ${it.qty || 1}</small>
+        </div>
+        <div style="font-weight:700">৳ ${Number(it.price || 0).toLocaleString()}</div>
+      </div>
+    `).join('');
+  }
+
+  wrap.innerHTML = `
+  <div class="panel" style="border:1.5px solid var(--kantha);box-shadow:var(--shadow)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:18px">
+      <div>
+        <span class="overline" style="color:var(--chestnut)">Order Status</span>
+        <h2 style="font-size:22px;margin:4px 0 0">${esc(order.order_ref)}</h2>
+        <small style="color:var(--ink2)">Placed on ${new Date(order.created_at || Date.now()).toLocaleDateString('en-GB')}</small>
+      </div>
+      <div>
+        <span class="order-tracking-status status-${st}">${st}</span>
+      </div>
+    </div>
+
+    <!-- Stepper -->
+    ${st === 'cancelled' ? '<div class="notice alert" style="margin-bottom:20px">${IC.alert}<span>This order was cancelled. Please message us on WhatsApp if you wish to re-inquire.</span></div>' : `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:10px;margin:20px 0;background:var(--cream2);padding:16px;border-radius:12px;">
+        ${steps.map((sp, i) => `
+          <div style="text-align:center;opacity:${i <= stepIdx ? 1 : 0.4}">
+            <div style="width:28px;height:28px;border-radius:50%;background:${i <= stepIdx ? 'var(--chestnut)' : 'var(--cream3)'};color:${i <= stepIdx ? '#FFF' : 'var(--ink)'};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-bottom:6px">
+              ${i < stepIdx ? '✓' : (i + 1)}
+            </div>
+            <div style="font-size:13px;font-weight:600">${sp.label}</div>
+            <div style="font-size:11px;color:var(--ink2);margin-top:2px">${sp.desc}</div>
+          </div>
+        `).join('')}
+      </div>
+    `}
+
+    <!-- Items & Summary -->
+    <div style="margin:20px 0">
+      <span class="overline">Pieces in this order</span>
+      <div style="margin-top:10px">${itemsHtml}</div>
+    </div>
+
+    <!-- Financial Breakdown -->
+    <div style="background:var(--cream2);padding:16px;border-radius:10px;margin-bottom:18px;font-size:14px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span>Items Subtotal:</span>
+        <b>৳ ${Number(order.subtotal || 0).toLocaleString()}</b>
+      </div>
+      ${order.discount_amount ? `
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--kantha)">
+          <span>Discount Voucher (${esc(order.discount_code || '')}):</span>
+          <b>- ৳ ${Number(order.discount_amount).toLocaleString()}</b>
+        </div>
+      ` : ''}
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span>Delivery Fee (${order.delivery_zone === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'}):</span>
+        <b>৳ ${Number(order.delivery_fee || 80).toLocaleString()}</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px dashed var(--line);font-size:16px;font-weight:700;color:var(--ink)">
+        <span>Total Payable (Cash on Delivery):</span>
+        <span>৳ ${Number(order.total || 0).toLocaleString()}</span>
+      </div>
+    </div>
+
+    <!-- Customer & Delivery -->
+    <div style="font-size:13.5px;color:var(--ink2);margin-bottom:18px">
+      <div><b>Recipient:</b> ${esc(order.customer_name)} (${esc(order.customer_phone)})</div>
+      <div style="margin-top:4px"><b>Delivery Address:</b> ${esc(order.customer_address)}</div>
+      ${order.customer_notes ? `<div style="margin-top:4px"><b>Notes:</b> ${esc(order.customer_notes)}</div>` : ''}
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="https://wa.me/8801700000000?text=Hello%20Fariza%27s%20Territory%2C%20I%20have%20a%20question%20regarding%20my%20order%20${encodeURIComponent(order.order_ref)}" target="_blank" rel="noopener" class="btn btn-ink btn-sm">${IC.wa}<span>Contact Seller on WhatsApp</span></a>
+      <button class="btn btn-line btn-sm" onclick="navigator.clipboard.writeText('${esc(order.order_ref)}');toast('Order ref copied!',{icon:'check'});">${IC.copy}<span>Copy Order Ref</span></button>
+    </div>
+  </div>`;
+}
+
 /* ================= ROUTER ================= */
 const TITLES={home:"Fariza's Territory — The Interactive Boutique | Elegance in Every Detail",shop:"Shop All 18 Pieces — Fariza's Territory",collections:"Five Collections — Fariza's Territory",lookbook:"Lookbook — Fariza's Territory",about:"Our Story — Fariza's Territory",bag:"Inquiry Bag — Fariza's Territory",inquiry:"Order Inquiry — Fariza's Territory",contact:"Contact & Ordering — Fariza's Territory",faq:"FAQ — Fariza's Territory",policies:"Policies & Offer Terms — Fariza's Territory"};
 function parseRoute(){
@@ -1124,6 +1268,7 @@ function render(){
     case "about":html=pageAbout();break;
     case "bag":html=pageBag();break;
     case "inquiry":html=pageInquiry();break;
+    case "track":html=pageTrack(r.param);break;
     case "contact":html=pageContact();break;
     case "faq":html=pageFAQ();break;
     case "policies":html=pagePolicies();break;
