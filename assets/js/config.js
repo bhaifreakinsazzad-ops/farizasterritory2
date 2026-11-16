@@ -58,10 +58,35 @@
         'https://connect.facebook.net/en_US/fbevents.js');
         /* eslint-enable */
         window.fbq('init', CONFIG.marketing.metaPixelId);
-        window.fbq('track', 'PageView');
+        const initEventId = window.__FT_INITIAL_PAGEVIEW_ID || this.generateEventId('pv_init');
+        window.fbq('track', 'PageView', {}, { eventID: initEventId });
+        this.sendCapi('PageView', initEventId, { page_name: 'Initial Load' });
         console.log('[Analytics] Meta Pixel Initialized dynamically:', CONFIG.marketing.metaPixelId);
       } else if (window.fbq && CONFIG.marketing.metaPixelId) {
         console.log('[Analytics] Meta Pixel active from head script with ID:', CONFIG.marketing.metaPixelId);
+        // Sync initial PageView to CAPI with the exact matching eventID generated in head
+        if (window.__FT_INITIAL_PAGEVIEW_ID && !window.__FT_INITIAL_PAGEVIEW_SYNCED) {
+          window.__FT_INITIAL_PAGEVIEW_SYNCED = true;
+          this.sendCapi('PageView', window.__FT_INITIAL_PAGEVIEW_ID, { page_name: 'Initial Load' });
+        }
+      }
+    },
+
+    getMetaCookie(name) {
+      if (typeof document === 'undefined' || !document.cookie) return undefined;
+      const match = document.cookie.match(new RegExp('(^|;\s*)(' + name + ')=([^;]*)'));
+      return match ? decodeURIComponent(match[3]) : undefined;
+    },
+
+    getFbclid() {
+      if (typeof window === 'undefined' || !window.location) return undefined;
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const fbclid = urlParams.get('fbclid');
+        if (!fbclid) return undefined;
+        return 'fb.1.' + Math.floor(Date.now() / 1000) + '.' + fbclid;
+      } catch (e) {
+        return undefined;
       }
     },
 
@@ -73,13 +98,20 @@
     // Dispatch Server-side CAPI event to /api/capi
     sendCapi(eventName, eventId, customData, userData) {
       try {
+        const fbp = this.getMetaCookie('_fbp');
+        const fbc = this.getMetaCookie('_fbc') || this.getFbclid();
+        const enrichedUserData = Object.assign({
+          fbp: fbp,
+          fbc: fbc
+        }, userData || {});
+
         const payload = {
           eventName: eventName,
           eventId: eventId,
           eventTime: Math.floor(Date.now() / 1000),
           eventSourceUrl: window.location.href,
           customData: customData || {},
-          userData: userData || {},
+          userData: enrichedUserData,
           test_event_code: window.FT_TEST_EVENT_CODE || 'TEST64994'
         };
 

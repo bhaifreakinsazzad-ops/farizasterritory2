@@ -1448,7 +1448,16 @@ function hydrate(){
   if(state.route.page==="lookbook")renderLookGrid();
   if(state.route.page==="product"&&bySku(state.route.param))renderGallery();
   if(state.route.page==="bag")renderBagPageList();
-  if(state.route.page==="inquiry"&&!state.inqDone)renderInqSummary();
+  if(state.route.page==="inquiry"&&!state.inqDone){
+    renderInqSummary();
+    if(window.FT_ANALYTICS && state.bag.length > 0){
+      const sub = state.bag.reduce((s,b)=>{ const p=bySku(b.sku); return s + (p && p.priceBDT ? p.priceBDT*b.qty : 0); }, 0);
+      window.FT_ANALYTICS.trackInitiateCheckout(state.bag, sub);
+    }
+  }
+  if(window.FT_ANALYTICS && window.FT_ANALYTICS.trackPageView && state.route && state.route.page !== "home"){
+    window.FT_ANALYTICS.trackPageView(state.route.page);
+  }
   syncCommerce();
 
   // Anime.js UI/UX Polish
@@ -1756,6 +1765,19 @@ function init(){
   },1500);
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(measureTop);
 }
+
+/* Global Contact Click Tracking for Meta Pixel & CAPI */
+document.addEventListener("click", e => {
+  const wa = e.target.closest("a[href*='wa.me'], .btn-whatsapp, #floating-wa-btn");
+  if(wa && window.FT_ANALYTICS){
+    window.FT_ANALYTICS.trackContact('WhatsApp');
+  }
+  const msg = e.target.closest("a[href*='m.me'], a[href*='facebook.com/messages'], .btn-messenger");
+  if(msg && window.FT_ANALYTICS){
+    window.FT_ANALYTICS.trackContact('Messenger');
+  }
+});
+
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 
 
