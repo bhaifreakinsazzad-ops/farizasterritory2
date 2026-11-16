@@ -5,7 +5,7 @@
 
 -- 1. Seed Store Settings
 INSERT INTO public.store_settings (id, store_name, tagline, whatsapp_number, messenger_username, facebook_url, meta_pixel_id, delivery_fee_dhaka, delivery_fee_outside, promo_text)
-VALUES ('default', 'Fariza''s Territory', 'Elegance in Every Detail. Made in BANGLADESH', '8801700000000', 'farizasterritory143', 'https://www.facebook.com/farizasterritory143', '', 80, 150, 'Welcome to Fariza''s Territory · Fast Dhaka & Nationwide Cash-on-Delivery Delivery')
+VALUES ('default', 'Fariza''s Territory', 'Elegance in Every Detail. Made in BANGLADESH', '8801700000000', 'farizasterritory143', 'https://www.facebook.com/farizasterritory143', '1657670575734647', 80, 150, 'Welcome to Fariza''s Territory · Fast Dhaka & Nationwide Cash-on-Delivery Delivery')
 ON CONFLICT (id) DO UPDATE SET
   store_name = EXCLUDED.store_name,
   messenger_username = EXCLUDED.messenger_username,

@@ -394,6 +394,23 @@
       }
     }
   </style>
+  <!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1657670575734647');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=1657670575734647&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
 </head>
 <body class="admin-body">
 
@@ -693,6 +710,37 @@
               </div>
             </div>
           </section>
+
+          <section class="admin-panel" style="margin-top:20px">
+            <div class="panel-header">
+              <div>
+                <h2>Meta Conversions API (CAPI) & Dataset Integration</h2>
+                <p style="font-size:12px;color:var(--admin-text2);margin:4px 0 0">Server-Side Tracking with Event Deduplication & Meta Ads Optimization (Dataset ID: 1657670575734647)</p>
+              </div>
+              <button class="btn-admin btn-admin-gold" onclick="testMetaCapi()">🚀 Send Test CAPI Event</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;">
+              <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Dataset / Pixel ID</label>
+                <input type="text" id="capi-dataset" value="1657670575734647" readonly style="width:100%;padding:10px;background:var(--admin-surface2);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;">
+              </div>
+              <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Test Event Code (Facebook Events Manager)</label>
+                <input type="text" id="capi-test-code" value="TEST64994" style="width:100%;padding:10px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;">
+              </div>
+              <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Server Endpoint (Vercel Serverless Function)</label>
+                <input type="text" value="/api/capi" readonly style="width:100%;padding:10px;background:var(--admin-surface2);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;">
+              </div>
+            </div>
+            <div style="margin-top:16px;background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:8px;padding:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--admin-gold)">CAPI Live Diagnostic Output</span>
+                <span id="capi-status-badge" class="badge badge-pending">Ready to test</span>
+              </div>
+              <pre id="capi-output" style="margin:0;font-family:monospace;font-size:12px;color:rgba(253,240,221,0.8);white-space:pre-wrap;max-height:160px;overflow-y:auto;">Click "Send Test CAPI Event" to trigger an instant server-to-server conversion payload to Meta Graph API.</pre>
+            </div>
+          </section>
         </div>
 
       </main>
@@ -859,7 +907,7 @@
       const savedWa = localStorage.getItem('ft_wa_number') || window.FT_CONFIG.whatsappNumber || '';
       document.getElementById('set-wa').value = savedWa;
 
-      const savedPixel = localStorage.getItem('ft_meta_pixel_id') || '';
+      const savedPixel = localStorage.getItem('ft_meta_pixel_id') || (window.FT_CONFIG && window.FT_CONFIG.marketing ? window.FT_CONFIG.marketing.metaPixelId : '') || '1657670575734647';
       document.getElementById('set-pixel').value = savedPixel;
 
       const savedGa = localStorage.getItem('ft_ga4_id') || '';
@@ -1348,6 +1396,53 @@
 
       const btn = Array.from(document.querySelectorAll('.admin-nav-item')).find(b => b.textContent.toLowerCase().includes(tabId));
       if (btn) btn.classList.add('active');
+    }
+
+    async function testMetaCapi() {
+      const out = document.getElementById('capi-output');
+      const badge = document.getElementById('capi-status-badge');
+      const testCode = document.getElementById('capi-test-code').value.trim() || 'TEST64994';
+      badge.textContent = 'Sending...';
+      badge.className = 'badge badge-processing';
+      out.textContent = 'Sending serverless CAPI POST request to /api/capi with code ' + testCode + '...';
+
+      try {
+        const payload = {
+          eventName: 'TestEvent',
+          eventId: 'ft_admin_test_' + Date.now(),
+          eventTime: Math.floor(Date.now() / 1000),
+          eventSourceUrl: window.location.href,
+          test_event_code: testCode,
+          userData: {
+            name: 'Fariza Admin',
+            phone: '01700000000',
+            district: 'Dhaka'
+          },
+          customData: {
+            currency: 'BDT',
+            value: 2450,
+            content_name: 'Admin CAPI Verification Test',
+            content_ids: ['CAT-001'],
+            num_items: 1,
+            order_id: 'TEST-ADMIN-' + Math.floor(Math.random() * 9000 + 1000)
+          }
+        };
+
+        const res = await fetch('/api/capi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        badge.textContent = data.success ? 'Success' : 'Error';
+        badge.className = data.success ? 'badge badge-delivered' : 'badge badge-cancelled';
+        out.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        badge.textContent = 'Network Error';
+        badge.className = 'badge badge-cancelled';
+        out.textContent = 'Failed to connect to /api/capi: ' + err.message + '\nNote: On local development without a node server running /api/capi, this endpoint will be live once deployed to Vercel.';
+      }
     }
 
     function saveStoreSettings() {
