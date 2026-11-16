@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fariza's Territory — Boutique Admin & Order Management</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body.admin-body {
+      background: #191817;
+      color: #FDF0DD;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .admin-header {
+      background: #242220;
+      border-bottom: 1px solid rgba(253, 240, 221, 0.12);
+      padding: 16px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .admin-brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .admin-brand h1 {
+      font-size: 18px;
+      margin: 0;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #FDF0DD;
+    }
+    .admin-brand span {
+      font-size: 12px;
+      color: #C6952B;
+      border: 1px solid rgba(198, 149, 43, 0.4);
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    .admin-nav {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .admin-container {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 28px 24px;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+      margin-bottom: 28px;
+    }
+    .metric-card {
+      background: #242220;
+      border: 1px solid rgba(253, 240, 221, 0.08);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .metric-card .title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(253, 240, 221, 0.6);
+      margin-bottom: 8px;
+    }
+    .metric-card .value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #FDF0DD;
+    }
+    .metric-card .sub {
+      font-size: 12px;
+      color: #C6952B;
+      margin-top: 6px;
+    }
+    .admin-section {
+      background: #242220;
+      border: 1px solid rgba(253, 240, 221, 0.08);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .section-head h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-bar input, .filter-bar select {
+      background: #191817;
+      border: 1px solid rgba(253, 240, 221, 0.2);
+      color: #FDF0DD;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    table.admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    table.admin-table th {
+      text-align: left;
+      padding: 12px 14px;
+      background: rgba(0,0,0,0.25);
+      color: rgba(253, 240, 221, 0.7);
+      border-bottom: 1px solid rgba(253, 240, 221, 0.1);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+    table.admin-table td {
+      padding: 14px;
+      border-bottom: 1px solid rgba(253, 240, 221, 0.06);
+      vertical-align: middle;
+    }
+    table.admin-table tr:hover td {
+      background: rgba(253, 240, 221, 0.02);
+    }
+    .status-select {
+      background: #191817;
+      border: 1px solid rgba(253, 240, 221, 0.2);
+      color: #FDF0DD;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .btn-action {
+      background: rgba(253, 240, 221, 0.1);
+      border: 1px solid rgba(253, 240, 221, 0.2);
+      color: #FDF0DD;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .btn-action:hover {
+      background: rgba(253, 240, 221, 0.2);
+    }
+    .btn-wa {
+      background: #25D366;
+      border-color: #25D366;
+      color: #000;
+      font-weight: 600;
+    }
+    .btn-wa:hover {
+      background: #20BA5A;
+      color: #000;
+    }
+    .item-pill {
+      display: inline-block;
+      background: rgba(253, 240, 221, 0.07);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin: 2px;
+      font-size: 11px;
+    }
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 18px;
+    }
+    .config-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .config-field label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: rgba(253, 240, 221, 0.8);
+    }
+    .config-field input {
+      background: #191817;
+      border: 1px solid rgba(253, 240, 221, 0.2);
+      color: #FDF0DD;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #E74C3C;
+      margin-right: 6px;
+    }
+    .status-dot.active {
+      background: #2ECC71;
+    }
+  </style>
+</head>
+<body class="admin-body">
+
+  <header class="admin-header">
+    <div class="admin-brand">
+      <h1>Fariza's Territory</h1>
+      <span>Boutique Admin Portal</span>
+      <div id="conn-indicator" style="font-size:12px;display:flex;align-items:center;">
+        <span class="status-dot" id="conn-dot"></span>
+        <span id="conn-text">Checking Supabase...</span>
+      </div>
+    </div>
+    <div class="admin-nav">
+      <a href="index.html" class="btn-action" target="_blank">View Live Store ↗</a>
+      <button class="btn-action" onclick="refreshData()">↻ Refresh</button>
+      <button class="btn-action" onclick="toggleSettingsModal()">⚙ Settings</button>
+    </div>
+  </header>
+
+  <main class="admin-container">
+
+    <!-- KPI Metrics -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="title">Total Inquiries & Orders</div>
+        <div class="value" id="kpi-orders">0</div>
+        <div class="sub" id="kpi-orders-today">0 orders placed today</div>
+      </div>
+      <div class="metric-card">
+        <div class="title">Pending Review</div>
+        <div class="value" id="kpi-pending" style="color:#C6952B">0</div>
+        <div class="sub">Awaiting confirmation</div>
+      </div>
+      <div class="metric-card">
+        <div class="title">Total Inquiry Volume</div>
+        <div class="value" id="kpi-revenue">৳ 0</div>
+        <div class="sub">Catalog value</div>
+      </div>
+      <div class="metric-card">
+        <div class="title">Boutique Catalog</div>
+        <div class="value">18</div>
+        <div class="sub">Verified pieces across 5 collections</div>
+      </div>
+    </div>
+
+    <!-- Orders Section -->
+    <section class="admin-section">
+      <div class="section-head">
+        <h2>Customer Inquiries & Orders</h2>
+        <div class="filter-bar">
+          <input type="text" id="order-search" placeholder="Search phone, name or ref..." oninput="filterOrders()">
+          <select id="status-filter" onchange="filterOrders()">
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+            <option value="delivered">Delivered</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Order Ref</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Location</th>
+              <th>Items</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="orders-tbody">
+            <tr><td colspan="9" style="text-align:center;padding:30px;color:rgba(253,240,221,0.5)">Loading orders...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Settings / Config Section -->
+    <section class="admin-section" id="settings-section">
+      <div class="section-head">
+        <h2>Store & Database Settings</h2>
+        <button class="btn-action" onclick="saveSettings()">Save Configuration</button>
+      </div>
+      <div class="config-grid">
+        <div class="config-field">
+          <label>Supabase Project URL</label>
+          <input type="text" id="cfg-sb-url" value="https://vjbhrdclcnxevunskodm.supabase.co" readonly>
+        </div>
+        <div class="config-field">
+          <label>Supabase Anon Key</label>
+          <input type="password" id="cfg-sb-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+        </div>
+        <div class="config-field">
+          <label>Store WhatsApp Number (e.g. 8801XXXXXXXXX)</label>
+          <input type="text" id="cfg-wa" placeholder="8801700000000">
+        </div>
+        <div class="config-field">
+          <label>Facebook Page / Messenger Handle</label>
+          <input type="text" id="cfg-fb" value="farizasterritory143">
+        </div>
+        <div class="config-field">
+          <label>Meta Pixel ID (for Facebook/Instagram Ads)</label>
+          <input type="text" id="cfg-pixel" placeholder="e.g. 123456789012345">
+        </div>
+        <div class="config-field">
+          <label>Google Analytics 4 ID</label>
+          <input type="text" id="cfg-ga4" placeholder="e.g. G-XXXXXXXXXX">
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Load Config & Supabase Client -->
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/supabaseClient.js"></script>
+  <script src="assets/js/catalogData.js"></script>
+
+  <script>
+    let allOrders = [];
+
+    async function initAdmin() {
+      // Load saved credentials
+      const savedKey = localStorage.getItem('ft_supabase_anon_key') || '';
+      document.getElementById('cfg-sb-key').value = savedKey;
+
+      const savedWa = localStorage.getItem('ft_wa_number') || window.FT_CONFIG.whatsappNumber || '';
+      document.getElementById('cfg-wa').value = savedWa;
+
+      const savedPixel = localStorage.getItem('ft_meta_pixel_id') || '';
+      document.getElementById('cfg-pixel').value = savedPixel;
+
+      const savedGa = localStorage.getItem('ft_ga4_id') || '';
+      document.getElementById('cfg-ga4').value = savedGa;
+
+      // Init Supabase
+      if (savedKey) {
+        window.FT_SUPABASE.init(window.FT_CONFIG.supabase.url, savedKey);
+      }
+
+      await checkConnection();
+      await refreshData();
+    }
+
+    async function checkConnection() {
+      const dot = document.getElementById('conn-dot');
+      const text = document.getElementById('conn-text');
+      const test = await window.FT_SUPABASE.testConnection();
+      if (test.success) {
+        dot.classList.add('active');
+        text.textContent = 'Supabase Cloud: Connected';
+      } else {
+        dot.classList.remove('active');
+        text.textContent = 'Local Queue Mode (Anon key pending)';
+      }
+    }
+
+    async function refreshData() {
+      const res = await window.FT_SUPABASE.getOrders();
+      if (res && res.data) {
+        allOrders = res.data;
+        renderKPIs(allOrders);
+        renderOrdersTable(allOrders);
+      }
+    }
+
+    function renderKPIs(orders) {
+      document.getElementById('kpi-orders').textContent = orders.length;
+      const pendingCount = orders.filter(o => o.status === 'pending').length;
+      document.getElementById('kpi-pending').textContent = pendingCount;
+
+      const totalRev = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+      document.getElementById('kpi-revenue').textContent = '৳ ' + totalRev.toLocaleString('en-US');
+
+      // Orders today
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayCount = orders.filter(o => (o.created_at || o.saved_at || '').startsWith(todayStr)).length;
+      document.getElementById('kpi-orders-today').textContent = todayCount + ' inquiries placed today';
+    }
+
+    function renderOrdersTable(orders) {
+      const tbody = document.getElementById('orders-tbody');
+      if (!orders || orders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:rgba(253,240,221,0.5)">No orders found yet. New store inquiries will show up here automatically!</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = orders.map(o => {
+        const ref = o.order_ref || 'N/A';
+        const date = (o.created_at || o.saved_at) ? new Date(o.created_at || o.saved_at).toLocaleDateString('en-GB') : 'Today';
+        const name = o.customer_name || 'Guest Customer';
+        const phone = o.customer_phone || '';
+        const location = o.customer_address || o.delivery_zone || 'Dhaka';
+        const total = (Number(o.total) || 0).toLocaleString('en-US');
+        const status = o.status || 'pending';
+        
+        let itemsHtml = '';
+        if (Array.isArray(o.items)) {
+          itemsHtml = o.items.map(it => `<span class="item-pill">${it.sku || ''} × ${it.qty || 1}</span>`).join('');
+        }
+
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        const waMsg = encodeURIComponent(`Hello ${name}, this is Fariza's Territory confirming your boutique order ${ref}. Total: ৳ ${total}.`);
+        const waLink = `https://wa.me/${cleanPhone.startsWith('88') ? cleanPhone : '88' + cleanPhone}?text=${waMsg}`;
+
+        return `
+          <tr>
+            <td><strong style="color:#C6952B">${ref}</strong></td>
+            <td>${date}</td>
+            <td><strong>${name}</strong></td>
+            <td><a href="tel:${phone}" style="color:#FDF0DD;text-decoration:underline;">${phone}</a></td>
+            <td><small>${location}</small></td>
+            <td>${itemsHtml}</td>
+            <td><strong>৳ ${total}</strong></td>
+            <td>
+              <select class="status-select" onchange="changeStatus('${ref}', this.value)">
+                <option value="pending" ${status === 'pending' ? 'selected' : ''}>Pending</option>
+                <option value="confirmed" ${status === 'confirmed' ? 'selected' : ''}>Confirmed</option>
+                <option value="processing" ${status === 'processing' ? 'selected' : ''}>Processing</option>
+                <option value="shipped" ${status === 'shipped' ? 'selected' : ''}>Shipped</option>
+                <option value="delivered" ${status === 'delivered' ? 'selected' : ''}>Delivered</option>
+                <option value="cancelled" ${status === 'cancelled' ? 'selected' : ''}>Cancelled</option>
+              </select>
+            </td>
+            <td>
+              <div style="display:flex;gap:6px;">
+                ${phone ? `<a href="${waLink}" target="_blank" class="btn-action btn-wa" title="WhatsApp Customer">WA</a>` : ''}
+                <button class="btn-action" onclick="copyOrderDetails('${ref}')" title="Copy Details">Copy</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function changeStatus(orderRef, newStatus) {
+      const res = await window.FT_SUPABASE.updateOrderStatus(orderRef, newStatus);
+      if (res && res.success) {
+        const order = allOrders.find(o => o.order_ref === orderRef);
+        if (order) order.status = newStatus;
+        renderKPIs(allOrders);
+        alert('Order ' + orderRef + ' status updated to ' + newStatus);
+      } else {
+        alert('Failed to update order status');
+      }
+    }
+
+    function copyOrderDetails(orderRef) {
+      const order = allOrders.find(o => o.order_ref === orderRef);
+      if (!order) return;
+      const text = `FARIZA'S TERRITORY — ORDER\nRef: ${order.order_ref}\nCustomer: ${order.customer_name}\nPhone: ${order.customer_phone}\nAddress: ${order.customer_address}\nTotal: ৳ ${order.total}\nStatus: ${order.status}`;
+      navigator.clipboard.writeText(text);
+      alert('Order details copied to clipboard!');
+    }
+
+    function filterOrders() {
+      const q = (document.getElementById('order-search').value || '').toLowerCase();
+      const status = document.getElementById('status-filter').value;
+
+      const filtered = allOrders.filter(o => {
+        const matchQ = !q || (o.customer_name || '').toLowerCase().includes(q) ||
+                             (o.customer_phone || '').includes(q) ||
+                             (o.order_ref || '').toLowerCase().includes(q);
+        const matchStatus = status === 'all' || (o.status || 'pending') === status;
+        return matchQ && matchStatus;
+      });
+
+      renderOrdersTable(filtered);
+    }
+
+    function saveSettings() {
+      const key = document.getElementById('cfg-sb-key').value.trim();
+      const wa = document.getElementById('cfg-wa').value.trim();
+      const pixel = document.getElementById('cfg-pixel').value.trim();
+      const ga4 = document.getElementById('cfg-ga4').value.trim();
+
+      if (key) localStorage.setItem('ft_supabase_anon_key', key);
+      if (wa) localStorage.setItem('ft_wa_number', wa);
+      if (pixel) localStorage.setItem('ft_meta_pixel_id', pixel);
+      if (ga4) localStorage.setItem('ft_ga4_id', ga4);
+
+      alert('Settings saved successfully!');
+      location.reload();
+    }
+
+    function toggleSettingsModal() {
+      const sec = document.getElementById('settings-section');
+      sec.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    window.addEventListener('DOMContentLoaded', initAdmin);
+  </script>
+</body>
+</html>
