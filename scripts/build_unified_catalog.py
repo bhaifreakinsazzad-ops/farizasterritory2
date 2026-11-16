@@ -1033,6 +1033,7 @@ output_code = f"""/**
 
   const PRODUCTS_BY_SKU = {{}};
   PRODUCTS.forEach(p => {{
+    p.col = p.col || p.colId;
     PRODUCTS_BY_SKU[p.sku] = p;
   }});
 

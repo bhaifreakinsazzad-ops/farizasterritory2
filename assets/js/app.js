@@ -15,7 +15,7 @@
   const PHOTO_KEYS = window.FT_CATALOG ? window.FT_CATALOG.PHOTO_KEYS : [];
   const VERIFIED_CATALOG = window.FT_CATALOG ? window.FT_CATALOG.VERIFIED_CATALOG : {};
   const bySku = sku => (window.FT_CATALOG && window.FT_CATALOG.PRODUCTS_BY_SKU[sku]) || PRODUCTS[0];
-  const colById = id => COLLECTIONS.find(c => c.id === id) || { name: 'Collection', short: 'Collection', acc: '#8E3B66' };
+  const colById = id => COLLECTIONS.find(c => c.id === id || c.id === String(id).padStart(2, '0') || c.slug === id) || { name: 'Collection', short: 'Collection', acc: '#8E3B66' };
 
   const priceText = p => {
   if (!p) return 'Inquire for price';
@@ -156,8 +156,8 @@ function bindImages(root){
 }
 function testAsset(sku,key){
   return new Promise(res=>{
-    const p=bySku(sku), a=p.assets[key];
-    if(!a.id){setAssetStatus(sku,key,"na");res("na");return;}
+    const p=bySku(sku), a=p.assets?p.assets[key]:null;
+    if(!a){setAssetStatus(sku,key,"na");res("na");return;}
     setAssetStatus(sku,key,"pending");
     const im=new Image(); let done=false;
     const fin=st=>{if(done)return;done=true;setAssetStatus(sku,key,st);res(st);};
@@ -594,7 +594,7 @@ function renderTrio(){
 function renderPiecePanel(){
   const panel=$("#piece-panel"); if(!panel)return;
   const p=bySku(state.stage.list[state.stage.idx]);
-  const assets=["main","detailA","detailB"].filter(k=>p.assets[k].id);
+  const assets=["main","original","detailA","socialSquare"].filter(k=>p.assets&&p.assets[k]);
   panel.innerHTML=`
     <div class="pp-head"><span class="overline">In this piece</span><span class="tiny">${assets.length} views</span></div>
     <span class="tag" style="background:color-mix(in srgb,${p.accent} 16%,var(--cream3));color:var(--ink2)">${esc(p.collection.short)}</span>
@@ -609,7 +609,7 @@ function renderPiecePanel(){
       <a class="btn btn-line btn-block" href="#/product/${p.sku}"><span>Full details &amp; gallery</span>${IC.arrow}</a>
       <button class="wish-line${inWish(p.sku)?" on":""}" data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" aria-pressed="${inWish(p.sku)}">${IC.heart}<span>${inWish(p.sku)?"Saved to wishlist":"Save to wishlist"}</span></button>
     </div>
-    <p class="pp-note">First-order offer up to 25%* · free delivery* — *confirmed by seller. ${p.assets.aiStylingPreview.id?"An AI styling illustration exists for this piece and is clearly labelled on its page.":"No AI preview supplied for this piece."}</p>`;
+    <p class="pp-note">First-order offer up to 25%* · free delivery* — *confirmed by seller. ${(p.assets&&p.assets.aiStylingPreview)?"An AI styling illustration exists for this piece and is clearly labelled on its page.":"Genuine product photography only."}</p>`;
   fx(panel,{opacity:[.35,1],transform:["translateY(8px)","translateY(0)"]},{duration:.45});
   bindImages(panel);
 }
@@ -708,19 +708,23 @@ function renderShopGrid(){
 function pageCollections(){
   return `
   <div class="page-head"><div class="container">
-    <span class="overline" data-reveal>Five houses of pattern</span>
-    <h1 class="h-display" data-reveal style="--d:.06s;margin-top:12px">The Collections</h1>
-    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">Exact source groupings from the catalog CSV — counts verified: 1 · 2 · 4 · 6 · 5.</p>
+    <span class="overline" data-reveal>Eight houses of craft</span>
+    <h1 class="h-display kinetic-title" data-reveal style="--d:.06s;margin-top:12px">The Collections</h1>
+    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">53 verified pieces across 8 collections — 5 boutique fashion houses and 3 artisan accessory workshops based in Mirpur, Dhaka.</p>
   </div></div>
   <div class="page-body"><div class="container">
     ${COLLECTIONS.map((c,i)=>{
-      const items=PRODUCTS.filter(p=>p.col===c.id);
+      const items=PRODUCTS.filter(p=>p.col===c.id || p.colId===c.id);
       return `<div class="crow" data-reveal style="--d:${i*.06}s;--acc:${c.acc}">
         <div class="crow-num">${c.id}</div>
         <div>
-          <h2 class="crow-name">${esc(c.name)}</h2>
+          <div style="display:flex;align-items:center;gap:8px">
+            <h2 class="crow-name">${esc(c.name)}</h2>
+            <span class="tag tiny" style="background:color-mix(in srgb,${c.acc} 15%,transparent);color:var(--ink)">${esc(c.pillar)}</span>
+          </div>
+          ${c.nameBn ? `<div class="tiny bn" style="color:var(--chestnut);margin:2px 0 6px">${esc(c.nameBn)}</div>` : ''}
           <p class="crow-note">${esc(c.note)}</p>
-          <span class="tiny" style="display:block;margin-top:6px">${c.count} piece${c.count>1?"s":""} · source folder: ${esc(c.folder)}</span>
+          <span class="tiny" style="display:block;margin-top:6px">${c.count} verified piece${c.count>1?"s":""}</span>
         </div>
         <div class="crow-thumbs">${items.slice(0,3).map(p=>ph(p,"main",{mini:true,w:240,dot:false})).join("")}</div>
         <a class="btn btn-ink" href="#/shop?c=${c.id}"><span>Explore ${c.count}</span>${IC.arrow}</a>
@@ -748,18 +752,18 @@ function pageProduct(sku){
       <div>
         <div class="gal-main" id="gal-main" data-reveal></div>
         <div class="gal-thumbs" id="gal-thumbs" data-reveal style="--d:.08s" role="tablist" aria-label="Photo gallery">
-          ${PHOTO_KEYS.map(k=>`<button role="tab" data-act="gal" data-key="${k}" data-sku="${p.sku}" class="${k==="main"?"on":""}" aria-selected="${k==="main"}" aria-label="${KEY_META[k].label}">
-            ${ph(p,k,{mini:true,w:200,dot:false,ratio:"r45"})}<span class="gt-l">${k==="socialSquare"?"1:1":k==="storyReel"?"9:16":k==="detailA"?"Det A":k==="detailB"?"Det B":k}</span>
+          ${PHOTO_KEYS.filter(k=>p.assets&&p.assets[k]).map(k=>`<button role="tab" data-act="gal" data-key="${k}" data-sku="${p.sku}" class="${k==="main"?"on":""}" aria-selected="${k==="main"}" aria-label="${KEY_META[k].label}">
+            ${ph(p,k,{mini:true,w:200,dot:false,ratio:(p.superCategory==="Accessories"||k==="socialSquare"||k==="detailA")?"r11":"r45"})}<span class="gt-l">${k==="socialSquare"?"1:1":k==="storyReel"?"9:16":k==="detailA"?"Close-up":k==="original"?"Original":k==="alternate"?"Alt":k}</span>
           </button>`).join("")}
         </div>
         <div class="ai-block" data-reveal style="--d:.14s">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
             <span class="tag ai">${IC.spark} AI styling illustration — not the actual product</span>
           </div>
-          ${p.assets.aiStylingPreview.id?
+          ${(p.assets&&p.assets.aiStylingPreview)?
             `<div style="max-width:280px" data-act="lb-open" data-sku="${p.sku}" data-key="aiStylingPreview" role="button" tabindex="0" aria-label="Enlarge AI styling illustration">${ph(p,"aiStylingPreview",{w:600,tag:true})}</div>
              <p class="small" style="margin-top:10px">Illustrative styling concept only. Always refer to the real photographs above for the actual garment.</p>`:
-            `<p class="small">No AI styling preview was supplied for this piece in the source catalog (asset status: <code>not_supplied</code>).</p>`}
+            `<p class="small">Authentic source catalog photography. No AI concept preview generated for this piece.</p>`}
         </div>
       </div>
       <div class="prod-info" data-reveal style="--d:.1s">
@@ -856,7 +860,7 @@ function pageLookbook(){
       <p class="lede" data-reveal style="--d:.12s;margin-top:8px">These are illustrative concepts — <b>not photographs of the actual garments</b>. 14 of 18 pieces have one supplied; the four Mome Boutique pieces do not.</p>
     </div><span class="tag ai" data-reveal>${IC.spark} ai-illustration</span></div>
     <div class="pgrid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
-      ${PRODUCTS.filter(p=>p.assets.aiStylingPreview.id).map((p,i)=>`
+      ${PRODUCTS.filter(p=>p.assets&&p.assets.aiStylingPreview).map((p,i)=>`
         <div data-reveal style="--d:${(i%4)*.06}s">
           <div data-act="lb-open" data-sku="${p.sku}" data-key="aiStylingPreview" role="button" tabindex="0" aria-label="Enlarge AI illustration for ${esc(p.title)}" style="cursor:zoom-in">${ph(p,"aiStylingPreview",{w:500,tag:true})}</div>
           <p class="small" style="margin-top:8px"><a href="#/product/${p.sku}" style="text-decoration:underline">${esc(p.title)}</a><br><span class="tiny">${p.sku} · illustration only</span></p>
@@ -1084,7 +1088,7 @@ function page404(){
   <div class="page-body"><div class="container"><div class="empty">${IC.flower}<p>This corner of the boutique doesn't exist.</p><div style="display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap"><a class="btn btn-ink btn-sm" href="#/home"><span>Back home</span></a><a class="btn btn-line btn-sm" href="#/shop"><span>Shop all pieces</span></a></div></div></div></div>`;
 }
 /* ================= LIGHTBOX ================= */
-function lbList(sku){const p=bySku(sku);const l=PHOTO_KEYS.slice();if(p.assets.aiStylingPreview.id)l.push("aiStylingPreview");return l;}
+function lbList(sku){const p=bySku(sku);const l=PHOTO_KEYS.filter(k=>p.assets&&p.assets[k]);return l.length?l:["main"];}
 function openLB(sku,key){
   state.lb={sku,key,scale:1,tx:0,ty:0,list:lbList(sku)};
   $("#lightbox").classList.add("open");$("#lightbox").setAttribute("aria-hidden","false");
@@ -1094,7 +1098,7 @@ function openLB(sku,key){
 function renderLB(){
   const {sku,key}=state.lb,p=bySku(sku),meta=KEY_META[key];
   $("#lb-cap").innerHTML=`<b style="font-weight:400">${esc(p.title)}</b><span class="tag ${key==="aiStylingPreview"?"ai":"dark"}">${key==="aiStylingPreview"?"AI illustration — not actual product":esc(meta.label)}</span><span class="tiny" style="color:rgba(253,240,221,.6)">${p.sku} · ${meta.auth}</span>`;
-  $("#lb-src").innerHTML=p.assets[key].id?`<a href="${driveView(p.assets[key].id)}" target="_blank" rel="noopener" style="text-decoration:underline">Open source Drive file ↗</a>`:"Asset not supplied";
+  const lbPath=assetSrc(p,key,1600); $("#lb-src").innerHTML=lbPath?`<a href="${lbPath}" target="_blank" rel="noopener" style="text-decoration:underline">View high-resolution photo ↗</a>`:"Asset not supplied";
   $("#lb-fig").innerHTML=ph(p,key,{w:1600,eager:true,contain:true,ratio:meta.ratio});
   applyLB(); bindImages($("#lb-fig"));
   fx($("#lb-fig"),{opacity:[0,1]},{duration:.35});
@@ -1179,7 +1183,7 @@ function selfTest(){
   r.push({name:"Unique SKUs CAT-001…CAT-018",pass:new Set(PRODUCTS.map(p=>p.sku)).size===18,detail:"18 unique"});
   const counts=COLLECTIONS.map(c=>PRODUCTS.filter(p=>p.col===c.id).length).join(",");
   r.push({name:"Collection counts match source (1,2,4,6,5)",pass:counts==="1,2,4,6,5",detail:counts});
-  const ids=PRODUCTS.reduce((a,p)=>a+KEYS.filter(k=>p.assets[k].id).length,0);
+  const ids=PRODUCTS.reduce((a,p)=>a+PHOTO_KEYS.filter(k=>p.assets&&p.assets[k]).length,0);
   r.push({name:"Asset IDs mapped exactly per SKU",pass:ids===140,detail:ids+" / 140 supplied (4 AI = not_supplied)"});
   let ls=false;try{localStorage.setItem("ft_test","1");ls=localStorage.getItem("ft_test")==="1";localStorage.removeItem("ft_test");}catch(e){}
   r.push({name:"Persistent storage round-trip (bag / wishlist / config)",pass:ls,detail:ls?"localStorage OK":"unavailable — session-only"});
@@ -1396,6 +1400,18 @@ function render(){
     case "fashion":state.shop.pillar="Fashion";html=pageShop();break;
     case "accessories":state.shop.pillar="Accessories";html=pageShop();break;
     case "collections":html=pageCollections();break;
+    case "collection":{
+      const targetCol = colById(r.param);
+      if(targetCol && targetCol.id){
+        state.shop.c = targetCol.id;
+        state.shop.pillar = targetCol.pillar;
+        html = pageShop();
+        title = `${targetCol.name} (${targetCol.count} pieces) — Fariza's Territory`;
+      } else {
+        html = pageCollections();
+      }
+      break;
+    }
     case "lookbook":html=pageLookbook();break;
     case "product":{const p=bySku(r.param);html=pageProduct(r.param);if(p){title=`${p.title} (${p.sku}) — Fariza's Territory`;desc=`${p.title} — ${p.collection.name}. Real boutique photography, fabric close-ups and Messenger inquiry. Catalog reference prices available; final amount confirmed by seller.`;}break;}
     case "about":html=pageAbout();break;
@@ -1569,9 +1585,14 @@ document.addEventListener("submit",e=>{
     const deliveryFee = isDhaka ? 80 : 150;
     const orderRecord = {
       order_ref: ref,
+      ref: ref,
+      orderRef: ref,
+      name: cust.name,
       customer_name: cust.name,
+      phone: cust.phone,
       customer_phone: cust.phone,
       district: cust.district,
+      address: cust.address,
       delivery_address: cust.address,
       notes: cust.notes,
       contact_channel: cust.contact,
@@ -1585,8 +1606,11 @@ document.addEventListener("submit",e=>{
           unit: p.unitBn || p.unit || ''
         };
       }),
+      subtotal: subtotal,
       subtotal_bdt: subtotal,
+      deliveryFee: deliveryFee,
       delivery_fee_bdt: deliveryFee,
+      total: subtotal + deliveryFee,
       total_bdt: subtotal + deliveryFee,
       status: 'pending',
       created_at: new Date().toISOString()

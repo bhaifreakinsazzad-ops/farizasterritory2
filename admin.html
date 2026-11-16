@@ -873,6 +873,18 @@
       await refreshAdminData();
       renderCatalogTable();
       renderCouponsTable();
+      populateManualOrderProducts();
+    }
+
+    function populateManualOrderProducts() {
+      const sel = document.getElementById('man-product');
+      if (!sel || !window.FT_CATALOG) return;
+      const prods = window.FT_CATALOG.PRODUCTS;
+      sel.innerHTML = prods.map(p => {
+        const price = p.priceBDT ? `৳${p.priceBDT.toLocaleString()}` : 'Inquire';
+        const cat = p.superCategory || 'Fashion';
+        return `<option value="${p.sku}">[${cat}] ${p.sku} · ${p.title} (${price})</option>`;
+      }).join('');
     }
 
     async function checkCloudHealth() {
@@ -1406,7 +1418,7 @@
           title: prod ? prod.title : sku,
           price: price,
           qty: qty,
-          image: prod && prod.assets && prod.assets.main ? prod.assets.main.localUrl : ''
+          image: (prod && prod.assets && typeof prod.assets.main === 'string') ? prod.assets.main : (prod && prod.assets && prod.assets.main && prod.assets.main.localUrl ? prod.assets.main.localUrl : '')
         }]
       };
 
