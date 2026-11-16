@@ -17,7 +17,12 @@
   const bySku = sku => (window.FT_CATALOG && window.FT_CATALOG.PRODUCTS_BY_SKU[sku]) || PRODUCTS[0];
   const colById = id => COLLECTIONS.find(c => c.id === id) || { name: 'Collection', short: 'Collection', acc: '#8E3B66' };
 
-  const priceText = p => p.priceBDT ? `${p.priceBDT.toLocaleString('en-US')} BDT` : 'Inquire for price';
+  const priceText = p => {
+  if (!p) return 'Inquire for price';
+  if (!p.priceBDT) return 'Inquire for price';
+  const statusNote = p.priceStatus === 'suggested' ? ' · প্রস্তাবিত' : '';
+  return `৳${p.priceBDT.toLocaleString('en-US')}${statusNote}`;
+};
   const subtotalNum = items => items.reduce((sum, it) => {
     const p = bySku(it.sku);
     return sum + ((p.priceBDT || 0) * it.qty);
@@ -49,6 +54,18 @@ const bagCount = ()=>state.bag.reduce((a,b)=>a+b.qty,0);
 const inBag = s=>state.bag.find(b=>b.sku===s);
 const inWish = s=>state.wish.includes(s);
 /* ================= HELPERS ================= */
+function assetSrc(p, key, w) {
+  if (!p || !p.assets) return '';
+  const a = p.assets[key];
+  if (typeof a === 'string') return a;
+  if (a && a.src) return a.src;
+  if (a && a.id) return a.id;
+  if (p.assets.main) {
+    return typeof p.assets.main === 'string' ? p.assets.main : (p.assets.main.src || '');
+  }
+  return 'assets/products/' + p.sku + '/main.webp';
+}
+
 const $ = s=>document.querySelector(s);
 const $$ = s=>Array.from(document.querySelectorAll(s));
 const esc = s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -103,16 +120,19 @@ function tileInner(p,mini){
 }
 function ph(p,key,opts){
   opts=opts||{};
-  const a=p.assets[key], meta=KEY_META[key];
-  const ratio=opts.ratio||meta.ratio;
+  const a=p.assets ? p.assets[key] : null;
+  const meta=KEY_META[key] || { label: key, ratio: "r45", auth: "source" };
+  const ratio=opts.ratio||meta.ratio||"r45";
   const mini=opts.mini?" ph--mini":"";
   const contain=opts.contain?" contain":"";
   const w=opts.w||800;
-  const st=a.id?(state.assets[p.sku+":"+key]||"pending"):"na";
+  const src = assetSrc(p, key, w);
+  const hasAsset = !!src;
+  const st = hasAsset ? (state.assets[p.sku+":"+key]||"ok") : "na";
   const tag=opts.tag?`<span class="ph-tag${key==="aiStylingPreview"?" ai":""}">${key==="aiStylingPreview"?"AI illustration":esc(opts.tagText||meta.label)}</span>`:"";
   const dot=opts.dot===false?"":`<span class="ph-dot ${st}" data-dot="${p.sku}:${key}" title="${st==="ok"?"Product photo loaded":st==="err"?"Photo file unavailable — branded fallback shown":st==="na"?"Asset not supplied":"Loading product image…"}"></span>`;
-  const img=a.id?`<img class="ph-img${st==="ok"?" ok":""}" data-ft="${p.sku}:${key}" src="${assetSrc(p,key,w)}" alt="${esc(p.title)} — ${esc(meta.label)} (${p.sku})" loading="${opts.eager?"eager":"lazy"}" decoding="async">`:"";
-  return `<div class="ph ${ratio}${mini}${contain}${st==="err"?" err":""}" data-ph="${p.sku}:${key}" style="--acc:${p.accent}">${tileInner(p,opts.mini)}${img}${tag}${dot}</div>`;
+  const img=hasAsset?`<img class="ph-img ok" data-ft="${p.sku}:${key}" src="${src}" alt="${esc(p.title)} — ${esc(meta.label)} (${p.sku})" loading="${opts.eager?"eager":"lazy"}" decoding="async">`:"";
+  return `<div class="ph ${ratio}${mini}${contain}" data-ph="${p.sku}:${key}" style="--acc:${p.accent}">${tileInner(p,opts.mini)}${img}${tag}${dot}</div>`;
 }
 function setAssetStatus(sku,key,st){
   state.assets[sku+":"+key]=st;
@@ -287,17 +307,27 @@ function openMenu(){$("#mmenu").classList.add("open");$("#mmenu").setAttribute("
 function closeMenu(){$("#mmenu").classList.remove("open");$("#mmenu").setAttribute("aria-hidden","true");if(!state.drawer)document.body.style.overflow="";$(".menu-btn").setAttribute("aria-expanded","false");}
 /* ================= SHARED TEMPLATES ================= */
 function pcard(p,i){
+  const unitBadge = p.unitBn ? `<span class="unit-badge" title="${esc(p.cautionBn||'')}">${esc(p.unitBn)}</span>` : '';
+  const isCaution = !!p.cautionBn;
   return `<article class="pcard" data-reveal style="--d:${(i%4)*.07}s;--pc-acc:${p.accent}">
     <div class="pc-actions">
       <button data-act="bag-add" data-sku="${p.sku}" aria-label="Add ${esc(p.title)} to inquiry bag" title="Add to bag">${IC.bag}</button>
       <button data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" class="${inWish(p.sku)?"on":""}" aria-pressed="${inWish(p.sku)}" aria-label="Save ${esc(p.title)} to wishlist" title="Wishlist">${IC.heart}</button>
       <button data-act="lb-open" data-sku="${p.sku}" data-key="main" aria-label="Enlarge photo of ${esc(p.title)}" title="Quick view">${IC.zoom}</button>
     </div>
-    <a href="#/product/${p.sku}" aria-hidden="true" tabindex="-1">${ph(p,"main",{w:600,tag:true,tagText:p.col==="01"?"Label unverified":p.collection.short})}</a>
+    <a href="#/product/${p.sku}" aria-hidden="true" tabindex="-1">${ph(p,"main",{w:600,tag:true,tagText:(p.colId==="01"||p.col==="01")?"Label unverified":(p.collection ? p.collection.short : '')})}</a>
     <div class="pcard-body">
-      <span class="pc-col">${esc(p.collection.short)}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+        <span class="pc-col">${esc(p.collection ? p.collection.short : '')}</span>
+        ${unitBadge}
+      </div>
       <h3 class="pc-title"><a href="#/product/${p.sku}">${esc(p.title)}</a></h3>
-      <div class="pc-meta"><span class="pc-sku">${p.sku}</span><span class="pc-price">${priceText(p)}</span></div>
+      ${p.titleBn ? `<div class="tiny bn" style="color:var(--chestnut)">${esc(p.titleBn)}</div>` : ''}
+      <div class="pc-meta">
+        <span class="pc-sku">${p.sku}</span>
+        <span class="pc-price">${priceText(p)}</span>
+      </div>
+      ${isCaution ? `<div class="tiny" style="color:var(--ink3);margin-top:4px;font-size:11px;border-top:1px dashed var(--line);padding-top:4px;">* ${esc(p.cautionBn)}</div>` : ''}
     </div>
   </article>`;
 }
@@ -310,20 +340,32 @@ function messengerBtn(label,sku){
 /* ================= HOME ================= */
 function pageHome(){
   const st=state.stage;
-  const tabs=[{id:"all",name:"All pieces",count:18}].concat(COLLECTIONS.map(c=>({id:c.id,name:c.short,count:c.count})));
+  const currentPillar = st.pillar || 'all';
+  const availableCols = currentPillar === 'all' ? COLLECTIONS : COLLECTIONS.filter(c => c.pillar === currentPillar);
+  const tabs=[{id:"all",name:"All (" + (currentPillar==='all'?53:currentPillar==='Fashion'?18:35) + ")",count:currentPillar==='all'?53:currentPillar==='Fashion'?18:35}]
+    .concat(availableCols.map(c=>({id:c.id,name:c.short,count:c.count})));
+  
   return `
   <section class="hero">
+    <canvas id="hero-3d-canvas"></canvas>
     <svg class="hero-orn" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M48 10c17 8 24 28 18 45-5 15-19 22-31 16-10-5-13-18-6-26 5-7 14-7 18-1 3 5 1 11-5 12"/><circle cx="45" cy="54" r="3" fill="currentColor" stroke="none"/><path d="M62 14c4-3 9-4 13-2M70 24c4-1 8 0 11 3"/></svg>
     <div class="container">
       <div class="hero-head">
         <div>
           <span class="overline" data-reveal>The Interactive Boutique · Mirpur, Dhaka</span>
-          <h1 class="h-display" data-reveal style="--d:.08s;margin-top:14px">Elegance in<br>Every <span class="accent stitch-u">Detail.</span></h1>
-          <p class="hero-bn bn" data-reveal style="--d:.16s">মিরপুর, ঢাকা থেকে — ভালোবাসা দিয়ে বোনা প্রতিটি পোশাক।</p>
+          <h1 class="h-display kinetic-title" data-reveal style="--d:.08s;margin-top:14px">Elegance in<br>Every <span class="accent stitch-u">Detail.</span></h1>
+          <p class="hero-bn bn" data-reveal style="--d:.16s">মিরপুর, ঢাকা থেকে — ভালোবাসা দিয়ে বোনা পোশাক ও হস্তশিল্পের অলঙ্কার।</p>
         </div>
-        <p class="lede" data-reveal style="--d:.2s">Eighteen pieces, five collections — real boutique photography on an interactive floor. Tap a piece to bring it forward, explore its fabric close-ups, then send one inquiry on Messenger.</p>
+        <div>
+          <p class="lede" data-reveal style="--d:.2s">53 verified pieces across 8 collections — 18 luxury studio garments and 35 handcrafted artisan mirrors, pendants & bangles. Real product photography with honest pricing.</p>
+          <div class="pillar-switch" data-reveal style="--d:.24s;margin-top:14px">
+            <button class="pillar-btn ${currentPillar==='all'?'on':''}" data-act="stage-pillar" data-pillar="all">All 53 Pieces</button>
+            <button class="pillar-btn ${currentPillar==='Fashion'?'on':''}" data-act="stage-pillar" data-pillar="Fashion">Fashion (18)</button>
+            <button class="pillar-btn ${currentPillar==='Accessories'?'on':''}" data-act="stage-pillar" data-pillar="Accessories">Accessories (35)</button>
+          </div>
+        </div>
       </div>
-      <div class="stage-tabs" data-reveal style="--d:.24s" role="tablist" aria-label="Choose collection">
+      <div class="stage-tabs" data-reveal style="--d:.26s" role="tablist" aria-label="Choose collection">
         ${tabs.map(t=>`<button class="chip${st.col===t.id?" on":""}" role="tab" aria-selected="${st.col===t.id}" data-act="stage-col" data-col="${t.id}">${esc(t.name)} <span class="n">${t.count}</span></button>`).join("")}
       </div>
       <div class="stage-grid">
@@ -343,55 +385,96 @@ function pageHome(){
       </div>
     </div>
   </section>
+
   <div class="marquee" aria-hidden="true"><div class="marquee-in">
     ${[0,1].map(()=>`<div class="mq-set">${COLLECTIONS.map(c=>`<span>${esc(c.name)}</span>${IC.flower}`).join("")}<span>Elegance in Every Detail</span>${IC.flower}</div>`).join("")}
   </div></div>
+
   <section class="sec sec-tint" id="collections">
     <div class="container">
       <div class="sec-head">
-        <div><span class="overline" data-reveal>Five houses of pattern</span><h2 class="h-sec" data-reveal style="--d:.08s">The Collections</h2></div>
-        <a class="btn btn-line" href="#/collections" data-reveal style="--d:.14s"><span>View all collections</span>${IC.arrow}</a>
+        <div><span class="overline" data-reveal>Eight houses of craft</span><h2 class="h-sec kinetic-title" data-reveal style="--d:.08s">The Collections</h2></div>
+        <a class="btn btn-line" href="#/collections" data-reveal style="--d:.14s"><span>View all 8 collections</span>${IC.arrow}</a>
       </div>
-      <div class="col-grid">
+      <div class="col-grid-8">
         ${COLLECTIONS.map((c,i)=>{
-          const items=PRODUCTS.filter(p=>p.col===c.id);
-          return `<article class="col-card" data-reveal style="--d:${i*.08}s;--acc:${c.acc}">
-            <svg class="cc-orn" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M48 10c17 8 24 28 18 45-5 15-19 22-31 16-10-5-13-18-6-26 5-7 14-7 18-1 3 5 1 11-5 12"/><circle cx="45" cy="54" r="3" fill="currentColor" stroke="none"/></svg>
-            <span class="cc-num">N° ${c.id}</span>
+          const items=PRODUCTS.filter(p=>p.colId===c.id || p.col===c.id);
+          return `<article class="col-card" data-reveal style="--d:${(i%4)*.08}s;--acc:${c.acc}">
+            <div class="cc-num">
+              <span>N° ${c.id}</span>
+              <span class="tag tiny" style="background:color-mix(in srgb,${c.acc} 15%,transparent);color:var(--ink)">${esc(c.pillar)}</span>
+            </div>
             <h3 class="cc-name">${esc(c.name)}</h3>
+            ${c.nameBn ? `<div class="tiny bn" style="color:var(--chestnut)">${esc(c.nameBn)}</div>` : ''}
             <span class="cc-count">${c.count} piece${c.count>1?"s":""}${c.id==="01"?" · label unverified":""}</span>
             <div class="cc-thumbs">${items.slice(0,3).map(p=>ph(p,"main",{mini:true,w:200,dot:false})).join("")}</div>
             <a class="cc-go" href="#/shop?c=${c.id}">Explore collection ${IC.arrow}</a>
-          </article>`;}).join("")}
+          </article>`;
+        }).join("")}
       </div>
     </div>
   </section>
+
   <section class="sec">
     <div class="container">
       <div class="sec-head">
-        <div><span class="overline" data-reveal>Fresh from the floor</span><h2 class="h-sec" data-reveal style="--d:.08s">Swiss Lawn, in Bloom</h2></div>
-        <a class="btn btn-line" href="#/shop?c=04" data-reveal style="--d:.14s"><span>All six lawn pieces</span>${IC.arrow}</a>
+        <div><span class="overline" data-reveal>Wearable folk art & home decor</span><h2 class="h-sec kinetic-title" data-reveal style="--d:.08s">Artisan Accessories Spotlight</h2></div>
+        <a class="btn btn-line" href="#/accessories" data-reveal style="--d:.14s"><span>All 35 accessories</span>${IC.arrow}</a>
       </div>
-      <div class="pgrid">${PRODUCTS.filter(p=>p.col==="04").slice(0,4).map((p,i)=>pcard(p,i)).join("")}</div>
+      <div class="pgrid">${PRODUCTS.filter(p=>p.superCategory==="Accessories").slice(0,4).map((p,i)=>pcard(p,i)).join("")}</div>
     </div>
   </section>
+
+  <section class="sec sec-tint">
+    <div class="container">
+      <div class="sec-head">
+        <div><span class="overline" data-reveal>Curated style pairings</span><h2 class="h-sec kinetic-title" data-reveal style="--d:.08s">Pair Your Look</h2></div>
+        <p class="lede" data-reveal style="--d:.12s">Aesthetic harmony between heritage three-piece garments and handcrafted artisan jewelry & bangles. Each piece inquired individually.</p>
+      </div>
+      <div class="pair-grid">
+        ${(window.FT_CATALOG ? window.FT_CATALOG.PAIR_LOOKS : []).map((look, i) => {
+          const dress = bySku(look.dressSku);
+          const acc = bySku(look.accSku);
+          if (!dress || !acc) return '';
+          return `
+            <div class="pair-card" data-reveal style="--d:${i*0.08}s">
+              <div class="pair-stages">
+                <a href="#/product/${dress.sku}" title="${esc(dress.title)}">${ph(dress, "main", { w: 300, dot: false })}</a>
+                <span class="pair-plus">+</span>
+                <a href="#/product/${acc.sku}" title="${esc(acc.title)}">${ph(acc, "main", { w: 300, dot: false })}</a>
+              </div>
+              <p class="bn" style="font-size:13.5px;color:var(--ink2);margin-top:6px">${esc(look.noteBn)}</p>
+              <div class="pair-meta">
+                <span class="tiny">${dress.sku} + ${acc.sku}</span>
+                <div style="display:flex;gap:8px">
+                  <a class="btn btn-line btn-sm" href="#/product/${dress.sku}"><span>View Look</span></a>
+                  <button class="btn btn-ink btn-sm" data-act="trio" data-skus="${dress.sku},${acc.sku}"><span>Add Both</span></button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  </section>
+
   <section class="sec sec-olive">
     <div class="container">
       <div class="story-grid">
         <div class="story-orn" data-reveal>
           <svg class="big" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M48 10c17 8 24 28 18 45-5 15-19 22-31 16-10-5-13-18-6-26 5-7 14-7 18-1 3 5 1 11-5 12"/><circle cx="45" cy="54" r="3" fill="currentColor" stroke="none"/><path d="M62 14c4-3 9-4 13-2M70 24c4-1 8 0 11 3"/><path d="M20 78c8 6 20 8 30 6M14 66c2 4 5 7 9 10" stroke-dasharray="3 5"/></svg>
           <div class="story-stats">
-            <div class="stat"><b>18</b><span>Pieces live</span></div>
-            <div class="stat"><b>5</b><span>Collections</span></div>
+            <div class="stat"><b>53</b><span>Pieces live</span></div>
+            <div class="stat"><b>8</b><span>Collections</span></div>
             <div class="stat"><b>13k+</b><span>Community</span></div>
             <div class="stat"><b>ঢাকা</b><span>Mirpur · Dhaka</span></div>
           </div>
         </div>
         <div>
           <span class="overline" data-reveal>Our story</span>
-          <h2 class="h-sec" data-reveal style="--d:.08s;margin:12px 0 18px">From Mirpur,<br>with love.</h2>
-          <p class="lede" data-reveal style="--d:.14s">Fariza's Territory is a fashion clothing &amp; accessories house based in Mirpur, Dhaka — connecting with over 13,000 followers through regular photography and reels. Every piece on this floor is photographed by the boutique itself; nothing here is a stock image.</p>
-          <div class="value-chips" data-reveal style="--d:.2s"><span>Style</span><span>Trendy Fashion</span><span>Community</span></div>
+          <h2 class="h-sec kinetic-title" data-reveal style="--d:.08s;margin:12px 0 18px">From Mirpur,<br>with love.</h2>
+          <p class="lede" data-reveal style="--d:.14s">Fariza's Territory is a fashion clothing &amp; accessories house based in Mirpur, Dhaka — connecting with over 13,000 followers through genuine craftsmanship, authentic photography, and dedicated concierge ordering. Every product shown is photographed from the actual catalog.</p>
+          <div class="value-chips" data-reveal style="--d:.2s"><span>Boutique Fashion</span><span>Artisan Crafts</span><span>Community</span></div>
           <ul class="aes-list" data-reveal style="--d:.26s">
             ${["Folk-art ornamentation","Heritage patternwork","Artisanal tactility","Botanical intricacy","Traditional flourish","Warm minimalism"].map(a=>`<li>${IC.flower}${a}</li>`).join("")}
           </ul>
@@ -400,36 +483,21 @@ function pageHome(){
       </div>
     </div>
   </section>
-  <section class="sec sec-ink">
-    <div class="container">
-      <div class="sec-head">
-        <div><span class="overline" data-reveal>Squares &amp; stories</span><h2 class="h-sec" data-reveal style="--d:.08s">The Lookbook</h2></div>
-        <a class="btn btn-caramel" href="#/lookbook" data-reveal style="--d:.14s"><span>Open full lookbook</span>${IC.arrow}</a>
-      </div>
-      <div class="lb-grid">
-        ${[["CAT-008","socialSquare"],["CAT-014","storyReel"],["CAT-002","socialSquare"],["CAT-017","storyReel"]].map((r,i)=>{
-          const p=bySku(r[0]);
-          return `<div class="lb-item${r[1]==="storyReel"?" tall":""}" data-reveal style="--d:${i*.08}s" data-act="lb-open" data-sku="${p.sku}" data-key="${r[1]}" role="button" tabindex="0" aria-label="Enlarge ${esc(p.title)} ${KEY_META[r[1]].label}">
-            ${ph(p,r[1],{w:600,tag:false})}
-            <div class="lb-cap"><span>${esc(p.title)}</span><span class="fmt">${r[1]==="storyReel"?"9:16 reel":"1:1 square"}</span></div>
-          </div>`;}).join("")}
-      </div>
-    </div>
-  </section>
+
   <section class="sec">
     <div class="container">
       <div class="divider" data-reveal>${IC.flower}</div>
       <div style="text-align:center;max-width:640px;margin:22px auto 0">
         <span class="overline" style="justify-content:center" data-reveal>How ordering works</span>
-        <h2 class="h-sec" data-reveal style="--d:.08s;margin-top:12px">One inquiry. Everything confirmed.</h2>
+        <h2 class="h-sec kinetic-title" data-reveal style="--d:.08s;margin-top:12px">One inquiry. Everything confirmed.</h2>
       </div>
       <div class="offer-grid">
         <div class="offer" data-reveal><span>${IC.tag}</span><b>First-order offer up to 25%<span class="ast">*</span></b><p>As advertised on our Facebook page. The seller confirms eligibility per order — no discount is auto-applied at inquiry.</p></div>
         <div class="offer" data-reveal style="--d:.1s"><span>${IC.truck}</span><b>Free delivery<span class="ast">*</span></b><p>Advertised by the brand. Coverage and conditions are confirmed by the seller when your inquiry is answered.</p></div>
-        <div class="offer" data-reveal style="--d:.2s"><span>${IC.chat}</span><b>Messenger ordering</b><p>Fill your bag, prepare an inquiry with your details, copy it and send it to us on Messenger. We reply with prices, sizing and availability.</p></div>
+        <div class="offer" data-reveal style="--d:.2s"><span>${IC.chat}</span><b>WhatsApp &amp; Messenger</b><p>Fill your bag, prepare an inquiry with your delivery details, and send it directly on WhatsApp or Messenger. We reply promptly with availability.</p></div>
       </div>
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap" data-reveal>
-        <a class="btn btn-ink" href="#/shop"><span>Start browsing</span>${IC.arrow}</a>
+        <a class="btn btn-ink" href="#/shop"><span>Browse all 53 pieces</span>${IC.arrow}</a>
         ${messengerBtn("Ask us anything")}
       </div>
       <p class="tiny" style="text-align:center;margin-top:16px" data-reveal>*Brand-advertised offers — final terms confirmed by the seller. <a href="#/policies" style="text-decoration:underline">Read offer terms</a>.</p>
@@ -437,7 +505,16 @@ function pageHome(){
   </section>`;
 }
 /* ---- stage controller ---- */
-function stageList(){return state.stage.col==="all"?PRODUCTS.map(p=>p.sku):PRODUCTS.filter(p=>p.col===state.stage.col).map(p=>p.sku);}
+function stageList(){
+  let list = PRODUCTS;
+  if (state.stage.pillar && state.stage.pillar !== "all") {
+    list = list.filter(p => p.superCategory === state.stage.pillar);
+  }
+  if (state.stage.col && state.stage.col !== "all") {
+    list = list.filter(p => (p.colId === state.stage.col || p.col === state.stage.col));
+  }
+  return list.map(p => p.sku);
+}
 function buildStage(){
   const stage=$("#stage"); if(!stage)return;
   state.stage.list=stageList(); state.stage.idx=Math.min(state.stage.idx,state.stage.list.length-1);
@@ -556,33 +633,62 @@ function openHotPop(btn){
 function shopFiltered(){
   let list=PRODUCTS.slice();
   const f=state.shop;
-  if(f.c!=="all")list=list.filter(p=>p.col===f.c);
-  if(f.q){const q=f.q.toLowerCase();list=list.filter(p=>p.title.toLowerCase().includes(q)||p.sku.toLowerCase().includes(q)||p.collection.name.toLowerCase().includes(q));}
+  if(f.pillar && f.pillar !== "all") {
+    list = list.filter(p => p.superCategory === f.pillar);
+  }
+  if(f.c && f.c !== "all") {
+    list = list.filter(p => (p.colId === f.c || p.col === f.c));
+  }
+  if(f.q){
+    const q=f.q.toLowerCase().trim();
+    list=list.filter(p=>(
+      p.title.toLowerCase().includes(q) ||
+      (p.titleBn && p.titleBn.toLowerCase().includes(q)) ||
+      p.sku.toLowerCase().includes(q) ||
+      (p.collection && p.collection.name.toLowerCase().includes(q)) ||
+      (p.descriptionBn && p.descriptionBn.toLowerCase().includes(q))
+    ));
+  }
   if(f.sort==="name")list.sort((a,b)=>a.title.localeCompare(b.title));
   if(f.sort==="sku")list.sort((a,b)=>a.sku.localeCompare(b.sku));
-  if(f.sort==="collection")list.sort((a,b)=>a.col.localeCompare(b.col)||a.sku.localeCompare(b.sku));
+  if(f.sort==="price-asc")list.sort((a,b)=>(a.priceBDT||0)-(b.priceBDT||0));
+  if(f.sort==="price-desc")list.sort((a,b)=>(b.priceBDT||0)-(a.priceBDT||0));
+  if(f.sort==="collection")list.sort((a,b)=>(a.colId||'').localeCompare(b.colId||'')||a.sku.localeCompare(b.sku));
   return list;
 }
 function pageShop(){
   const c=state.route.query.c; if(c&&colById(c))state.shop.c=c;
+  const pillar = state.shop.pillar || (state.route.page === 'fashion' ? 'Fashion' : state.route.page === 'accessories' ? 'Accessories' : 'all');
+  state.shop.pillar = pillar;
+  const availableCols = pillar === 'all' ? COLLECTIONS : COLLECTIONS.filter(col => col.pillar === pillar);
+
   return `
   <div class="page-head"><div class="container">
-    <span class="overline" data-reveal>The full floor</span>
-    <h1 class="h-display" data-reveal style="--d:.06s;margin-top:12px">Shop the Boutique</h1>
-    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">Browse 18 catalog pieces with provisional BDT reference prices. Final amounts, sizes and stock are confirmed by the seller before ordering.</p>
+    <span class="overline" data-reveal>${pillar === 'Fashion' ? 'Fashion Garments' : pillar === 'Accessories' ? 'Artisan Accessories' : 'The Complete Catalog'}</span>
+    <h1 class="h-display kinetic-title" data-reveal style="--d:.06s;margin-top:12px">${pillar === 'Fashion' ? 'Fashion Garments (18 Pieces)' : pillar === 'Accessories' ? 'Artisan Accessories (35 Pieces)' : 'Shop All 53 Pieces'}</h1>
+    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">Explore handcrafted boutique fashion and wearable artisan accessories from Mirpur, Dhaka. Provisional catalog prices shown; availability and final details verified by seller.</p>
   </div></div>
   <div class="page-body"><div class="container">
     <div class="toolbar" data-reveal>
       <div class="search-field">${IC.zoom}<input type="search" placeholder="Search title, SKU, collection…" value="${esc(state.shop.q)}" data-input="shop-q" aria-label="Filter products"></div>
-      <div class="chips" role="group" aria-label="Filter by collection">
-        <button class="chip${state.shop.c==="all"?" on":""}" data-act="shop-col" data-col="all">All <span class="n">18</span></button>
-        ${COLLECTIONS.map(cl=>`<button class="chip${state.shop.c===cl.id?" on":""}" data-act="shop-col" data-col="${cl.id}">${esc(cl.short)} <span class="n">${cl.count}</span></button>`).join("")}
+      
+      <div class="chips" role="group" aria-label="Filter by pillar">
+        <button class="chip${state.shop.pillar==="all"?" on":""}" data-act="shop-pillar" data-pillar="all">All <span class="n">53</span></button>
+        <button class="chip${state.shop.pillar==="Fashion"?" on":""}" data-act="shop-pillar" data-pillar="Fashion">Fashion <span class="n">18</span></button>
+        <button class="chip${state.shop.pillar==="Accessories"?" on":""}" data-act="shop-pillar" data-pillar="Accessories">Accessories <span class="n">35</span></button>
       </div>
+
+      <div class="chips" role="group" aria-label="Filter by collection" style="margin-top:8px">
+        <button class="chip${state.shop.c==="all"?" on":""}" data-act="shop-col" data-col="all">All Collections</button>
+        ${availableCols.map(cl=>`<button class="chip${state.shop.c===cl.id?" on":""}" data-act="shop-col" data-col="${cl.id}">${esc(cl.short)} <span class="n">${cl.count}</span></button>`).join("")}
+      </div>
+
       <select class="sel" data-input="shop-sort" aria-label="Sort products">
         <option value="featured"${state.shop.sort==="featured"?" selected":""}>Sort · Catalog order</option>
+        <option value="price-asc"${state.shop.sort==="price-asc"?" selected":""}>Price: Low to High</option>
+        <option value="price-desc"${state.shop.sort==="price-desc"?" selected":""}>Price: High to Low</option>
         <option value="name"${state.shop.sort==="name"?" selected":""}>Sort · Name A–Z</option>
         <option value="sku"${state.shop.sort==="sku"?" selected":""}>Sort · SKU</option>
-        <option value="collection"${state.shop.sort==="collection"?" selected":""}>Sort · Collection</option>
       </select>
       <span class="result-count" id="shop-count"></span>
     </div>
@@ -592,7 +698,7 @@ function pageShop(){
 function renderShopGrid(){
   const wrap=$("#shop-grid-wrap"); if(!wrap)return;
   const list=shopFiltered();
-  $("#shop-count").textContent=`${list.length} / 18 pieces`;
+  const tot = state.shop.pillar==="Fashion"?18:state.shop.pillar==="Accessories"?35:53; $("#shop-count").textContent=`${list.length} / ${tot} pieces`;
   wrap.innerHTML=list.length?`<div class="pgrid">${list.map((p,i)=>pcard(p,i)).join("")}</div>`:
     `<div class="empty">${IC.flower}<p>No pieces match your filters.</p><p class="small" style="margin:8px 0 18px">Clear the search or choose another collection.</p><button class="btn btn-ink btn-sm" data-act="shop-clear"><span>Clear filters</span></button></div>`;
   bindImages(wrap); revealBind(wrap);
@@ -631,8 +737,10 @@ function pageProduct(sku){
   const p=bySku(sku);
   if(!p)return page404();
   state.gal={sku,key:"main"};
-  const idx=PRODUCTS.indexOf(p), prev=PRODUCTS[(idx-1+18)%18], next=PRODUCTS[(idx+1)%18];
-  const related=PRODUCTS.filter(x=>x.col===p.col&&x.sku!==p.sku).concat(PRODUCTS.filter(x=>x.col!==p.col)).slice(0,4);
+  const nProds=PRODUCTS.length, idx=PRODUCTS.indexOf(p), prev=PRODUCTS[(idx-1+nProds)%nProds], next=PRODUCTS[(idx+1)%nProds];
+  const sameCol = PRODUCTS.filter(x => (x.colId === p.colId || x.col === p.col) && x.sku !== p.sku).slice(0, 2);
+  const crossCategory = PRODUCTS.filter(x => x.superCategory !== p.superCategory).slice(0, 2);
+  const related = [...sameCol, ...crossCategory].slice(0, 4);
   return `
   <div class="page-head"><div class="container">
     <nav class="crumbs" aria-label="Breadcrumb"><a href="#/home">Home</a><span>·</span><a href="#/shop">Shop</a><span>·</span><a href="#/shop?c=${p.col}">${esc(p.collection.short)}</a><span>·</span><span style="color:var(--chestnut)">${p.sku}</span></nav>
@@ -665,21 +773,28 @@ function pageProduct(sku){
           <span class="qty" aria-label="Quantity"><button data-act="piq-dec" aria-label="Decrease quantity">${IC.minus}</button><output id="pi-qty">1</output><button data-act="piq-inc" aria-label="Increase quantity">${IC.plus}</button></span>
           <button class="btn btn-ink" data-act="bag-add-qty" data-sku="${p.sku}">${IC.bag}<span>Add to inquiry bag</span></button>
         </div>
-        <div class="pi-buy">
-          ${messengerBtn("Ask about this piece",p.sku)}
+        <div class="pi-buy" style="flex-wrap:wrap">
+          ${messengerBtn("Ask on Messenger",p.sku)}
+          <a href="https://wa.me/8801700000000?text=${encodeURIComponent("Hello Fariza's Territory, I would like to inquire about " + p.sku + " — " + p.title + " (" + priceText(p) + ")")}" target="_blank" rel="noopener" class="btn btn-line" style="display:inline-flex;align-items:center;gap:8px">${IC.wa}<span>WhatsApp Inquiry</span></a>
           <button class="btn btn-line wish-line${inWish(p.sku)?" on":""}" style="justify-content:center" data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" aria-pressed="${inWish(p.sku)}">${IC.heart}<span>Wishlist</span></button>
         </div>
-        <details class="acc" open><summary>Piece details ${IC.chev}</summary><div class="acc-body">
-          <div class="prov-row"><span>Collection</span><span>${esc(p.collection.name)}</span></div>
+        <details class="acc" open><summary>Piece details &amp; Craft Specifications ${IC.chev}</summary><div class="acc-body">
+          <div class="prov-row"><span>Category</span><span>${esc(p.superCategory)} · ${esc(p.collection ? p.collection.name : '')}</span></div>
           <div class="prov-row"><span>SKU</span><span>${p.sku}</span></div>
-          ${infoRow('কামিজ / Kameez',p.catalog.kameezBn)}
-          ${infoRow('সালোয়ার / Salwar',p.catalog.salwarBn)}
-          ${infoRow('ওড়না / Dupatta',p.catalog.dupattaBn)}
-          ${infoRow('Stitching status',p.catalog.stitching)}
-          <div class="prov-row"><span>Fabric claim</span><span>${esc(p.catalog.fabricClaim)} · supplier description only</span></div>
-          ${p.catalog.priceReview?'<div class="notice" style="margin:10px 0">'+IC.alert+'<span>Color/price mapping requires seller confirmation.</span></div>':''}
-          <p class="bn" style="color:var(--ink2);margin-top:12px">${esc(p.catalog.descriptionBn)}</p>
-          <div class="prov-row"><span>Sizing</span><span>Confirmed by seller on inquiry</span></div>
+          <div class="prov-row"><span>Selling Unit</span><span>${esc(p.unitBn || p.unit || '১টি পণ্য')}</span></div>
+          ${p.cautionBn ? `<div class="notice warn" style="margin:10px 0">${IC.alert}<span><b>সতর্কবার্তা:</b> ${esc(p.cautionBn)}</span></div>` : ''}
+          ${p.superCategory === 'Accessories' ? `
+            ${p.details && p.details.material ? `<div class="prov-row"><span>উপাদান / Material</span><span>${esc(p.details.material)}</span></div>` : ''}
+            ${p.details && p.details.dimensions ? `<div class="prov-row"><span>পরিমাপ / Dimensions</span><span>${esc(p.details.dimensions)}</span></div>` : ''}
+            ${p.details && p.details.setCaution ? `<div class="prov-row"><span>সেট সতর্কবার্তা</span><span>${esc(p.details.setCaution)}</span></div>` : ''}
+          ` : `
+            ${p.details && p.details.kameez ? `<div class="prov-row"><span>কামিজ / Kameez</span><span>${esc(p.details.kameez)}</span></div>` : ''}
+            ${p.details && p.details.salwar ? `<div class="prov-row"><span>সালোয়ার / Salwar</span><span>${esc(p.details.salwar)}</span></div>` : ''}
+            ${p.details && p.details.dupatta ? `<div class="prov-row"><span>ওড়না / Dupatta</span><span>${esc(p.details.dupatta)}</span></div>` : ''}
+            ${p.details && p.details.stitching ? `<div class="prov-row"><span>Stitching</span><span>${esc(p.details.stitching)}</span></div>` : ''}
+            ${p.details && p.details.fabric ? `<div class="prov-row"><span>Fabric</span><span>${esc(p.details.fabric)}</span></div>` : ''}
+          `}
+          ${p.descriptionBn ? `<p class="bn" style="color:var(--ink2);margin-top:12px;line-height:1.8">${esc(p.descriptionBn)}</p>` : ''}
           <div class="prov-row"><span>Availability</span><span>Confirmed by seller on inquiry</span></div>
         </div></details>
         <details class="acc"><summary>About our product photos ${IC.chev}</summary><div class="acc-body">
@@ -850,18 +965,20 @@ function renderInqSummary(){
 function renderInqDone(){
   const wrap=$("#inq-wrap"); if(!wrap||!state.lastInquiry)return;
   const q=state.lastInquiry;
+  const waUrl = "https://wa.me/8801700000000?text=" + encodeURIComponent(q.text);
   wrap.innerHTML=`<div class="two-col"><div class="panel" data-reveal>
     <div class="success-mark">${IC.check}</div>
-    <h2 class="h-sec">Inquiry prepared — not yet an order</h2>
-    <p class="lede" style="margin:12px 0 20px">Reference <b style="color:var(--chestnut)">${esc(q.ref)}</b>. Copy the message below and send it to Fariza's Territory on Messenger. The seller will confirm prices, availability, sizing, offers and delivery. <b>Nothing has been charged or confirmed.</b></p>
+    <h2 class="h-sec kinetic-title">Inquiry Prepared &amp; Registered!</h2>
+    <p class="lede" style="margin:12px 0 20px">Reference <b style="color:var(--chestnut)">${esc(q.ref)}</b>. Your order inquiry has been recorded. To finalize your order, sizing, and delivery schedule, please send this summary to our concierge via WhatsApp or Messenger. <b>Cash on Delivery applies — no payment taken online.</b></p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
-      <button class="btn btn-ink" data-act="copy" data-target="#inq-msg">${IC.copy}<span>Copy message</span></button>
-      <button class="btn btn-caramel" data-act="msg" data-send="1">${IC.chat}<span>Open Messenger</span></button>
-      <button class="btn btn-line" data-act="wa" data-send="1">${IC.wa}<span>WhatsApp</span></button>
+      <a class="btn btn-caramel" href="${waUrl}" target="_blank" rel="noopener">${IC.wa}<span>Send via WhatsApp</span></a>
+      <button class="btn btn-ink" data-act="msg" data-send="1">${IC.chat}<span>Send via Messenger</span></button>
+      <button class="btn btn-line" data-act="copy" data-target="#inq-msg">${IC.copy}<span>Copy Summary</span></button>
+      <a class="btn btn-line" href="#/track/${encodeURIComponent(q.ref)}">${IC.pin}<span>Track This Order</span></a>
       <button class="btn btn-line" data-act="inq-dl">${IC.dl}<span>Download .txt</span></button>
     </div>
-    <div class="notice info">${IC.info}<span>${state.cfg.messenger?`Messenger is configured: m.me/${esc(state.cfg.messenger)}.`:`Messenger requires a valid connected Facebook page. “Open Messenger” will open Facebook search for the page — or set the handle in Console ▸ Seller settings.`}</span></div>
-    <button class="btn btn-line btn-sm" style="margin-top:18px" data-act="inq-new"><span>Start a new inquiry</span></button>
+    <div class="notice info">${IC.info}<span>Order saved locally and submitted to Supabase. You can check its live fulfillment status anytime on our <a href="#/track/${encodeURIComponent(q.ref)}" style="text-decoration:underline">Order Tracking</a> page.</span></div>
+    <button class="btn btn-line btn-sm" style="margin-top:18px" data-act="inq-new"><span>Start another inquiry</span></button>
   </div>
   <div class="panel sticky" data-reveal style="--d:.1s">
     <span class="overline" style="margin-bottom:12px">Message preview</span>
@@ -1245,7 +1362,21 @@ function renderTrackCard(order, wrap){
 }
 
 /* ================= ROUTER ================= */
-const TITLES={home:"Fariza's Territory — The Interactive Boutique | Elegance in Every Detail",shop:"Shop All 18 Pieces — Fariza's Territory",collections:"Five Collections — Fariza's Territory",lookbook:"Lookbook — Fariza's Territory",about:"Our Story — Fariza's Territory",bag:"Inquiry Bag — Fariza's Territory",inquiry:"Order Inquiry — Fariza's Territory",contact:"Contact & Ordering — Fariza's Territory",faq:"FAQ — Fariza's Territory",policies:"Policies & Offer Terms — Fariza's Territory"};
+const TITLES={
+  home: "Fariza's Territory — Luxury Fashion & Artisan Accessories Boutique (53 SKUs)",
+  shop: "Shop All 53 Pieces — Fariza's Territory",
+  fashion: "Fashion Garments (18 Pieces) — Fariza's Territory",
+  accessories: "Artisan Accessories (35 Pieces) — Fariza's Territory",
+  collections: "Eight Collections — Fariza's Territory",
+  lookbook: "Lookbook & Reels — Fariza's Territory",
+  about: "Our Story — Fariza's Territory",
+  bag: "Inquiry Bag — Fariza's Territory",
+  inquiry: "Order Inquiry — Fariza's Territory",
+  track: "Track Order — Fariza's Territory",
+  contact: "Contact & Ordering — Fariza's Territory",
+  faq: "FAQ — Fariza's Territory",
+  policies: "Policies & Offer Terms — Fariza's Territory"
+};
 function parseRoute(){
   const h=(location.hash||"#/home").slice(2);
   const [path,qs]=h.split("?");
@@ -1262,6 +1393,8 @@ function render(){
   switch(r.page){
     case "home":html=pageHome();break;
     case "shop":html=pageShop();break;
+    case "fashion":state.shop.pillar="Fashion";html=pageShop();break;
+    case "accessories":state.shop.pillar="Accessories";html=pageShop();break;
     case "collections":html=pageCollections();break;
     case "lookbook":html=pageLookbook();break;
     case "product":{const p=bySku(r.param);html=pageProduct(r.param);if(p){title=`${p.title} (${p.sku}) — Fariza's Territory`;desc=`${p.title} — ${p.collection.name}. Real boutique photography, fabric close-ups and Messenger inquiry. Catalog reference prices available; final amount confirmed by seller.`;}break;}
@@ -1290,13 +1423,24 @@ function render(){
 function hydrate(){
   bindImages(document);
   revealBind(document);
-  if(state.route.page==="home"){buildStage();initStageInput();}
-  if(state.route.page==="shop")renderShopGrid();
+  if(state.route.page==="home"){
+    buildStage();
+    initStageInput();
+    if(window.initThreeHero) window.initThreeHero();
+  }
+  if(state.route.page==="shop"||state.route.page==="fashion"||state.route.page==="accessories")renderShopGrid();
   if(state.route.page==="lookbook")renderLookGrid();
   if(state.route.page==="product"&&bySku(state.route.param))renderGallery();
   if(state.route.page==="bag")renderBagPageList();
   if(state.route.page==="inquiry"&&!state.inqDone)renderInqSummary();
   syncCommerce();
+
+  // Anime.js UI/UX Polish
+  if(window.FT_ANIME){
+    window.FT_ANIME.initKineticTypography();
+    window.FT_ANIME.initCardTilt();
+    window.FT_ANIME.initStitchTracing();
+  }
 }
 /* ================= REVEAL / SCROLL ================= */
 let IO=null;
@@ -1339,6 +1483,20 @@ document.addEventListener("click",e=>{
     case "promo-x":state.promoOff=true;store.save("ft_promo_off",true);$("#site-top").classList.add("no-promo");measureTop();break;
     case "stage-prev":focusStage(state.stage.idx-1);break;
     case "stage-next":focusStage(state.stage.idx+1);break;
+    case "stage-pillar":{
+      state.stage.pillar=t.dataset.pillar;
+      state.stage.col="all";
+      state.stage.idx=0;
+      $$(".pillar-switch .pillar-btn").forEach(b=>b.classList.toggle("on",b.dataset.pillar===t.dataset.pillar));
+      buildStage();
+      break;
+    }
+    case "shop-pillar":{
+      state.shop.pillar=t.dataset.pillar;
+      state.shop.c="all";
+      renderShopGrid();
+      break;
+    }
     case "stage-col":{state.stage.col=t.dataset.col;state.stage.idx=0;$$(".stage-tabs .chip").forEach(c=>{const on=c.dataset.col===t.dataset.col;c.classList.toggle("on",on);c.setAttribute("aria-selected",on);});buildStage();break;}
     case "hot":e.stopPropagation();openHotPop(t);break;
     case "hot-close":closeHotPop();break;
@@ -1403,11 +1561,56 @@ document.addEventListener("submit",e=>{
     const ref=makeRef();
     const cust={name,phone,district,address,notes:(fd.get("notes")||"").trim(),contact:fd.get("contact")||"Messenger"};
     const text=inquiryText(state.bag,cust,ref);
-    state.lastInquiry={ref,text,at:Date.now()}; // personal address not persisted in localStorage
+    state.lastInquiry={ref,text,at:Date.now()};
+
+    // Prepare complete structured order record
+    const subtotal = subtotalNum(state.bag);
+    const isDhaka = cust.district.toLowerCase().includes('dhaka');
+    const deliveryFee = isDhaka ? 80 : 150;
+    const orderRecord = {
+      order_ref: ref,
+      customer_name: cust.name,
+      customer_phone: cust.phone,
+      district: cust.district,
+      delivery_address: cust.address,
+      notes: cust.notes,
+      contact_channel: cust.contact,
+      items: state.bag.map(it => {
+        const p = bySku(it.sku);
+        return {
+          sku: p.sku,
+          title: p.title,
+          price: p.priceBDT || 0,
+          qty: it.qty,
+          unit: p.unitBn || p.unit || ''
+        };
+      }),
+      subtotal_bdt: subtotal,
+      delivery_fee_bdt: deliveryFee,
+      total_bdt: subtotal + deliveryFee,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    };
+
+    // 1. Dual-layer persistence: Save to localStorage ft_local_orders
+    const localOrders = store.load('ft_local_orders', []);
+    localOrders.unshift(orderRecord);
+    store.save('ft_local_orders', localOrders);
+
+    // 2. Submit to Supabase database
+    if (window.FT_SUPABASE && window.FT_SUPABASE.createOrder) {
+      window.FT_SUPABASE.createOrder(orderRecord).catch(err => console.warn('Supabase order sync:', err));
+    }
+
+    // 3. Conversion tracking: Meta Pixel Purchase event
+    if (window.FT_ANALYTICS && window.FT_ANALYTICS.trackPurchase) {
+      window.FT_ANALYTICS.trackPurchase(orderRecord);
+    }
+
     if(fd.get("clearbag")){state.bag=[];syncCommerce();}
     state.inqDone=true;renderInqDone();
     window.scrollTo({top:0,behavior:RM?"auto":"smooth"});
-    toast("Inquiry prepared — copy & send on Messenger",{icon:"check"});
+    toast("Inquiry recorded & prepared!",{icon:"check"});
   }
   if(f.dataset.form==="contact"){
     const name=(fd.get("cname")||"").trim(),contact=(fd.get("ccontact")||"").trim(),msg=(fd.get("cmsg")||"").trim();

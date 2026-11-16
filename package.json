@@ -22,5 +22,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/notrealenginellc/Fariza-s-Territory"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
   }
 }

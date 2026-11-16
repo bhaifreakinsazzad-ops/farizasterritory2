@@ -716,3 +716,149 @@ body.no-whatsapp [data-act="wa"]{display:none!important}
 .status-shipped { background: #FCE7F3; color: #9D174D; }
 .status-delivered { background: #D1FAE5; color: #065F46; }
 .status-cancelled { background: #FEE2E2; color: #991B1B; }
+
+
+/* ==============================================================================
+   FARIZA'S TERRITORY — THREE.JS CANVAS, ANIME.JS POLISH & 53-SKU CATALOG STYLING
+   ============================================================================== */
+
+/* 3D Silk Hero Canvas */
+#hero-3d-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.78;
+  mix-blend-mode: multiply;
+}
+.hero > .container {
+  position: relative;
+  z-index: 2;
+}
+
+/* Card Tilt Glare & Micro-Interactions */
+.card-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  mix-blend-mode: overlay;
+  transition: opacity 0.25s ease;
+  z-index: 10;
+}
+
+.ft-flying-particle {
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* 8 Collections Grid (4 columns desktop, 2 tablet, 1 mobile) */
+.col-grid-8 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+@media (max-width: 1080px) {
+  .col-grid-8 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .col-grid-8 { grid-template-columns: 1fr; }
+}
+
+/* Dual Pillar Hero Selector Pills */
+.pillar-switch {
+  display: inline-flex;
+  background: var(--cream2);
+  padding: 4px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.pillar-btn {
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--chestnut);
+  transition: all 0.25s var(--ease);
+}
+.pillar-btn.on {
+  background: var(--ink);
+  color: var(--cream);
+  box-shadow: 0 4px 12px rgba(30,29,28,0.2);
+}
+
+/* Pair Your Look Curated Pairings */
+.pair-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+  margin-top: 24px;
+}
+@media (max-width: 768px) {
+  .pair-grid { grid-template-columns: 1fr; }
+}
+.pair-card {
+  background: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  transition: transform 0.35s var(--ease), box-shadow 0.35s;
+}
+.pair-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+}
+.pair-stages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.pair-stages .ph {
+  width: 110px;
+  height: 140px;
+  border-radius: 10px;
+}
+.pair-plus {
+  font-size: 20px;
+  color: var(--caramel);
+  font-weight: 700;
+}
+.pair-meta {
+  border-top: 1px dashed var(--line);
+  padding-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* High-Risk Selling Unit Badges & Disclaimers */
+.unit-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(184, 131, 24, 0.14);
+  color: #7C580E;
+  border: 1px dashed rgba(184, 131, 24, 0.4);
+}
+.unit-badge.danger {
+  background: rgba(180, 69, 47, 0.12);
+  color: var(--danger);
+  border-color: rgba(180, 69, 47, 0.35);
+}
+.unit-badge svg {
+  width: 12px;
+  height: 12px;
+}

@@ -3,26 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-  <title>Fariza's Territory — Luxury Fashion & Boutique Three-Piece Collections | Made in Bangladesh</title>
+  <title>Fariza's Territory — Luxury Fashion Garments & Artisan Accessories Boutique (53 SKUs) | Made in Bangladesh</title>
 
   <!-- SEO & Brand Metadata -->
-  <meta name="description" content="Discover luxury handcrafted three-piece collections from Fariza's Territory by Faria & Saiful Islam Shuvo. Featuring Aarong Seller Label, Alfi Boutique Batik, Mome Noir, Zam Zam Swiss Lawn & Cotton Mirror Embroidery. Fast Dhaka & nationwide delivery.">
-  <meta name="keywords" content="Fariza's Territory, Bangladeshi boutique, three piece dress, swiss lawn, batik three piece, aarong label, mirpur dhaka clothing, eid collection, ladies fashion Bangladesh">
+  <meta name="description" content="Fariza's Territory by Faria & Saiful Islam Shuvo — 53 curated pieces of South Asian boutique fashion & artisan accessories from Mirpur, Dhaka, Bangladesh. Featuring Swiss Lawn, Batik Three-Pieces, Handcrafted Decorative Mirrors, Folk Pendants & Bangles.">
+  <meta name="keywords" content="Fariza's Territory, Bangladeshi boutique, three piece dress, swiss lawn, batik three piece, decorative mirrors, artisan bangles, folk jewelry, mirpur dhaka clothing, eid collection, ladies fashion Bangladesh">
   <meta name="author" content="Fariza's Territory by Faria & Saiful Islam Shuvo">
   <meta name="theme-color" content="#FDF0DD">
 
   <!-- OpenGraph / Facebook Advertising Meta Tags -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Fariza's Territory">
-  <meta property="og:title" content="Fariza's Territory — Elegance in Every Detail | Premium Clothing Brand">
-  <meta property="og:description" content="Exclusive Bangladeshi Boutique Collections. Authentic fabrics, certified artisanal prints, and dedicated concierge ordering. Cash on Delivery across Dhaka and nationwide.">
+  <meta property="og:title" content="Fariza's Territory — Elegance in Every Detail | Fashion & Artisan Accessories">
+  <meta property="og:description" content="53 Exclusive Boutique Fashion & Artisan Accessories. Authentic fabrics, certified artisanal crafts, and dedicated concierge ordering. Cash on Delivery across Dhaka and nationwide.">
   <meta property="og:image" content="assets/products/CAT-001/socialSquare.webp">
   <meta property="og:locale" content="en_US">
 
   <!-- Twitter Meta Tags -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Fariza's Territory — Premium Clothing Brand">
-  <meta name="twitter:description" content="Elegance in Every Detail. Made in Mirpur, Dhaka, Bangladesh. Handcrafted boutique three-piece sets.">
+  <meta name="twitter:title" content="Fariza's Territory — Fashion & Artisan Accessories Boutique">
+  <meta name="twitter:description" content="Elegance in Every Detail. Made in Mirpur, Dhaka, Bangladesh. Handcrafted boutique fashion and wearable art.">
   <meta name="twitter:image" content="assets/products/CAT-001/socialSquare.webp">
 
   <!-- Schema.org Structured Data (JSON-LD) for Search Engines & Meta Catalog -->
@@ -31,7 +31,7 @@
     "@context": "https://schema.org",
     "@type": "ClothingStore",
     "name": "Fariza's Territory",
-    "description": "Premium Clothing Brand. Made in BANGLADESH. Curated boutique three-piece dresses and luxury fashion.",
+    "description": "Premium Fashion Clothing & Artisan Accessories Brand. Made in BANGLADESH. Curated boutique three-piece sets, handcrafted mirrors, folk jewelry and bangles across 53 SKUs.",
     "founder": [
       { "@type": "Person", "name": "Faria" },
       { "@type": "Person", "name": "Saiful Islam Shuvo" }
@@ -41,7 +41,7 @@
       "addressLocality": "Mirpur, Dhaka",
       "addressCountry": "Bangladesh"
     },
-    "priceRange": "1650 - 2450 BDT",
+    "priceRange": "219 - 2450 BDT",
     "currenciesAccepted": "BDT",
     "paymentAccepted": "Cash on Delivery",
     "sameAs": [
@@ -56,6 +56,7 @@
 
   <!-- Core Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/motion@11.11.17/dist/motion.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
 </head>
@@ -122,7 +123,7 @@
       <button class="iconbtn" data-act="search-close" aria-label="Close search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     </div>
     <div class="so-body">
-      <div class="so-hint" id="so-hint">18 pieces · type to filter · ↑↓ to browse · Enter to open</div>
+      <div class="so-hint" id="so-hint">53 pieces across 8 collections · type to filter by name or SKU · ↑↓ to browse · Enter to open</div>
       <div class="so-results" id="so-results"></div>
     </div>
   </div>
@@ -198,8 +199,10 @@
       <div>
         <div class="ft-h">Explore</div>
         <ul class="ft-links">
-          <li><a href="#/shop">Shop all 18 pieces</a></li>
-          <li><a href="#/collections">Five collections</a></li>
+          <li><a href="#/shop">Shop all 53 pieces</a></li>
+          <li><a href="#/fashion">Fashion (18 pieces)</a></li>
+          <li><a href="#/accessories">Artisan Accessories (35 pieces)</a></li>
+          <li><a href="#/collections">Eight collections</a></li>
           <li><a href="#/lookbook">Lookbook &amp; reels</a></li>
           <li><a href="#/bag">Inquiry bag</a></li>
           <li><a href="#/inquiry">Order inquiry</a></li>
@@ -255,6 +258,8 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/supabaseClient.js"></script>
 <script src="assets/js/catalogData.js"></script>
+<script src="assets/js/threeHero.js"></script>
+<script src="assets/js/animePolish.js"></script>
 <script src="assets/js/app.js"></script>
 
 </body>
