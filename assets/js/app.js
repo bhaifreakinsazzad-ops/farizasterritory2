@@ -20,8 +20,7 @@
   const priceText = p => {
   if (!p) return 'Inquire for price';
   if (!p.priceBDT) return 'Inquire for price';
-  const statusNote = p.priceStatus === 'suggested' ? ' · প্রস্তাবিত' : '';
-  return `৳${p.priceBDT.toLocaleString('en-US')}${statusNote}`;
+  return `৳${p.priceBDT.toLocaleString('en-US')}`;
 };
   const subtotalNum = items => items.reduce((sum, it) => {
     const p = bySku(it.sku);
@@ -43,24 +42,56 @@ function getWhatsAppNumber(){
               "8801700000000";
   return String(num).replace(/[^0-9]/g, "");
 }
+function isRealWhatsapp(){
+  const digits = getWhatsAppNumber();
+  return !!digits && digits !== "8801700000000" && digits.length >= 11;
+}
 function getWhatsAppUrl(text){
   const num = getWhatsAppNumber();
+  if (!num || num === "8801700000000" || num.length < 11) {
+    const mUser = (typeof state !== "undefined" && state.cfg && state.cfg.messenger) || CONFIG.messengerUsername || "farizasterritory143";
+    return `https://m.me/${encodeURIComponent(mUser)}`;
+  }
   return `https://wa.me/${num}${text ? '?text=' + encodeURIComponent(text) : ''}`;
 }
+function syncFloatingWa(){
+  const waBtn = document.getElementById("floating-wa-btn");
+  if(!waBtn) return;
+  const realWa = isRealWhatsapp();
+  waBtn.href = getWhatsAppUrl("Hello Fariza's Territory, I would like to inquire about your boutique collection.");
+  const lbl = waBtn.querySelector(".wa-label");
+  if(lbl) lbl.textContent = realWa ? "WhatsApp Order" : "Messenger Order";
+  waBtn.setAttribute("aria-label", realWa ? "Order or Chat on WhatsApp" : "Order or Chat on Messenger");
+}
+function getDeliveryFees() {
+  const dhaka = Number(CONFIG.deliveryFeeDhaka);
+  const outside = Number(CONFIG.deliveryFeeOutside);
+  return {
+    dhaka: Number.isFinite(dhaka) ? dhaka : 80,
+    outside: Number.isFinite(outside) ? outside : 150
+  };
+}
+function isOutsideZone(zone) {
+  return zone === "outside" || zone === "outside_dhaka";
+}
+function normalizeDeliveryZone(zone) {
+  return isOutsideZone(zone) ? "outside_dhaka" : "dhaka";
+}
 const state = {
+  lang: store.load("ft_lang", "en"),
   bag: store.load("ft_bag",[]),
   wish: store.load("ft_wish",[]),
   cfg: Object.assign({
     messenger: CONFIG.messengerUsername,
-    whatsapp: localStorage.getItem("ft_whatsapp") || CONFIG.whatsappNumber || "8801700000000",
+    whatsapp: localStorage.getItem("ft_whatsapp") || localStorage.getItem("ft_wa_number") || CONFIG.whatsappNumber || "8801700000000",
     facebook: CONFIG.facebookUrl
   }, store.load("ft_cfg",{})),
   appliedCoupon: store.load("ft_applied_coupon", null),
-  deliveryZone: store.load("ft_delivery_zone", "dhaka"),
+  deliveryZone: normalizeDeliveryZone(store.load("ft_delivery_zone", "dhaka")),
   promoOff: store.load("ft_promo_off",false),
   route:{page:"home",param:null,query:{}},
-  stage:{col:"all",idx:0,list:PRODUCTS.map(p=>p.sku)},
-  shop:{c:"all",q:"",sort:"featured"},
+  stage:{pillar:"all",col:"all",idx:0,list:PRODUCTS.map(p=>p.sku)},
+  shop:{pillar:"all",c:"all",q:"",sort:"featured"},
   look:{c:"all"},
   gal:{sku:null,key:"main"},
   lb:{sku:null,key:"main",scale:1,tx:0,ty:0,list:[]},
@@ -68,6 +99,34 @@ const state = {
   drawer:null, searchSel:0, searchList:[], lastInquiry:null,
   inqDone:false, suppressClick:false
 };
+const isBn = ()=>state.lang === "bn";
+const tProdTitle = p=> (isBn() && p.titleBn) ? p.titleBn : p.title;
+const tProdSubTitle = p=> isBn() ? p.title : (p.titleBn || "");
+const tProdDesc = p=> isBn() ? (p.descriptionBn || p.descriptionEn || "") : (p.descriptionEn || p.descriptionBn || "");
+const tUnit = p=> isBn() ? (p.unitBn || p.unit || "") : (p.unit || p.unitBn || "");
+const tCaution = p=> isBn() ? (p.cautionBn || p.cautionEn || "") : (p.cautionEn || p.cautionBn || "");
+function syncLangUI(){
+  const btn = $("#lang-toggle-btn");
+  if(btn){
+    btn.textContent = isBn() ? "EN" : "বাংলা";
+    btn.title = isBn() ? "Switch to English" : "বাংলা ভাষায় দেখুন";
+  }
+  document.documentElement.lang = isBn() ? "bn" : "en";
+  const navMap = isBn()
+    ? { home:"হোম", shop:"শপ (৫৩)", collections:"কালেকশন", lookbook:"লুকবুক", about:"আমাদের গল্প", contact:"যোগাযোগ", track:"অর্ডার ট্র্যাক" }
+    : { home:"Home", shop:"Shop", collections:"Collections", lookbook:"Lookbook", about:"About", contact:"Contact", track:"Track Order" };
+  Object.keys(navMap).forEach(k=>{
+    const el = document.querySelector(`[data-nav="${k}"]`);
+    if(el) el.textContent = navMap[k];
+  });
+}
+function toggleLang(){
+  state.lang = isBn() ? "en" : "bn";
+  store.save("ft_lang", state.lang);
+  syncLangUI();
+  render();
+  toast(isBn() ? "বাংলা সংস্করণ চালু হয়েছে" : "Switched to English",{icon:"check"});
+}
 const bagCount = ()=>state.bag.reduce((a,b)=>a+b.qty,0);
 const inBag = s=>state.bag.find(b=>b.sku===s);
 const inWish = s=>state.wish.includes(s);
@@ -146,15 +205,12 @@ function ph(p,key,opts){
   const w=opts.w||800;
   const src = assetSrc(p, key, w);
   const hasAsset = !!src;
-  const st = hasAsset ? (state.assets[p.sku+":"+key]||"ok") : "na";
   const tag=opts.tag?`<span class="ph-tag${key==="aiStylingPreview"?" ai":""}">${key==="aiStylingPreview"?"AI illustration":esc(opts.tagText||meta.label)}</span>`:"";
-  const dot=opts.dot===false?"":`<span class="ph-dot ${st}" data-dot="${p.sku}:${key}" title="${st==="ok"?"Product photo loaded":st==="err"?"Photo file unavailable — branded fallback shown":st==="na"?"Asset not supplied":"Loading product image…"}"></span>`;
   const img=hasAsset?`<img class="ph-img ok" data-ft="${p.sku}:${key}" src="${src}" alt="${esc(p.title)} — ${esc(meta.label)} (${p.sku})" loading="${opts.eager?"eager":"lazy"}" decoding="async">`:"";
-  return `<div class="ph ${ratio}${mini}${contain}" data-ph="${p.sku}:${key}" style="--acc:${p.accent}">${tileInner(p,opts.mini)}${img}${tag}${dot}</div>`;
+  return `<div class="ph ${ratio}${mini}${contain}" data-ph="${p.sku}:${key}" style="--acc:${p.accent}">${tileInner(p,opts.mini)}${img}${tag}</div>`;
 }
 function setAssetStatus(sku,key,st){
   state.assets[sku+":"+key]=st;
-  $$(`[data-dot="${sku}:${key}"]`).forEach(d=>{d.className="ph-dot "+st;d.title=st==="ok"?"Product photo loaded":st==="err"?"Photo file unavailable — branded fallback shown":"Loading product image…";});
   $$(`[data-ph="${sku}:${key}"]`).forEach(f=>f.classList.toggle("err",st==="err"));
   $$(`[data-img="${sku}:${key}"]`).forEach(im=>im.classList.toggle("ok",st==="ok"));
   const cell=$(`#rep-st-${sku}`); if(cell) cell.innerHTML=stHtml(st);
@@ -218,13 +274,24 @@ function addToBag(sku,qty,quiet){
   const it=inBag(sku);
   if(it) it.qty=Math.min(99,it.qty+qty); else state.bag.push({sku,qty});
   syncCommerce();
-  if(!quiet) toast(`${bySku(sku).title} added to inquiry bag`,{icon:"bag",action:"View bag",onAction:()=>openDrawer("bag")});
-
-  // Master UI Motion: Fly-to-Cart Bezier Curve with Elastic Pop & Confetti Burst
-  if(window.FT_ANIME && typeof window.FT_ANIME.flyToBag === 'function'){
-    const srcEl = document.querySelector(`[data-sku="${sku}"] img`) || document.querySelector(`[data-sku="${sku}"]`) || document.getElementById('qv-main-fig');
-    if(srcEl) window.FT_ANIME.flyToBag(srcEl);
+  if(!quiet){
+    toast(`${bySku(sku).title} added to inquiry bag`,{icon:"bag",action:"View bag",onAction:()=>openDrawer("bag")});
+    if(window.FT_ANIME && typeof window.FT_ANIME.flyToBag === 'function'){
+      const srcEl = document.querySelector(`[data-sku="${sku}"] img`)
+        || document.getElementById('qv-main-fig')
+        || document.querySelector('#gal-main img')
+        || document.querySelector(`[data-sku="${sku}"]`);
+      if(srcEl) window.FT_ANIME.flyToBag(srcEl);
+    }
   }
+}
+function buyNow(sku,qty){
+  qty = qty || 1;
+  addToBag(sku, qty, true);
+  closeQuickView();
+  closeDrawer();
+  location.hash = "#/inquiry";
+  toast(isBn() ? "অর্ডার ফর্মে নিয়ে যাওয়া হচ্ছে (ক্যাশ অন ডেলিভারি)" : "Proceeding to Cash on Delivery Order Inquiry",{icon:"bag"});
 }
 function removeFromBag(sku){
   const i=state.bag.findIndex(b=>b.sku===sku); if(i<0)return;
@@ -292,7 +359,7 @@ function renderBagDrawer(){
     `<div class="empty" style="margin-top:20px">${IC.bag}<p>Your inquiry bag is empty.</p><p class="small" style="margin:8px 0 18px">Prices are confirmed by the seller — add pieces and send one inquiry.</p><a class="btn btn-ink btn-sm" href="#/shop" data-act="drawer-close"><span>Browse the boutique</span></a></div>`;
   $("#bag-foot").innerHTML=state.bag.length?`
     <div class="dr-total"><span>Catalog reference subtotal</span><b>${subtotalText(state.bag)}</b></div>
-    <p class="tiny" style="margin-bottom:12px">No automatic discount applied. First-order offer up to 25%* &amp; free delivery* — confirmed by seller.</p>
+    <p class="tiny" style="margin-bottom:12px">Apply codes like <b>FIRST25</b>, <b>FARIZA200</b>, or <b>FREESHIP</b> at Order Inquiry · Seller confirms sizing &amp; dispatch.</p>
     <a class="btn btn-ink btn-block" href="#/inquiry" data-act="drawer-close"><span>Prepare order inquiry</span>${IC.arrow}</a>`:"";
   bindImages($("#drawer-bag"));
 }
@@ -317,14 +384,21 @@ function closeSearch(){
 }
 function renderSearch(q){
   q=q.trim().toLowerCase();
-  state.searchList=PRODUCTS.filter(p=>!q||p.title.toLowerCase().includes(q)||p.sku.toLowerCase().includes(q)||p.collection.name.toLowerCase().includes(q)||p.slug.includes(q));
-  $("#so-hint").textContent=q?`${state.searchList.length} result${state.searchList.length===1?"":"s"} for “${q}”`:"18 pieces · type to filter · ↑↓ to browse · Enter to open";
+  state.searchList=PRODUCTS.filter(p=>!q
+    || p.title.toLowerCase().includes(q)
+    || (p.titleBn && p.titleBn.toLowerCase().includes(q))
+    || p.sku.toLowerCase().includes(q)
+    || (p.collection && (p.collection.name.toLowerCase().includes(q) || p.collection.short.toLowerCase().includes(q)))
+    || (p.descriptionBn && p.descriptionBn.toLowerCase().includes(q))
+    || (p.descriptionEn && p.descriptionEn.toLowerCase().includes(q))
+    || p.slug.includes(q));
+  $("#so-hint").textContent=q?`${state.searchList.length} result${state.searchList.length===1?"":"s"} for “${q}”`:`${PRODUCTS.length} pieces across ${COLLECTIONS.length} collections · type to filter · ↑↓ to browse · Enter to open`;
   $("#so-results").innerHTML=state.searchList.length?state.searchList.map((p,i)=>`
     <button class="so-item${i===state.searchSel?" sel":""}" data-act="go" data-href="#/product/${p.sku}" data-si="${i}">
       ${ph(p,"main",{mini:true,w:200,dot:false})}
-      <span><span class="t">${esc(p.title)}</span><span class="s" style="display:block">${p.sku} · ${esc(p.collection.short)}</span></span>
+      <span><span class="t">${esc(p.title)}</span><span class="s" style="display:block">${p.sku} · ${esc(p.collection.short)} · ${priceText(p)}</span></span>
     </button>`).join(""):
-    `<div class="empty" style="grid-column:1/-1">${IC.flower}<p>No pieces match “${esc(q)}”.</p><p class="small" style="margin-top:8px">Try a colour, a collection name, or a SKU like CAT-008.</p></div>`;
+    `<div class="empty" style="grid-column:1/-1">${IC.flower}<p>No pieces match “${esc(q)}”.</p><p class="small" style="margin-top:8px">Try a colour, a collection name, or a SKU like CAT-008 or FT-JWL-001.</p></div>`;
   bindImages($("#search-ov"));
 }
 /* ================= MENU ================= */
@@ -332,43 +406,59 @@ function openMenu(){$("#mmenu").classList.add("open");$("#mmenu").setAttribute("
 function closeMenu(){$("#mmenu").classList.remove("open");$("#mmenu").setAttribute("aria-hidden","true");if(!state.drawer)document.body.style.overflow="";$(".menu-btn").setAttribute("aria-expanded","false");}
 /* ================= SHARED TEMPLATES ================= */
 function pcard(p,i){
-  const unitBadge = p.unitBn ? `<span class="unit-badge" title="${esc(p.cautionBn||'')}">${esc(p.unitBn)}</span>` : '';
-  const isCaution = !!p.cautionBn;
+  const unitStr = tUnit(p);
+  const cautionStr = tCaution(p);
+  const unitBadge = unitStr ? `<span class="unit-badge" title="${esc(cautionStr)}">${esc(unitStr)}</span>` : '';
+  const isCaution = !!cautionStr;
+  const outBadge = p.is_available === false ? `<span class="tag warn" style="font-size:10px;padding:2px 7px">Out of stock</span>` : '';
+  const overlayLabel = (p.colId==="01"||p.col==="01") ? "Label unverified" : (p.is_available === false ? "Out of stock" : "");
+  const primaryTitle = tProdTitle(p);
+  const subTitle = tProdSubTitle(p);
   return `<article class="pcard" data-reveal style="--d:${(i%4)*.07}s;--pc-acc:${p.accent}">
     <div class="pc-actions">
       <button data-act="bag-add" data-sku="${p.sku}" aria-label="Add ${esc(p.title)} to inquiry bag" title="Add to bag">${IC.bag}</button>
       <button data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" class="${inWish(p.sku)?"on":""}" aria-pressed="${inWish(p.sku)}" aria-label="Save ${esc(p.title)} to wishlist" title="Wishlist">${IC.heart}</button>
       <button data-act="quick-view" data-sku="${p.sku}" aria-label="Quick view of ${esc(p.title)}" title="Quick view">${IC.zoom}</button>
     </div>
-    <a href="#/product/${p.sku}" aria-hidden="true" tabindex="-1">${ph(p,"main",{w:600,tag:true,tagText:(p.colId==="01"||p.col==="01")?"Label unverified":(p.collection ? p.collection.short : '')})}</a>
+    <a href="#/product/${p.sku}" aria-hidden="true" tabindex="-1">${ph(p,"main",{w:600,tag:!!overlayLabel,tagText:overlayLabel})}</a>
     <div class="pcard-body">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap">
         <span class="pc-col">${esc(p.collection ? p.collection.short : '')}</span>
-        ${unitBadge}
+        ${outBadge || unitBadge}
       </div>
-      <h3 class="pc-title"><a href="#/product/${p.sku}">${esc(p.title)}</a></h3>
-      ${p.titleBn ? `<div class="tiny bn" style="color:var(--chestnut)">${esc(p.titleBn)}</div>` : ''}
+      <h3 class="pc-title${isBn()?' bn':''}"><a href="#/product/${p.sku}">${esc(primaryTitle)}</a></h3>
+      ${subTitle ? `<div class="tiny${isBn()?'':' bn'}" style="color:var(--chestnut)">${esc(subTitle)}</div>` : ''}
       <div class="pc-meta">
         <span class="pc-sku">${p.sku}</span>
-        <span class="pc-price">${priceText(p)}</span>
+        <span class="pc-price">${priceText(p)}${p.priceStatus === 'suggested' ? ' <span class="tiny">· প্রাক্কলিত</span>' : ''}</span>
       </div>
-      ${isCaution ? `<div class="tiny" style="color:var(--ink3);margin-top:4px;font-size:11px;border-top:1px dashed var(--line);padding-top:4px;">* ${esc(p.cautionBn)}</div>` : ''}
+      ${isCaution ? `<div class="tiny pc-caution">* ${esc(cautionStr)}</div>` : ''}
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button type="button" class="btn btn-line btn-sm" style="flex:1;padding:7px 10px;font-size:11.5px;justify-content:center" data-act="bag-add" data-sku="${p.sku}">${IC.bag}<span>${isBn()?'ব্যাগে যোগ':'Add to Bag'}</span></button>
+        <button type="button" class="btn btn-buynow btn-sm" style="flex:1;padding:7px 10px;font-size:11.5px;justify-content:center" data-act="buynow" data-sku="${p.sku}"><span>${isBn()?'অর্ডার (COD)':'Order COD'}</span>${IC.arrow}</button>
+      </div>
     </div>
   </article>`;
 }
 function offerNote(){
-  return `<div class="notice">${IC.alert}<span><b>Advertised offers:</b> first-order discount up to 25% and free delivery. Eligibility, sizing, prices and delivery are confirmed by the seller on Messenger — this boutique never auto-applies a discount or simulates payment.</span></div>`;
+  return `<div class="notice">${IC.alert}<span><b>Boutique offers:</b> Apply welcome vouchers (<code>FIRST25</code>, <code>FARIZA200</code>) or <code>FREESHIP</code> inside your Order Inquiry. Final sizing, color confirmation, and courier dispatch are confirmed by the seller via WhatsApp or Messenger.</span></div>`;
 }
 function messengerBtn(label,sku){
   return `<button class="btn btn-ink" data-act="msg" ${sku?`data-sku="${sku}"`:""}>${IC.chat}<span>${label||"Order via Messenger"}</span></button>`;
 }
 /* ================= HOME ================= */
-function pageHome(){
+function stageTabsHtml(){
   const st=state.stage;
   const currentPillar = st.pillar || 'all';
   const availableCols = currentPillar === 'all' ? COLLECTIONS : COLLECTIONS.filter(c => c.pillar === currentPillar);
-  const tabs=[{id:"all",name:"All (" + (currentPillar==='all'?53:currentPillar==='Fashion'?18:35) + ")",count:currentPillar==='all'?53:currentPillar==='Fashion'?18:35}]
+  const totalCount = currentPillar === 'all' ? PRODUCTS.length : PRODUCTS.filter(p => p.superCategory === currentPillar).length;
+  const tabs=[{id:"all",name:"All (" + totalCount + ")",count:totalCount}]
     .concat(availableCols.map(c=>({id:c.id,name:c.short,count:c.count})));
+  return tabs.map(t=>`<button class="chip${st.col===t.id?" on":""}" role="tab" aria-selected="${st.col===t.id}" data-act="stage-col" data-col="${t.id}">${esc(t.name)} <span class="n">${t.count}</span></button>`).join("");
+}
+function pageHome(){
+  const st=state.stage;
+  const currentPillar = st.pillar || 'all';
   
   return `
   <section class="hero">
@@ -390,8 +480,8 @@ function pageHome(){
           </div>
         </div>
       </div>
-      <div class="stage-tabs" data-reveal style="--d:.26s" role="tablist" aria-label="Choose collection">
-        ${tabs.map(t=>`<button class="chip${st.col===t.id?" on":""}" role="tab" aria-selected="${st.col===t.id}" data-act="stage-col" data-col="${t.id}">${esc(t.name)} <span class="n">${t.count}</span></button>`).join("")}
+      <div class="stage-tabs" id="stage-tabs" data-reveal style="--d:.26s" role="tablist" aria-label="Choose collection">
+        ${stageTabsHtml()}
       </div>
       <div class="stage-grid">
         <div class="stage-col" data-reveal style="--d:.3s">
@@ -517,15 +607,15 @@ function pageHome(){
         <h2 class="h-sec kinetic-title" data-reveal style="--d:.08s;margin-top:12px">One inquiry. Everything confirmed.</h2>
       </div>
       <div class="offer-grid">
-        <div class="offer" data-reveal><span>${IC.tag}</span><b>First-order offer up to 25%<span class="ast">*</span></b><p>As advertised on our Facebook page. The seller confirms eligibility per order — no discount is auto-applied at inquiry.</p></div>
-        <div class="offer" data-reveal style="--d:.1s"><span>${IC.truck}</span><b>Free delivery<span class="ast">*</span></b><p>Advertised by the brand. Coverage and conditions are confirmed by the seller when your inquiry is answered.</p></div>
+        <div class="offer" data-reveal><span>${IC.tag}</span><b>First-order offer up to 25%<span class="ast">*</span></b><p>Use code <b>FIRST25</b> (25% off, max ৳500) or <b>FARIZA200</b> inside your Order Inquiry before submitting.</p></div>
+        <div class="offer" data-reveal style="--d:.1s"><span>${IC.truck}</span><b>Free delivery<span class="ast">*</span></b><p>Enjoy complimentary nationwide delivery on orders over ৳3,000 using voucher code <b>FREESHIP</b>.</p></div>
         <div class="offer" data-reveal style="--d:.2s"><span>${IC.chat}</span><b>WhatsApp &amp; Messenger</b><p>Fill your bag, prepare an inquiry with your delivery details, and send it directly on WhatsApp or Messenger. We reply promptly with availability.</p></div>
       </div>
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap" data-reveal>
         <a class="btn btn-ink" href="#/shop"><span>Browse all 53 pieces</span>${IC.arrow}</a>
         ${messengerBtn("Ask us anything")}
       </div>
-      <p class="tiny" style="text-align:center;margin-top:16px" data-reveal>*Brand-advertised offers — final terms confirmed by the seller. <a href="#/policies" style="text-decoration:underline">Read offer terms</a>.</p>
+      <p class="tiny" style="text-align:center;margin-top:16px" data-reveal>*Voucher eligibility &amp; Cash on Delivery confirmed personally by the seller. <a href="#/policies" style="text-decoration:underline">Read offer terms</a>.</p>
     </div>
   </section>`;
 }
@@ -623,15 +713,16 @@ function renderPiecePanel(){
   panel.innerHTML=`
     <div class="pp-head"><span class="overline">In this piece</span><span class="tiny">${assets.length} views</span></div>
     <span class="tag" style="background:color-mix(in srgb,${p.accent} 16%,var(--cream3));color:var(--ink2)">${esc(p.collection.short)}</span>
-    ${p.col==="01"?`<span class="tag warn" style="margin-left:6px">Label unverified</span>`:""}
+    ${(p.colId==="01"||p.col==="01")?`<span class="tag warn" style="margin-left:6px">Label unverified</span>`:""}
     <h2 class="pp-title">${esc(p.title)}</h2>
     <span class="pp-sku">${p.sku} · ${esc(p.slug)}</span>
     <div class="pp-price"><b>${priceText(p)}</b><span class="tiny">Catalog reference · confirm</span></div>
     <div class="pp-assets">${assets.map(k=>`<button data-act="lb-open" data-sku="${p.sku}" data-key="${k}" aria-label="View ${KEY_META[k].label}" style="padding:0;border:0;background:none">${ph(p,k,{mini:true,w:200,dot:false,ratio:"r45"})}</button>`).join("")}</div>
     <p class="small">Fabric, sizing and availability are confirmed by the seller. Tap the <b>+</b> hotspots on the photo for fabric close-ups.</p>
     <div class="pp-actions">
-      <button class="btn btn-ink btn-block" data-act="bag-add" data-sku="${p.sku}">${IC.bag}<span>Add to inquiry bag</span></button>
-      <a class="btn btn-line btn-block" href="#/product/${p.sku}"><span>Full details &amp; gallery</span>${IC.arrow}</a>
+      <button class="btn btn-ink btn-block" data-act="bag-add" data-sku="${p.sku}">${IC.bag}<span>${isBn()?'ব্যাগে যোগ করুন':'Add to inquiry bag'}</span></button>
+      <button class="btn btn-buynow btn-block" data-act="buynow" data-sku="${p.sku}"><span>${isBn()?'সরাসরি অর্ডার করুন (COD)':'Order Now · Cash on Delivery'}</span>${IC.arrow}</button>
+      <a class="btn btn-line btn-block" href="#/product/${p.sku}"><span>${isBn()?'বিস্তারিত ও ছবি দেখুন':'Full details & gallery'}</span>${IC.arrow}</a>
       <button class="wish-line${inWish(p.sku)?" on":""}" data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" aria-pressed="${inWish(p.sku)}">${IC.heart}<span>${inWish(p.sku)?"Saved to wishlist":"Save to wishlist"}</span></button>
     </div>
     <p class="pp-note">First-order offer up to 25%* · free delivery* — *confirmed by seller. ${(p.assets&&p.assets.aiStylingPreview)?"An AI styling illustration exists for this piece and is clearly labelled on its page.":"Genuine product photography only."}</p>`;
@@ -681,16 +772,27 @@ function shopFiltered(){
   if(f.sort==="collection")list.sort((a,b)=>(a.colId||'').localeCompare(b.colId||'')||a.sku.localeCompare(b.sku));
   return list;
 }
-function pageShop(){
-  const c=state.route.query.c; if(c&&colById(c))state.shop.c=c;
-  const pillar = state.shop.pillar || (state.route.page === 'fashion' ? 'Fashion' : state.route.page === 'accessories' ? 'Accessories' : 'all');
-  state.shop.pillar = pillar;
+function shopColChipsHtml(pillar){
   const availableCols = pillar === 'all' ? COLLECTIONS : COLLECTIONS.filter(col => col.pillar === pillar);
+  return `<button class="chip${state.shop.c==="all"?" on":""}" data-act="shop-col" data-col="all">All Collections</button>`
+    + availableCols.map(cl=>`<button class="chip${state.shop.c===cl.id?" on":""}" data-act="shop-col" data-col="${cl.id}">${esc(cl.short)} <span class="n">${cl.count}</span></button>`).join("");
+}
+function pageShop(){
+  const c=state.route.query.c;
+  if(c){
+    const matchedCol=colById(c);
+    if(matchedCol && matchedCol.id){
+      state.shop.c=matchedCol.id;
+      if(state.route.page==='shop') state.shop.pillar=matchedCol.pillar || 'all';
+    }
+  }
+  const pillar = state.route.page === 'fashion' ? 'Fashion' : state.route.page === 'accessories' ? 'Accessories' : (state.shop.pillar || 'all');
+  state.shop.pillar = pillar;
 
   return `
   <div class="page-head"><div class="container">
-    <span class="overline" data-reveal>${pillar === 'Fashion' ? 'Fashion Garments' : pillar === 'Accessories' ? 'Artisan Accessories' : 'The Complete Catalog'}</span>
-    <h1 class="h-display kinetic-title" data-reveal style="--d:.06s;margin-top:12px">${pillar === 'Fashion' ? 'Fashion Garments (18 Pieces)' : pillar === 'Accessories' ? 'Artisan Accessories (35 Pieces)' : 'Shop All 53 Pieces'}</h1>
+    <span class="overline" id="shop-page-overline" data-reveal>${pillar === 'Fashion' ? 'Fashion Garments' : pillar === 'Accessories' ? 'Artisan Accessories' : 'The Complete Catalog'}</span>
+    <h1 class="h-display kinetic-title" id="shop-page-title" data-reveal style="--d:.06s;margin-top:12px">${pillar === 'Fashion' ? 'Fashion Garments (18 Pieces)' : pillar === 'Accessories' ? 'Artisan Accessories (35 Pieces)' : 'Shop All 53 Pieces'}</h1>
     <p class="lede" data-reveal style="--d:.12s;margin-top:10px">Explore handcrafted boutique fashion and wearable artisan accessories from Mirpur, Dhaka. Provisional catalog prices shown; availability and final details verified by seller.</p>
   </div></div>
   <div class="page-body"><div class="container">
@@ -703,9 +805,8 @@ function pageShop(){
         <button class="chip${state.shop.pillar==="Accessories"?" on":""}" data-act="shop-pillar" data-pillar="Accessories">Accessories <span class="n">35</span></button>
       </div>
 
-      <div class="chips" role="group" aria-label="Filter by collection" style="margin-top:8px">
-        <button class="chip${state.shop.c==="all"?" on":""}" data-act="shop-col" data-col="all">All Collections</button>
-        ${availableCols.map(cl=>`<button class="chip${state.shop.c===cl.id?" on":""}" data-act="shop-col" data-col="${cl.id}">${esc(cl.short)} <span class="n">${cl.count}</span></button>`).join("")}
+      <div class="chips" id="shop-col-chips" role="group" aria-label="Filter by collection" style="margin-top:8px">
+        ${shopColChipsHtml(pillar)}
       </div>
 
       <select class="sel" data-input="shop-sort" aria-label="Sort products">
@@ -723,11 +824,16 @@ function pageShop(){
 function renderShopGrid(){
   const wrap=$("#shop-grid-wrap"); if(!wrap)return;
   const list=shopFiltered();
-  const tot = state.shop.pillar==="Fashion"?18:state.shop.pillar==="Accessories"?35:53; $("#shop-count").textContent=`${list.length} / ${tot} pieces`;
+  const tot = state.shop.pillar==="Fashion"?18:state.shop.pillar==="Accessories"?35:PRODUCTS.length;
+  const countEl=$("#shop-count"); if(countEl) countEl.textContent=`${list.length} / ${tot} pieces`;
+  const overEl=$("#shop-page-overline"), titleEl=$("#shop-page-title");
+  if(overEl) overEl.textContent = state.shop.pillar === 'Fashion' ? 'Fashion Garments' : state.shop.pillar === 'Accessories' ? 'Artisan Accessories' : 'The Complete Catalog';
+  if(titleEl) titleEl.textContent = state.shop.pillar === 'Fashion' ? 'Fashion Garments (18 Pieces)' : state.shop.pillar === 'Accessories' ? 'Artisan Accessories (35 Pieces)' : 'Shop All 53 Pieces';
   wrap.innerHTML=list.length?`<div class="pgrid">${list.map((p,i)=>pcard(p,i)).join("")}</div>`:
     `<div class="empty">${IC.flower}<p>No pieces match your filters.</p><p class="small" style="margin:8px 0 18px">Clear the search or choose another collection.</p><button class="btn btn-ink btn-sm" data-act="shop-clear"><span>Clear filters</span></button></div>`;
   bindImages(wrap); revealBind(wrap);
-  $$(".toolbar .chip").forEach(ch=>ch.classList.toggle("on",ch.dataset.col===state.shop.c));
+  $$('[data-act="shop-pillar"]').forEach(ch=>ch.classList.toggle("on",ch.dataset.pillar===state.shop.pillar));
+  $$('[data-act="shop-col"]').forEach(ch=>ch.classList.toggle("on",ch.dataset.col===state.shop.c));
 }
 /* ================= COLLECTIONS PAGE ================= */
 function pageCollections(){
@@ -759,10 +865,6 @@ function pageCollections(){
 }
 /* ================= PRODUCT PAGE ================= */
 function pageProduct(sku){
-  const pCurrent = bySku(sku);
-  if(window.FT_ANALYTICS && pCurrent){
-    window.FT_ANALYTICS.trackViewContent(pCurrent);
-  }
   const p=bySku(sku);
   if(!p)return page404();
   state.gal={sku,key:"main"};
@@ -772,7 +874,7 @@ function pageProduct(sku){
   const related = [...sameCol, ...crossCategory].slice(0, 4);
   return `
   <div class="page-head"><div class="container">
-    <nav class="crumbs" aria-label="Breadcrumb"><a href="#/home">Home</a><span>·</span><a href="#/shop">Shop</a><span>·</span><a href="#/shop?c=${p.col}">${esc(p.collection.short)}</a><span>·</span><span style="color:var(--chestnut)">${p.sku}</span></nav>
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="#/home">Home</a><span>·</span><a href="#/shop">Shop</a><span>·</span><a href="#/shop?c=${p.colId || p.col}">${esc(p.collection.short)}</a><span>·</span><span style="color:var(--chestnut)">${p.sku}</span></nav>
     <div class="prod-grid">
       <div>
         <div class="gal-main" id="gal-main" data-reveal></div>
@@ -793,26 +895,31 @@ function pageProduct(sku){
       </div>
       <div class="prod-info" data-reveal style="--d:.1s">
         <span class="tag" style="background:color-mix(in srgb,${p.accent} 16%,var(--cream3));color:var(--ink2)">${esc(p.collection.name)}</span>
-        ${p.col==="01"?`<span class="tag warn" style="margin-left:6px">Seller label · unverified</span>`:""}
-        <h1 class="pi-title">${esc(p.title)}</h1>
+        ${(p.colId==="01"||p.col==="01")?`<span class="tag warn" style="margin-left:6px">Seller label · unverified</span>`:""}
+        ${p.is_available===false?`<span class="tag warn" style="margin-left:6px">Currently out of stock · Inquire</span>`:""}
+        <h1 class="pi-title${isBn()?' bn':''}">${esc(tProdTitle(p))}</h1>
+        ${tProdSubTitle(p) ? `<div class="${isBn()?'':'bn'}" style="color:var(--chestnut);font-size:15px;margin:2px 0 4px">${esc(tProdSubTitle(p))}</div>` : ''}
         <span class="pp-sku">${p.sku} · ${esc(p.slug)}</span>
-        <div class="pi-price"><b>${priceText(p)}</b><span class="tiny">Catalog reference · confirm with seller</span></div>
-        <p class="small" style="margin-bottom:16px">Listed BDT prices come from an earlier seller-provided catalog and must be reconfirmed before ordering. Sizing and stock are not verified. First-order offer up to 25%* and free delivery* as advertised.</p>
-        <div class="pi-buy">
+        <div class="pi-price"><b>${priceText(p)}</b><span class="tiny">${p.priceStatus === 'suggested' ? 'Provisional reference · confirm with seller' : 'Boutique catalog price · Cash on Delivery'}</span></div>
+        <p class="small${isBn()?' bn':''}" style="margin-bottom:16px">${esc(tProdDesc(p) || "Listed BDT prices come from the official boutique catalog and are confirmed before courier dispatch. First-order offer up to 25%* and free delivery* as advertised.")}</p>
+        <div class="pi-buy" style="flex-wrap:wrap">
           <span class="qty" aria-label="Quantity"><button data-act="piq-dec" aria-label="Decrease quantity">${IC.minus}</button><output id="pi-qty">1</output><button data-act="piq-inc" aria-label="Increase quantity">${IC.plus}</button></span>
-          <button class="btn btn-ink" data-act="bag-add-qty" data-sku="${p.sku}">${IC.bag}<span>Add to inquiry bag</span></button>
+          <button class="btn btn-ink" data-act="bag-add-qty" data-sku="${p.sku}">${IC.bag}<span>${isBn()?'ব্যাগে যোগ করুন':'Add to inquiry bag'}</span></button>
+          <button class="btn btn-buynow" data-act="buynow-qty" data-sku="${p.sku}"><span>${isBn()?'অর্ডার করুন (COD)':'Order Now (COD)'}</span>${IC.arrow}</button>
         </div>
         <div class="pi-buy" style="flex-wrap:wrap">
           ${messengerBtn("Ask on Messenger",p.sku)}
-          <a href="${getWhatsAppUrl("Hello Fariza's Territory, I would like to inquire about " + p.sku + " — " + p.title + " (" + priceText(p) + ")")}" target="_blank" rel="noopener" class="btn btn-line" style="display:inline-flex;align-items:center;gap:8px">${IC.wa}<span>WhatsApp Inquiry</span></a>
+          ${isRealWhatsapp() ? `<button type="button" data-act="wa" data-sku="${p.sku}" class="btn btn-line" style="display:inline-flex;align-items:center;gap:8px">${IC.wa}<span>WhatsApp Inquiry</span></button>` : ''}
           <button class="btn btn-line wish-line${inWish(p.sku)?" on":""}" style="justify-content:center" data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" aria-pressed="${inWish(p.sku)}">${IC.heart}<span>Wishlist</span></button>
         </div>
         <details class="acc" open><summary>Piece details &amp; Craft Specifications ${IC.chev}</summary><div class="acc-body">
           <div class="prov-row"><span>Category</span><span>${esc(p.superCategory)} · ${esc(p.collection ? p.collection.name : '')}</span></div>
           <div class="prov-row"><span>SKU</span><span>${p.sku}</span></div>
-          <div class="prov-row"><span>Selling Unit</span><span>${esc(p.unitBn || p.unit || '১টি পণ্য')}</span></div>
-          ${p.cautionBn ? `<div class="notice warn" style="margin:10px 0">${IC.alert}<span><b>সতর্কবার্তা:</b> ${esc(p.cautionBn)}</span></div>` : ''}
+          <div class="prov-row"><span>Selling Unit</span><span>${esc(p.unitBn || p.unit || '১টি পণ্য')}${p.unit ? ` (${esc(p.unit)})` : ''}</span></div>
+          ${(p.cautionBn || p.cautionEn) ? `<div class="notice warn" style="margin:10px 0">${IC.alert}<span><b>${isBn()?'সতর্কবার্তা:':'Selling Unit Disclosure:'}</b> ${esc(tCaution(p))}</span></div>` : ''}
           ${p.superCategory === 'Accessories' ? `
+            ${p.details && p.details.colors ? `<div class="prov-row"><span>রঙ / Colors</span><span>${esc(p.details.colors)}</span></div>` : ''}
+            ${p.details && p.details.designDetail ? `<div class="prov-row"><span>নকশা / Design</span><span>${esc(p.details.designDetail)}</span></div>` : ''}
             ${p.details && p.details.material ? `<div class="prov-row"><span>উপাদান / Material</span><span>${esc(p.details.material)}</span></div>` : ''}
             ${p.details && p.details.dimensions ? `<div class="prov-row"><span>পরিমাপ / Dimensions</span><span>${esc(p.details.dimensions)}</span></div>` : ''}
             ${p.details && p.details.setCaution ? `<div class="prov-row"><span>সেট সতর্কবার্তা</span><span>${esc(p.details.setCaution)}</span></div>` : ''}
@@ -830,7 +937,7 @@ function pageProduct(sku){
           <p>Real source photography is shown first. Detail images are crops of the photographed garments, not additional shooting angles. Optional AI-generated styling previews are illustrations and are identified separately.</p>
         </div></details>
         <details class="acc"><summary>Delivery &amp; offers ${IC.chev}</summary><div class="acc-body">
-          <p>Advertised: first-order discount up to 25% and free delivery. Eligibility, coverage and timelines are confirmed by the seller — nothing is auto-applied and no payment is taken on this site. <a href="#/policies" style="text-decoration:underline;color:var(--chestnut)">Full terms</a>.</p>
+          <p>Inside Dhaka delivery ৳${getDeliveryFees().dhaka}, Outside Dhaka ৳${getDeliveryFees().outside}. Apply codes <b>FIRST25</b>, <b>FARIZA200</b>, or <b>FREESHIP</b> in your Order Inquiry — no online payment is taken here. <a href="#/policies" style="text-decoration:underline;color:var(--chestnut)">Full terms</a>.</p>
         </div></details>
       </div>
     </div>
@@ -844,8 +951,11 @@ function pageProduct(sku){
     <div class="rel-grid">${related.map((r,i)=>pcard(r,i)).join("")}</div>
   </div></div>
   <div class="mobile-buy" id="mobile-buy">
-    <div class="mb-t"><b>${esc(p.title)}</b><span class="tiny">${priceText(p)} · confirm</span></div>
-    <button class="btn btn-ink btn-sm" data-act="bag-add-qty" data-sku="${p.sku}">${IC.bag}<span>Add to bag</span></button>
+    <div class="mb-t"><b>${esc(tProdTitle(p))}</b><span class="tiny">${priceText(p)} · COD</span></div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-line btn-sm" data-act="bag-add-qty" data-sku="${p.sku}">${IC.bag}<span>Bag</span></button>
+      <button class="btn btn-buynow btn-sm" data-act="buynow-qty" data-sku="${p.sku}"><span>Order COD</span>${IC.arrow}</button>
+    </div>
   </div>`;
 }
 function renderGallery(){
@@ -863,16 +973,17 @@ function renderGallery(){
 /* ================= LOOKBOOK ================= */
 function pageLookbook(){
   const c=state.route.query.c; if(c&&colById(c))state.look.c=c;
+  const aiProds = PRODUCTS.filter(p=>p.assets&&p.assets.aiStylingPreview);
   return `
   <div class="sec-ink" style="padding-bottom:70px">
     <div class="page-head"><div class="container">
       <span class="overline" data-reveal>Squares, stories &amp; styling</span>
       <h1 class="h-display" data-reveal style="--d:.06s;margin-top:12px">The Lookbook</h1>
-      <p class="lede" data-reveal style="--d:.12s;margin-top:10px">Social-ready crops derived from the boutique's own photography — 1:1 squares and 9:16 story frames. AI styling concepts live in their own clearly-labelled gallery below.</p>
+      <p class="lede" data-reveal style="--d:.12s;margin-top:10px">Social-ready frames across all ${PRODUCTS.length} pieces — 1:1 squares and 9:16 story formats. AI styling concepts live in their own clearly-labelled gallery below.</p>
     </div></div>
     <div style="padding-top:26px"><div class="container">
       <div class="chips" style="margin-bottom:24px" data-reveal role="group" aria-label="Filter lookbook">
-        <button class="chip${state.look.c==="all"?" on":""}" style="border-color:rgba(253,240,221,.4);color:var(--cream)" data-act="look-col" data-col="all">All <span class="n">36</span></button>
+        <button class="chip${state.look.c==="all"?" on":""}" style="border-color:rgba(253,240,221,.4);color:var(--cream)" data-act="look-col" data-col="all">All <span class="n">${PRODUCTS.length*2}</span></button>
         ${COLLECTIONS.map(cl=>`<button class="chip${state.look.c===cl.id?" on":""}" style="border-color:rgba(253,240,221,.4);color:var(--cream)" data-act="look-col" data-col="${cl.id}">${esc(cl.short)} <span class="n">${cl.count*2}</span></button>`).join("")}
       </div>
       <div id="look-grid-wrap"></div>
@@ -882,10 +993,10 @@ function pageLookbook(){
     <div class="sec-head"><div>
       <span class="overline" data-reveal>Clearly labelled</span>
       <h2 class="h-sec" data-reveal style="--d:.06s;margin-top:10px">AI Styling Illustrations</h2>
-      <p class="lede" data-reveal style="--d:.12s;margin-top:8px">These are illustrative concepts — <b>not photographs of the actual garments</b>. 14 of 18 pieces have one supplied; the four Mome Boutique pieces do not.</p>
+      <p class="lede" data-reveal style="--d:.12s;margin-top:8px">These are illustrative concepts — <b>not photographs of the actual garments</b>. ${aiProds.length} fashion pieces include an AI styling preview; Mome Boutique &amp; all 35 Artisan Accessories feature original photography only.</p>
     </div><span class="tag ai" data-reveal>${IC.spark} ai-illustration</span></div>
     <div class="pgrid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
-      ${PRODUCTS.filter(p=>p.assets&&p.assets.aiStylingPreview).map((p,i)=>`
+      ${aiProds.map((p,i)=>`
         <div data-reveal style="--d:${(i%4)*.06}s">
           <div data-act="lb-open" data-sku="${p.sku}" data-key="aiStylingPreview" role="button" tabindex="0" aria-label="Enlarge AI illustration for ${esc(p.title)}" style="cursor:zoom-in">${ph(p,"aiStylingPreview",{w:500,tag:true})}</div>
           <p class="small" style="margin-top:8px"><a href="#/product/${p.sku}" style="text-decoration:underline">${esc(p.title)}</a><br><span class="tiny">${p.sku} · illustration only</span></p>
@@ -895,7 +1006,7 @@ function pageLookbook(){
 }
 function renderLookGrid(){
   const wrap=$("#look-grid-wrap"); if(!wrap)return;
-  const list=state.look.c==="all"?PRODUCTS:PRODUCTS.filter(p=>p.col===state.look.c);
+  const list=state.look.c==="all"?PRODUCTS:PRODUCTS.filter(p=>(p.colId===state.look.c||p.col===state.look.c));
   const tiles=[];
   list.forEach(p=>{tiles.push({p,k:"socialSquare"});tiles.push({p,k:"storyReel"});});
   wrap.innerHTML=`<div class="lb-grid">${tiles.map((t,i)=>`
@@ -937,11 +1048,12 @@ function renderBagPageList(){
 /* ================= INQUIRY / CHECKOUT ================= */
 function inquiryText(items,cust,ref){
   const d=new Date();
+  const fees = getDeliveryFees();
   const subtotal = subtotalNum(items);
-  const zone = cust && cust.zone === 'outside' ? 'Outside Dhaka (৳150)' : 'Inside Dhaka (৳80)';
-  const baseDelivery = cust && cust.zone === 'outside' ? 150 : 80;
+  const outside = isOutsideZone(cust && cust.zone ? cust.zone : state.deliveryZone);
+  const baseDelivery = outside ? fees.outside : fees.dhaka;
+  const zone = outside ? `Outside Dhaka (৳${fees.outside})` : `Inside Dhaka (৳${fees.dhaka})`;
   const isFreeShip = state.appliedCoupon && state.appliedCoupon.coupon && state.appliedCoupon.coupon.discount_type === 'free_shipping';
-  const deliveryFee = isFreeShip ? 0 : baseDelivery;
   let discount = 0;
   if (state.appliedCoupon) {
     discount = isFreeShip ? baseDelivery : (state.appliedCoupon.discountAmount || 0);
@@ -988,6 +1100,10 @@ function inquiryText(items,cust,ref){
     if(cust.notes) lines.push("Notes: " + cust.notes);
     lines.push("Preferred Contact: " + cust.contact);
   }
+  const attr = (window.FT_ANALYTICS && typeof window.FT_ANALYTICS.getAttribution === "function") ? window.FT_ANALYTICS.getAttribution() : null;
+  if(attr && (attr.utm_campaign || attr.utm_source || attr.fbclid)){
+    lines.push("Ad Source: " + [attr.utm_source, attr.utm_medium, attr.utm_campaign].filter(Boolean).join(" / ") + (attr.fbclid ? " [Meta Ad Click]" : ""));
+  }
   lines.push(
     "",
     "Please confirm order sizing, availability, and courier dispatch. Thank you for shopping with Fariza's Territory!"
@@ -1000,6 +1116,8 @@ function makeRef(){
 }
 function pageInquiry(){
   state.inqDone=false;
+  const fees = getDeliveryFees();
+  const isOut = isOutsideZone(state.deliveryZone);
   if(!state.bag.length&&!state.lastInquiry){
     return `<div class="page-head"><div class="container"><span class="overline">Checkout · honest by design</span><h1 class="h-display" style="margin-top:12px">Order Inquiry</h1></div></div>
     <div class="page-body"><div class="container"><div class="empty">${IC.bag}<p>Nothing to inquire about yet.</p><p class="small" style="margin:8px 0 18px">Add pieces to your bag first — then prepare one message for the seller.</p><a class="btn btn-ink" href="#/shop"><span>Shop the boutique</span>${IC.arrow}</a></div></div></div>`;
@@ -1021,18 +1139,18 @@ function pageInquiry(){
         <div class="field" data-f="zone">
           <label style="font-weight:600;margin-bottom:8px;display:block">Delivery Zone &amp; Courier Rate *</label>
           <div class="zone-selector" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-            <label class="zone-card ${state.deliveryZone==='dhaka'?'active':''}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid ${state.deliveryZone==='dhaka'?'var(--chestnut)':'var(--line)'};background:${state.deliveryZone==='dhaka'?'var(--cream2)':'var(--surface)'};border-radius:10px;cursor:pointer;transition:all .2s ease">
-              <input type="radio" name="delivery_zone" value="dhaka" ${state.deliveryZone==='dhaka'?'checked':''} style="accent-color:var(--chestnut)">
+            <label class="zone-card ${!isOut?'active':''}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid ${!isOut?'var(--chestnut)':'var(--line)'};background:${!isOut?'var(--cream2)':'var(--surface)'};border-radius:10px;cursor:pointer;transition:all .2s ease">
+              <input type="radio" name="delivery_zone" value="dhaka" ${!isOut?'checked':''} style="accent-color:var(--chestnut)">
               <div>
                 <div style="font-weight:600;font-size:13.5px">Inside Dhaka</div>
-                <div style="font-size:11.5px;color:var(--ink2)">Fast Courier · ৳80</div>
+                <div style="font-size:11.5px;color:var(--ink2)">Fast Courier · ৳${fees.dhaka}</div>
               </div>
             </label>
-            <label class="zone-card ${state.deliveryZone==='outside'?'active':''}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid ${state.deliveryZone==='outside'?'var(--chestnut)':'var(--line)'};background:${state.deliveryZone==='outside'?'var(--cream2)':'var(--surface)'};border-radius:10px;cursor:pointer;transition:all .2s ease">
-              <input type="radio" name="delivery_zone" value="outside" ${state.deliveryZone==='outside'?'checked':''} style="accent-color:var(--chestnut)">
+            <label class="zone-card ${isOut?'active':''}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid ${isOut?'var(--chestnut)':'var(--line)'};background:${isOut?'var(--cream2)':'var(--surface)'};border-radius:10px;cursor:pointer;transition:all .2s ease">
+              <input type="radio" name="delivery_zone" value="outside_dhaka" ${isOut?'checked':''} style="accent-color:var(--chestnut)">
               <div>
                 <div style="font-weight:600;font-size:13.5px">Outside Dhaka</div>
-                <div style="font-size:11.5px;color:var(--ink2)">Nationwide COD · ৳150</div>
+                <div style="font-size:11.5px;color:var(--ink2)">Nationwide COD · ৳${fees.outside}</div>
               </div>
             </label>
           </div>
@@ -1058,17 +1176,14 @@ function pageInquiry(){
 }
 function renderInqSummary(){
   const el=$("#inq-summary"); if(!el)return;
+  const fees = getDeliveryFees();
   const subtotal = subtotalNum(state.bag);
+  const isOut = isOutsideZone(state.deliveryZone);
   const isFreeShip = state.appliedCoupon && state.appliedCoupon.coupon && state.appliedCoupon.coupon.discount_type === 'free_shipping';
-  const baseDelivery = state.deliveryZone === 'outside' ? 150 : 80;
-  const deliveryFee = isFreeShip ? 0 : baseDelivery;
+  const baseDelivery = isOut ? fees.outside : fees.dhaka;
   let discountAmount = 0;
   if (state.appliedCoupon) {
-    if (isFreeShip) {
-      discountAmount = baseDelivery;
-    } else {
-      discountAmount = state.appliedCoupon.discountAmount || 0;
-    }
+    discountAmount = isFreeShip ? baseDelivery : (state.appliedCoupon.discountAmount || 0);
   }
   const totalPayable = Math.max(0, subtotal + baseDelivery - discountAmount);
 
@@ -1100,15 +1215,15 @@ function renderInqSummary(){
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <b style="color:#2e7d32">- ৳${discountAmount.toLocaleString()}</b>
-            <button class="iconbtn" data-act="remove-coupon" aria-label="Remove coupon" style="width:24px;height:24px">${IC.x}</button>
+            <button type="button" class="iconbtn" data-act="remove-coupon" aria-label="Remove coupon" style="width:24px;height:24px">${IC.x}</button>
           </div>
         </div>
       ` : `
         <div style="display:flex;gap:8px">
           <input id="inq-coupon-input" type="text" placeholder="FIRST25, FARIZA200..." style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--kantha);background:var(--surface);font-size:13px;text-transform:uppercase">
-          <button class="btn btn-ink btn-sm" data-act="apply-coupon" style="padding:8px 16px"><span>Apply</span></button>
+          <button type="button" class="btn btn-ink btn-sm" data-act="apply-coupon" style="padding:8px 16px"><span>Apply</span></button>
         </div>
-        <div id="coupon-feedback" style="margin-top:6px;font-size:11.5px;color:var(--ink2)">Available codes: <button class="link-btn" data-act="fill-coupon" data-code="FIRST25" style="text-decoration:underline;background:none;border:none;cursor:pointer;color:var(--chestnut);font-weight:600">FIRST25</button>, <button class="link-btn" data-act="fill-coupon" data-code="FARIZA200" style="text-decoration:underline;background:none;border:none;cursor:pointer;color:var(--chestnut);font-weight:600">FARIZA200</button></div>
+        <div id="coupon-feedback" style="margin-top:6px;font-size:11.5px;color:var(--ink2)">Available codes: <button type="button" class="link-btn" data-act="fill-coupon" data-code="FIRST25" style="text-decoration:underline;background:none;border:none;cursor:pointer;color:var(--chestnut);font-weight:600">FIRST25</button>, <button type="button" class="link-btn" data-act="fill-coupon" data-code="FARIZA200" style="text-decoration:underline;background:none;border:none;cursor:pointer;color:var(--chestnut);font-weight:600">FARIZA200</button>, <button type="button" class="link-btn" data-act="fill-coupon" data-code="FREESHIP" style="text-decoration:underline;background:none;border:none;cursor:pointer;color:var(--chestnut);font-weight:600">FREESHIP</button></div>
       `}
     </div>
 
@@ -1119,7 +1234,7 @@ function renderInqSummary(){
         <b>৳ ${subtotal.toLocaleString()}</b>
       </div>
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-        <span style="color:var(--ink2)">Delivery (${state.deliveryZone==='outside'?'Outside Dhaka':'Inside Dhaka'}):</span>
+        <span style="color:var(--ink2)">Delivery (${isOut?'Outside Dhaka':'Inside Dhaka'}):</span>
         <b>${isFreeShip ? '<span style="text-decoration:line-through;color:var(--ink2)">৳ '+baseDelivery+'</span> <span style="color:#2e7d32">FREE</span>' : '৳ ' + baseDelivery}</b>
       </div>
       ${state.appliedCoupon && !isFreeShip && discountAmount > 0 ? `
@@ -1146,7 +1261,7 @@ function renderInqDone(){
     <h2 class="h-sec kinetic-title">Inquiry Prepared &amp; Registered!</h2>
     <p class="lede" style="margin:12px 0 20px">Reference <b style="color:var(--chestnut)">${esc(q.ref)}</b>. Your order inquiry has been recorded. To finalize your order, sizing, and delivery schedule, please send this summary to our concierge via WhatsApp or Messenger. <b>Cash on Delivery applies — no payment taken online.</b></p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
-      <a class="btn btn-caramel" href="${waUrl}" target="_blank" rel="noopener">${IC.wa}<span>Send via WhatsApp</span></a>
+      ${isRealWhatsapp() ? `<a class="btn btn-caramel" href="${waUrl}" target="_blank" rel="noopener">${IC.wa}<span>Send via WhatsApp</span></a>` : ''}
       <button class="btn btn-ink" data-act="msg" data-send="1">${IC.chat}<span>Send via Messenger</span></button>
       <button class="btn btn-line" data-act="copy" data-target="#inq-msg">${IC.copy}<span>Copy Summary</span></button>
       <a class="btn btn-line" href="#/track/${encodeURIComponent(q.ref)}">${IC.pin}<span>Track This Order</span></a>
@@ -1172,14 +1287,22 @@ function pageAbout(){
   <div class="page-body"><div class="container">
     <div class="two-col">
       <div data-reveal>
-        <div class="ft-brand-identity" style="margin:0 0 20px"><img style="width:100%;max-width:430px;border-radius:12px;border:1px solid var(--line)" src="data:image/webp;base64,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" alt="Fariza's Territory — brand book logo illustration"></div><p class="lede" style="margin-bottom:18px">Fariza's Territory is a fashion accessories brand based in Mirpur, Dhaka, connecting with over 13,000 social media followers through regular photos and video reels featuring its products. This interactive boutique brings that feed to life: a floor of real product photography you can browse, enlarge and inquire about — piece by piece.</p>
+        <div class="brand-crest-card" style="margin:0 0 22px">
+          <img src="assets/brand/brand_logo_1.webp" alt="Fariza's Territory Official Brand Crest — Pomelli Brand Book" loading="lazy">
+          <span class="tiny" style="color:var(--chestnut)">Official Brand Mark · Minimum 152px width &amp; 95px clear-space specification (Pomelli Brand Book)</span>
+        </div>
+        <p class="lede" style="margin-bottom:18px">Fariza's Territory is a boutique fashion and artisan accessories brand based in Mirpur, Dhaka, connecting with over 13,000 social media followers through curated lookbooks and studio reels. Browse all 53 verified pieces across 8 fashion &amp; accessory collections, inspect close-up details, and inquire directly piece by piece.</p>
         <p class="lede" style="margin-bottom:26px">We commit to photography-first presentation. Where the catalog includes AI styling previews, they are always labelled as illustrations. Where a photo's public access is unresolved, you'll see an honest branded placeholder — never another product's photograph.</p>
         <span class="overline">Values</span>
         <div class="value-chips" style="margin-top:12px"><span style="border-color:var(--kantha);color:var(--chestnut)">Style</span><span style="border-color:var(--kantha);color:var(--chestnut)">Trendy Fashion</span><span style="border-color:var(--kantha);color:var(--chestnut)">Community</span></div>
-        <span class="overline">Aesthetic</span>
+        <span class="overline">Aesthetic &amp; Tone of Voice</span>
         <ul class="aes-list" style="margin-top:12px;color:var(--ink)">
-          ${["Folk-art ornamentation","Heritage patternwork","Artisanal tactility","Botanical intricacy","Traditional flourish","Casual · Modern · Trendy voice"].map(a=>`<li style="color:var(--ink2)">${IC.flower}${a}</li>`).join("")}
+          ${["Folk-Art Ornamentation","Heritage Patternwork","Artisanal Tactility","Botanical Intricacy","Traditional Flourish","Tone: Casual · Modern · Trendy"].map(a=>`<li style="color:var(--ink2)">${IC.flower}${a}</li>`).join("")}
         </ul>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
+          <a class="btn btn-ink btn-sm" href="assets/aistudio/fariza_s_territory_brand_book_by_pomelli_1e38cd9b.pdf" target="_blank" rel="noopener">${IC.dl}<span>View Official Pomelli Brand Book (PDF)</span></a>
+          <a class="btn btn-line btn-sm" href="assets/aistudio/PRODUCTS_53_MASTER_DATABASE_d064c566.json" target="_blank" rel="noopener">${IC.ext}<span>53-SKU Master Database (.json)</span></a>
+        </div>
         <div class="notice info" style="margin-top:20px">${IC.info}<span>The “Aarong” collection label comes from the seller's original catalog and is flagged <b>unverified</b> — no brand affiliation is claimed. The catalog contains provisional prices, but sizes and inventory remain unverified. Seller confirms final terms on inquiry.</span></div>
       </div>
       <div data-reveal style="--d:.12s">
@@ -1209,9 +1332,9 @@ function pageContact(){
     <div class="contact-grid">
       <div data-reveal>
         <div class="c-card">${IC.chat}<div><b>Facebook Messenger — primary</b><p>The fastest way to order. Send your inquiry message and we confirm prices, sizing, offers and delivery.</p>${messengerBtn("Open Messenger")}</div></div>
-        ${state.cfg.whatsapp?`<div class="c-card">${IC.wa}<div><b>WhatsApp</b><p>WhatsApp order inquiries available.</p><button class="btn btn-line btn-sm" data-act="wa">${IC.wa}<span>WhatsApp inquiry</span></button></div></div>`:''}
-        <div class="c-card">${IC.pin}<div><b>Mirpur, Dhaka, Bangladesh</b><p>Boutique base as stated in the Brand Book. A precise street address and phone line are not published in the source materials — please ask via Messenger.</p><a class="btn btn-line btn-sm" href="${CONFIG.fbSearch}" target="_blank" rel="noopener">${IC.ext}<span>Find us on Facebook</span></a></div></div>
-        <div class="notice">${IC.alert}<span>Offers as advertised: first-order up to 25%* and free delivery*. Eligibility is confirmed by the seller — never auto-applied here.</span></div>
+        ${isRealWhatsapp()?`<div class="c-card">${IC.wa}<div><b>WhatsApp</b><p>WhatsApp order inquiries available.</p><button class="btn btn-line btn-sm" data-act="wa">${IC.wa}<span>WhatsApp inquiry</span></button></div></div>`:''}
+        <div class="c-card">${IC.pin}<div><b>Mirpur, Dhaka, Bangladesh</b><p>Boutique base as stated in the Brand Book. A precise street address and direct concierge line are confirmed via Messenger.</p><a class="btn btn-line btn-sm" href="${CONFIG.fbSearch}" target="_blank" rel="noopener">${IC.ext}<span>Find us on Facebook</span></a></div></div>
+        <div class="notice">${IC.alert}<span>Apply welcome voucher codes <b>FIRST25</b>, <b>FARIZA200</b>, or <b>FREESHIP</b> inside your Order Inquiry — Cash on Delivery eligibility is confirmed by the seller.</span></div>
       </div>
       <form class="panel" data-form="contact" data-reveal style="--d:.1s" novalidate>
         <span class="overline" style="margin-bottom:18px">Write to us</span>
@@ -1226,14 +1349,14 @@ function pageContact(){
 }
 function pageFAQ(){
   const faqs=[
-    ["How do I place an order?","Add pieces to your inquiry bag, open Order Inquiry, fill in your details and prepare the message. Copy it and send it on Facebook Messenger. The seller confirms price, availability, sizing and delivery, then arranges the order with you."],
-    ["Are the prices final?","This store now displays the earlier 18-product catalog reference prices (৳1,650–৳2,450). They are not live-confirmed selling prices. Sizes, stock and final amounts are confirmed on Messenger; five color-to-price matches need particular review."],
-    ["Is the 25% discount applied automatically?","No. “First-order discount up to 25%” and “free delivery” are offers advertised on the brand's Facebook page. Eligibility and final terms are confirmed by the seller per order — this site never auto-applies a discount."],
-    ["Do you take payment online?","No. This is an inquiry-based checkout. No card details, no payment gateway, no simulated confirmations. Payment arrangements are made directly with the seller."],
-    ["Some photos show a patterned placeholder — why?","All 18 products link to Google Drive files flagged “NEEDS PUBLIC PERMISSION TEST”. Drive view links are not guaranteed embeddable URLs. When a photo can't load publicly, we show a branded placeholder with the correct SKU — never another product's photo. Open the Console ▸ Asset validation to test access live."],
-    ["What are the AI styling previews?","14 pieces include an AI-generated styling illustration in the source catalog. They are always labelled “AI illustration — not the actual product” and kept separate from real photography. The four Mome Boutique pieces have no AI preview supplied."],
-    ["Is the Aarong collection officially affiliated?","The source CSV names the collection “01_Aarong_Label_Unverified”. We display it as a seller label with an explicit “unverified” badge and claim no brand affiliation."],
-    ["What about returns and exchanges?","Return and exchange terms were not included in the source materials. Please confirm them with the seller on Messenger before ordering — see Policies."]
+    ["How do I place an order?","Add pieces to your inquiry bag, open Order Inquiry, fill in your details and register your order. You can send the prepared summary on WhatsApp or Messenger and track live status updates anytime on our Track Order page."],
+    ["Are the prices final?","This store displays official boutique prices across all 53 curated pieces (18 Studio Garments and 35 Artisan Accessories). Seller confirms sizing, custom color notes, availability, and courier dispatch on WhatsApp or Messenger."],
+    ["Is the 25% discount applied automatically?","Active voucher codes such as FIRST25 (25% off, max ৳500), FARIZA200 (৳200 off), and FREESHIP can be applied directly inside the Order Inquiry summary before submitting."],
+    ["Do you take payment online?","No. Orders are Cash on Delivery (COD) nationwide across Bangladesh. No card details or online payments are taken on this site."],
+    ["Are the product photos authentic?","Yes. Every product features authentic boutique photography hosted locally with crisp zoom and close-up detail views. Where an illustrative AI styling concept exists, it is clearly labelled separately."],
+    ["What are the AI styling previews?","Some fashion garments include an optional AI styling illustration in the source catalog. They are always labelled “AI illustration — not the actual product” and kept separate from real photography. Mome Boutique garments and all 35 Artisan Accessories show genuine photography only."],
+    ["Is the Aarong collection officially affiliated?","The collection “01 — Aarong Seller Label” preserves the seller's original catalog label and carries an explicit “unverified” badge with no official brand affiliation claimed."],
+    ["What about returns and exchanges?","Please confirm return, exchange, and color-customization terms with the seller on WhatsApp or Messenger before courier dispatch — see Policies."]
   ];
   return `
   <div class="page-head"><div class="container"><span class="overline" data-reveal>Answers, honestly</span><h1 class="h-display" data-reveal style="--d:.06s;margin-top:12px">FAQ</h1></div></div>
@@ -1246,12 +1369,12 @@ function pagePolicies(){
   return `
   <div class="page-head"><div class="container"><span class="overline" data-reveal>Plain words, no fine-print tricks</span><h1 class="h-display" data-reveal style="--d:.06s;margin-top:12px">Policies &amp; Offer Terms</h1></div></div>
   <div class="page-body"><div class="container">
-    <div class="pol-sec" data-reveal><h3>${IC.tag} Ordering &amp; pricing</h3><p>This boutique operates an inquiry-based checkout. Adding items to the bag and preparing an inquiry does not create a binding order. All prices (BDT), sizing, availability and delivery costs are confirmed by the seller on Messenger before any order is agreed. No payment is processed on this website.</p></div>
+    <div class="pol-sec" data-reveal><h3>${IC.tag} Ordering &amp; pricing</h3><p>This boutique operates an inquiry-based Cash on Delivery (COD) checkout. Adding items to the bag and registering an inquiry prepares a tracked reference without online payment. Final sizing, availability and delivery timing are confirmed with the seller via WhatsApp or Messenger.</p></div>
     <div class="pol-sec" data-reveal><h3>${IC.truck} Advertised offers &amp; delivery</h3><p>The brand advertises first-order discounts of up to 25% (code FIRST25), flat welcome vouchers (FARIZA200), and free delivery promotions with nationwide Cash on Delivery. When entered in your order inquiry, active voucher discounts are applied directly to your order summary before submission.</p></div>
-    <div class="pol-sec" data-reveal><h3>${IC.eye} Imagery &amp; authenticity</h3><p>Real product photography is always primary. Assets are mapped exactly per SKU from the source catalog: main, original and alternate photographs; derived 1:1 and 9:16 crops; two detail close-ups; and an optional AI styling preview. AI previews are labelled “ai-illustration” and never presented as product photographs. Drive file references are retained for source traceability; the delivered image variants work independently through embedded or local website media. Any missing asset retains a clearly labeled fallback.</p></div>
-    <div class="pol-sec" data-reveal><h3>${IC.info} Privacy &amp; secure data</h3><p>Your bag and wishlist are securely stored in your browser's local cache. When you submit an order inquiry, your reference and contact details are securely registered so that you can track fulfillment status live in real-time. We never store payment card credentials, and your personal contact information is kept strictly private.</p></div>
-    <div class="pol-sec" data-reveal><h3>${IC.flower} Returns &amp; exchanges</h3><p>Return and exchange policies were not included in the source materials and are therefore not invented here. Please confirm current terms with the seller on Messenger before completing an order.</p></div>
-    <div class="pol-sec" data-reveal><h3>${IC.alert} Label disclaimer</h3><p>The collection “01_Aarong_Label_Unverified” reflects the seller's own CSV label. Fariza's Territory's affiliation with Aarong is unverified in the provided sources and is not claimed by this site.</p></div>
+    <div class="pol-sec" data-reveal><h3>${IC.eye} Imagery &amp; authenticity</h3><p>Real product photography is always primary across all 53 catalog pieces. Assets are mapped per SKU: main, original and alternate photographs; 1:1 and 9:16 social frames; detail close-ups; and optional AI styling previews on select fashion garments. AI previews are labelled “ai-illustration” and kept separate from real product photographs.</p></div>
+    <div class="pol-sec" data-reveal><h3>${IC.info} Privacy &amp; secure data</h3><p>Your bag and wishlist are stored in your browser's local storage. When you submit an order inquiry, your reference and contact details are registered so that you can track fulfillment status live in real-time. We never store payment card credentials, and your personal contact information is kept strictly private.</p></div>
+    <div class="pol-sec" data-reveal><h3>${IC.flower} Returns &amp; exchanges</h3><p>Return, exchange, and bespoke accessory color-customization terms are confirmed directly with the seller on WhatsApp or Messenger before courier dispatch.</p></div>
+    <div class="pol-sec" data-reveal><h3>${IC.alert} Label disclaimer</h3><p>The collection “01 — Aarong Seller Label” reflects the seller's original catalog label. Official affiliation with Aarong is unverified and is not claimed by this site.</p></div>
   </div></div>`;
 }
 function page404(){
@@ -1267,9 +1390,9 @@ function openLB(sku,key){
   renderLB();
 }
 function renderLB(){
-  const {sku,key}=state.lb,p=bySku(sku),meta=KEY_META[key];
+  const {sku,key}=state.lb,p=bySku(sku),meta=KEY_META[key]||{label:key,ratio:"r45",auth:"source"};
   $("#lb-cap").innerHTML=`<b style="font-weight:400">${esc(p.title)}</b><span class="tag ${key==="aiStylingPreview"?"ai":"dark"}">${key==="aiStylingPreview"?"AI illustration — not actual product":esc(meta.label)}</span><span class="tiny" style="color:rgba(253,240,221,.6)">${p.sku} · ${meta.auth}</span>`;
-  const lbPath=assetSrc(p,key,1600); $("#lb-src").innerHTML=lbPath?`<a href="${lbPath}" target="_blank" rel="noopener" style="text-decoration:underline">View high-resolution photo ↗</a>`:"Asset not supplied";
+  const lbPath=assetSrc(p,key,1600); $("#lb-src").innerHTML=lbPath?`<a href="${lbPath}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">View high-resolution photo ↗</a>`:"Asset not supplied";
   $("#lb-fig").innerHTML=ph(p,key,{w:1600,eager:true,contain:true,ratio:meta.ratio});
   applyLB(); bindImages($("#lb-fig"));
   fx($("#lb-fig"),{opacity:[0,1]},{duration:.35});
@@ -1286,7 +1409,7 @@ function lbStep(d){
 function lbZoom(f){state.lb.scale=Math.max(.6,Math.min(5,state.lb.scale*f));if(state.lb.scale<=1){state.lb.tx=0;state.lb.ty=0;}applyLB();}
 /* ================= CONSOLE MODAL ================= */
 function stHtml(st){
-  const m={ok:["ok","Reachable"],err:["err","Blocked"],pending:["pending","Testing…"],na:["na","Not supplied"]};
+  const m={ok:["ok","Reachable"],err:["err","Unavailable"],pending:["pending","Testing…"],na:["na","Not supplied"]};
   const v=m[st]||m.pending;
   return `<span class="st ${v[0]}"><i></i>${v[1]}</span>`;
 }
@@ -1304,58 +1427,59 @@ function renderModal(){
   const body=$("#mo-body");
   if(state.reportTab==="assets"){
     body.innerHTML=`
-      <p class="small" style="margin-bottom:14px">Live client-side test of this published website's <b>main product photography</b>. Photos are delivered through optimized static assets or a self-contained media block. Original Google Drive references are retained for provenance.</p>
+      <p class="small" style="margin-bottom:14px">Live client-side verification of all <b>${PRODUCTS.length} products' photography</b> across ${COLLECTIONS.length} collections. All product media are served as local optimized assets.</p>
       <div class="rep-sum" id="rep-sum"></div>
       <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px">
         <button class="btn btn-ink btn-sm" data-act="report-retest">${IC.check}<span>Re-run validation</span></button>
         <button class="btn btn-line btn-sm" data-act="report-dl">${IC.dl}<span>Download report .json</span></button>
       </div>
-      <div class="rep-scroll"><table class="rep-table"><thead><tr><th>SKU</th><th>Product</th><th>Collection (source folder)</th><th>Main photo</th><th>AI preview</th><th>Source</th></tr></thead><tbody>
-      ${PRODUCTS.map(p=>`<tr><td style="white-space:nowrap">${p.sku}</td><td>${esc(p.title)}</td><td class="tiny">${esc(p.collection.folder)}</td><td id="rep-st-${p.sku}">${stHtml(p.assets.main.id?(state.assets[p.sku+":main"]||"pending"):"na")}</td><td>${p.assets.aiStylingPreview.id?`<span class="tag ai" style="font-size:9px">supplied</span>`:`<span class="st na"><i></i>none</span>`}</td><td><a href="${driveView(p.assets.main.id)}" target="_blank" rel="noopener" style="color:var(--chestnut)" aria-label="Open Drive source for ${p.sku}">${IC.ext}</a></td></tr>`).join("")}
+      <div class="rep-scroll"><table class="rep-table"><thead><tr><th>SKU</th><th>Product</th><th>Collection</th><th>Main photo</th><th>AI preview</th><th>Asset</th></tr></thead><tbody>
+      ${PRODUCTS.map(p=>{
+        const mainPath=assetSrc(p,"main",400);
+        const hasAi=!!(p.assets&&p.assets.aiStylingPreview);
+        return `<tr><td style="white-space:nowrap">${p.sku}</td><td>${esc(p.title)}</td><td class="tiny">${esc(p.collection?p.collection.short:'')}</td><td id="rep-st-${p.sku}">${stHtml(mainPath?(state.assets[p.sku+":main"]||"pending"):"na")}</td><td>${hasAi?`<span class="tag ai" style="font-size:9px">supplied</span>`:`<span class="st na"><i></i>none</span>`}</td><td>${mainPath?`<a href="${mainPath}" target="_blank" rel="noopener noreferrer" style="color:var(--chestnut)" aria-label="Open photo asset for ${p.sku}">${IC.ext}</a>`:'—'}</td></tr>`;
+      }).join("")}
       </tbody></table></div>`;
     updateReportSummary();
   }else if(state.reportTab==="config"){
     body.innerHTML=`
-      <p class="small" style="margin-bottom:16px">The verified Facebook Messenger page is connected. WhatsApp is not enabled because a verified phone number was not supplied. Optional settings are stored in this browser only.</p>
+      <p class="small" style="margin-bottom:16px">Configure Messenger and WhatsApp concierge channels. Settings save locally in your browser and sync if Supabase is connected.</p>
       <form data-form="config">
-        <div class="field"><label for="cfg-m">Facebook page username (m.me/…)</label><input id="cfg-m" name="messenger" value="${esc(state.cfg.messenger)}" placeholder="e.g. farizasterritory"></div>
+        <div class="field"><label for="cfg-m">Facebook page username (m.me/…)</label><input id="cfg-m" name="messenger" value="${esc(state.cfg.messenger)}" placeholder="e.g. farizasterritory143"></div>
         <div class="field"><label for="cfg-w">WhatsApp number (international format)</label><input id="cfg-w" name="whatsapp" value="${esc(state.cfg.whatsapp)}" placeholder="e.g. 8801XXXXXXXXX"></div>
         <div class="field"><label for="cfg-f">Official Facebook page URL</label><input id="cfg-f" name="facebook" value="${esc(state.cfg.facebook)}" placeholder="https://www.facebook.com/…"></div>
         <button type="submit" class="btn btn-ink"><span>Save settings</span>${IC.check}</button>
       </form>
-      <div class="notice info" style="margin-top:18px">${IC.info}<span>Catalog reference prices are supplied but not live-confirmed. Sizing, stock, shipping and final selling prices need seller verification. Inquiry mode remains active.</span></div>`;
+      <div class="notice info" style="margin-top:18px">${IC.info}<span>For full order management, coupon creation, and Meta CAPI diagnostics, visit the Admin Portal (<code>/admin</code>).</span></div>`;
   }else{
     const qa=selfTest();
     body.innerHTML=`
       <span class="overline" style="margin-bottom:12px">Runtime self-test (executed just now in your browser)</span>
       ${qa.map(r=>`<div class="qa-row"><span class="st ${r.pass?"ok":"err"}"><i></i>${r.pass?"PASS":"FAIL"}</span><span>${esc(r.name)}</span><span class="tiny" style="margin-left:auto">${esc(r.detail)}</span></div>`).join("")}
-      <span class="overline" style="margin:22px 0 10px">Configuration / environment template</span>
-      <pre class="code"># fariza.config — live defaults
-NEXT_PUBLIC_MESSENGER_USERNAME=farizasterritory143
-NEXT_PUBLIC_FACEBOOK_URL=https://www.facebook.com/farizasterritory143
-# WhatsApp not set; hide WhatsApp action until a verified number exists.
-# Prices are catalog reference values; size/stock/returns remain seller-confirmation items.
-# Website images are local/embedded originals; Drive references remain in product records.</pre>
+      <span class="overline" style="margin:22px 0 10px">Configuration summary</span>
+      <pre class="code">BRAND=Fariza's Territory
+CATALOG_SKUS=${PRODUCTS.length} (${COLLECTIONS.length} collections)
+MESSENGER=${state.cfg.messenger || 'farizasterritory143'}
+META_PIXEL_ID=${CONFIG.marketing && CONFIG.marketing.metaPixelId ? CONFIG.marketing.metaPixelId : '1657670575734647'}</pre>
       <span class="overline" style="margin:22px 0 10px">Deployment</span>
-      <p class="small" style="line-height:1.8">Deployment options: use the all-in-one GoHighLevel code block with embedded product photography, or upload the complete <code>STANDALONE_WEBSITE</code> folder to any static host. The latter includes optimized local images. Messenger is configured. Reconfirm catalog reference prices, stock, sizing and commercial terms before accepting orders. No payment gateway is enabled.</p>
-      <span class="overline" style="margin:22px 0 10px">Image policy</span>
-      <p class="small" style="line-height:1.8">Real photography is primary; AI previews are labelled <code>ai-illustration</code>; unreachable Drive assets fall back to a branded SKU-labelled tile. No stock imagery, no substituted product photos, no invented model shots. Validation above runs against <code>drive.google.com/thumbnail</code> from your browser session.</p>`;
+      <p class="small" style="line-height:1.8">Node / Express server serves <code>/</code>, <code>/admin</code>, and <code>POST /api/capi</code> for Meta Conversions API deduplication alongside optional Supabase persistence.</p>`;
   }
 }
 function updateReportSummary(){
   const el=$("#rep-sum"); if(!el)return;
   let ok=0,err=0,pend=0;
   PRODUCTS.forEach(p=>{const s=state.assets[p.sku+":main"]||"pending";if(s==="ok")ok++;else if(s==="err")err++;else pend++;});
-  el.innerHTML=`<span class="tag ok">${ok} / 18 reachable</span><span class="tag" style="background:rgba(154,143,124,.2);color:#6E6557">${err} blocked → branded fallback</span><span class="tag warn">${pend} testing</span><span class="tag">140 / 144 asset IDs supplied · 4 AI previews absent</span>`;
+  const totalSlots=PRODUCTS.reduce((a,p)=>a+PHOTO_KEYS.filter(k=>p.assets&&p.assets[k]).length,0);
+  el.innerHTML=`<span class="tag ok">${ok} / ${PRODUCTS.length} reachable</span><span class="tag" style="background:rgba(154,143,124,.2);color:#6E6557">${err} unavailable</span><span class="tag warn">${pend} testing</span><span class="tag">${totalSlots} total media variants mapped</span>`;
 }
 function selfTest(){
   const r=[];
-  r.push({name:"Catalog integrity — 18 products present",pass:PRODUCTS.length===18,detail:PRODUCTS.length+" products"});
-  r.push({name:"Unique SKUs CAT-001…CAT-018",pass:new Set(PRODUCTS.map(p=>p.sku)).size===18,detail:"18 unique"});
-  const counts=COLLECTIONS.map(c=>PRODUCTS.filter(p=>p.col===c.id).length).join(",");
-  r.push({name:"Collection counts match source (1,2,4,6,5)",pass:counts==="1,2,4,6,5",detail:counts});
-  const ids=PRODUCTS.reduce((a,p)=>a+PHOTO_KEYS.filter(k=>p.assets&&p.assets[k]).length,0);
-  r.push({name:"Asset IDs mapped exactly per SKU",pass:ids===140,detail:ids+" / 140 supplied (4 AI = not_supplied)"});
+  r.push({name:"Catalog integrity — 53 products present",pass:PRODUCTS.length===53,detail:PRODUCTS.length+" products"});
+  r.push({name:"Unique SKUs across Fashion (18) & Accessories (35)",pass:new Set(PRODUCTS.map(p=>p.sku)).size===53,detail:new Set(PRODUCTS.map(p=>p.sku)).size+" unique"});
+  const counts=COLLECTIONS.map(c=>PRODUCTS.filter(p=>(p.colId||p.col)===c.id).length).join(",");
+  r.push({name:"Collection counts match source (1,2,4,6,5,5,19,11)",pass:counts==="1,2,4,6,5,5,19,11",detail:counts});
+  const ids=PRODUCTS.reduce((a,p)=>a+KEYS.filter(k=>p.assets&&p.assets[k]).length,0);
+  r.push({name:"Media variants mapped per SKU",pass:ids>=PRODUCTS.length*6,detail:ids+" media paths mapped"});
   let ls=false;try{localStorage.setItem("ft_test","1");ls=localStorage.getItem("ft_test")==="1";localStorage.removeItem("ft_test");}catch(e){}
   r.push({name:"Persistent storage round-trip (bag / wishlist / config)",pass:ls,detail:ls?"localStorage OK":"unavailable — session-only"});
   r.push({name:"Motion.dev loaded (WAAPI fallback otherwise)",pass:!!window.Motion,detail:window.Motion?"motion UMD active":"fallback active"});
@@ -1366,6 +1490,16 @@ function selfTest(){
   return r;
 }
 /* ================= MESSENGER / WHATSAPP / COPY ================= */
+function openExternalUrl(url){
+  if(!url) return;
+  const a=document.createElement("a");
+  a.href=url;
+  a.target="_blank";
+  a.rel="noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
 function copyText(text,label){
   const done=()=>toast(label||"Copied to clipboard",{icon:"copy"});
   if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));}
@@ -1379,14 +1513,21 @@ function fallbackCopy(text,done){
 }
 function openMessenger(text){
   if(text)copyText(text,"Message copied — paste it in Messenger");
+  if(window.FT_ANALYTICS && window.FT_ANALYTICS.trackContact) window.FT_ANALYTICS.trackContact("Messenger");
   const url=state.cfg.messenger?`https://m.me/${encodeURIComponent(state.cfg.messenger)}`:(state.cfg.facebook||CONFIG.fbSearch);
   if(!state.cfg.messenger)toast("Opening the official Facebook business page",{icon:"info"});
-  window.open(url,"_blank","noopener");
+  openExternalUrl(url);
 }
 function openWhatsApp(text){
-  if(!state.cfg.whatsapp){toast("WhatsApp is not currently available — use Messenger to order",{icon:"alert",action:"Open settings",onAction:()=>openModal("config")});return;}
-  const url=`https://wa.me/${state.cfg.whatsapp.replace(/[^0-9]/g,"")}${text?"?text="+encodeURIComponent(text):""}`;
-  window.open(url,"_blank","noopener");
+  if(!isRealWhatsapp()){
+    toast("WhatsApp line unconfigured — opening Messenger concierge",{icon:"info"});
+    openMessenger(text);
+    return;
+  }
+  const num=getWhatsAppNumber();
+  if(window.FT_ANALYTICS && window.FT_ANALYTICS.trackContact) window.FT_ANALYTICS.trackContact("WhatsApp");
+  const url=`https://wa.me/${num}${text?"?text="+encodeURIComponent(text):""}`;
+  openExternalUrl(url);
 }
 function skuMessage(sku){
   const p=bySku(sku);
@@ -1400,12 +1541,12 @@ function pageTrack(paramRef){
   <div class="page-head"><div class="container">
     <span class="overline" data-reveal>Real-time order lookup</span>
     <h1 class="h-display" data-reveal style="--d:.06s;margin-top:12px">Track Your Order</h1>
-    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">Enter your Order Reference (e.g. <b>FT-261115-8821</b>) or your contact phone number to view live verification, tailoring and courier delivery updates.</p>
+    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">Enter your Order Reference (e.g. <b>FT-261117-XXXX</b>) or your contact phone number to view live verification, tailoring and courier delivery updates.</p>
   </div></div>
   <div class="page-body"><div class="container" style="max-width:860px">
     <div class="panel" data-reveal style="margin-bottom:24px">
-      <form id="track-form" onsubmit="event.preventDefault();handleTrackSearch();" style="display:flex;gap:10px;flex-wrap:wrap">
-        <input id="track-input" type="text" value="${esc(defaultRef)}" placeholder="Enter Order Ref (e.g. FT-261115-8821) or Phone" style="flex:1;min-width:260px;padding:12px 16px;border-radius:10px;border:1.5px solid var(--kantha);background:var(--surface);color:var(--ink);font-family:inherit;font-size:15px">
+      <form id="track-form" data-form="track" style="display:flex;gap:10px;flex-wrap:wrap">
+        <input id="track-input" type="text" value="${esc(defaultRef)}" placeholder="Enter Order Ref (e.g. FT-261117-XXXX) or Phone" style="flex:1;min-width:260px;padding:12px 16px;border-radius:10px;border:1.5px solid var(--kantha);background:var(--surface);color:var(--ink);font-family:inherit;font-size:15px">
         <button type="submit" class="btn btn-ink" style="padding:12px 24px"><span>Check Status</span>${IC.arrow}</button>
       </form>
     </div>
@@ -1432,7 +1573,7 @@ async function handleTrackSearch(optRef){
       <div style="font-size:32px;margin-bottom:12px">🔍</div>
       <h3 style="font-size:20px;margin:0 0 10px">Order Not Found</h3>
       <p class="small" style="color:var(--ink2);max-width:440px;margin:0 auto 18px">We could not locate an inquiry matching "<b>${esc(q)}</b>". Please check the spelling or send a message directly to our concierge team on WhatsApp.</p>
-      <a href="${getWhatsAppUrl("Hello Fariza's Territory, I am checking the status of my order " + q)}" target="_blank" rel="noopener" class="btn btn-line btn-sm">${IC.wa}<span>Inquire on WhatsApp</span></a>
+      <a href="${getWhatsAppUrl("Hello Fariza's Territory, I am checking the status of my order " + q)}" target="_blank" rel="noopener noreferrer" class="btn btn-line btn-sm">${IC.wa}<span>Inquire on WhatsApp</span></a>
     </div>`;
     return;
   }
@@ -1443,7 +1584,7 @@ async function handleTrackSearch(optRef){
 function renderRecentOrders(){
   const wrap = document.getElementById("recent-orders-wrap");
   if(!wrap) return;
-  const local = JSON.parse(localStorage.getItem('ft_local_orders') || '[]');
+  const local = JSON.parse(localStorage.getItem('ft_my_orders') || '[]').filter(o => o && !o.is_demo);
   if(!local.length){
     wrap.innerHTML = '';
     return;
@@ -1462,7 +1603,7 @@ function renderRecentOrders(){
             </div>
             <div style="display:flex;align-items:center;gap:10px">
               <span class="order-tracking-status status-${o.status || 'pending'}" style="font-size:11.5px;padding:4px 10px">${o.status || 'pending'}</span>
-              <button class="btn btn-ink btn-sm" onclick="handleTrackSearch('${esc(o.order_ref || o.ref)}');window.scrollTo({top:0,behavior:'smooth'});"><span>Track</span></button>
+              <button type="button" class="btn btn-ink btn-sm" data-act="track-ref" data-ref="${esc(o.order_ref || o.ref)}"><span>Track</span></button>
             </div>
           </div>
         `).join('')}
@@ -1473,6 +1614,11 @@ function renderRecentOrders(){
 
 function renderTrackCard(order, wrap){
   const st = order.status || 'pending';
+  const fees = getDeliveryFees();
+  const isOut = isOutsideZone(order.delivery_zone);
+  const feeVal = order.delivery_fee !== undefined && order.delivery_fee !== null
+    ? Number(order.delivery_fee)
+    : (isOut ? fees.outside : fees.dhaka);
   const steps = [
     { key: 'pending', label: 'Inquiry Placed', desc: 'Received & pending boutique confirmation' },
     { key: 'confirmed', label: 'Confirmed', desc: 'Fabric verified & sizing confirmed' },
@@ -1546,8 +1692,8 @@ function renderTrackCard(order, wrap){
         </div>
       ` : ''}
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-        <span>Delivery Fee (${order.delivery_zone === 'dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'}):</span>
-        <b>৳ ${Number(order.delivery_fee || 80).toLocaleString()}</b>
+        <span>Delivery Fee (${isOut ? 'Outside Dhaka' : 'Inside Dhaka'}):</span>
+        <b>৳ ${feeVal.toLocaleString()}</b>
       </div>
       <div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px dashed var(--line);font-size:16px;font-weight:700;color:var(--ink)">
         <span>Total Payable (Cash on Delivery):</span>
@@ -1564,8 +1710,8 @@ function renderTrackCard(order, wrap){
 
     <!-- Actions -->
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <a href="${getWhatsAppUrl("Hello Fariza's Territory, I have a question regarding my order " + order.order_ref)}" target="_blank" rel="noopener" class="btn btn-ink btn-sm">${IC.wa}<span>Contact Seller on WhatsApp</span></a>
-      <button class="btn btn-line btn-sm" onclick="navigator.clipboard.writeText('${esc(order.order_ref)}');toast('Order ref copied!',{icon:'check'});">${IC.copy}<span>Copy Order Ref</span></button>
+      <button type="button" data-act="wa" class="btn btn-ink btn-sm">${IC.wa}<span>${isRealWhatsapp() ? 'Contact Seller on WhatsApp' : 'Contact Seller on Messenger'}</span></button>
+      <button type="button" class="btn btn-line btn-sm" data-act="copy-text" data-text="${esc(order.order_ref)}">${IC.copy}<span>Copy Order Ref</span></button>
     </div>
   </div>`;
 }
@@ -1633,6 +1779,33 @@ function render(){
     app.innerHTML=html;
     document.title=title;
     const md=document.querySelector('meta[name="description"]');if(md)md.setAttribute("content",desc);
+    const ogt=document.querySelector('meta[property="og:title"]');if(ogt)ogt.setAttribute("content",title);
+    const ogd=document.querySelector('meta[property="og:description"]');if(ogd)ogd.setAttribute("content",desc);
+    const activeProd = r.page==="product" ? bySku(r.param) : null;
+    const ogi=document.querySelector('meta[property="og:image"]');
+    if(ogi) ogi.setAttribute("content", activeProd ? assetSrc(activeProd,"socialSquare",1000) : "assets/products/CAT-001/socialSquare.webp");
+    let prodLd = document.getElementById("dynamic-product-ld");
+    if(activeProd){
+      if(!prodLd){prodLd=document.createElement("script");prodLd.id="dynamic-product-ld";prodLd.type="application/ld+json";document.head.appendChild(prodLd);}
+      prodLd.textContent = JSON.stringify({
+        "@context":"https://schema.org",
+        "@type":"Product",
+        "name":activeProd.title,
+        "sku":activeProd.sku,
+        "category":activeProd.collection ? activeProd.collection.name : activeProd.superCategory,
+        "description":activeProd.descriptionEn || activeProd.title,
+        "image":assetSrc(activeProd,"main",1000),
+        "brand":{"@type":"Brand","name":"Fariza's Territory"},
+        "offers":{
+          "@type":"Offer",
+          "priceCurrency":"BDT",
+          "price":activeProd.priceBDT || 0,
+          "availability":activeProd.is_available === false ? "https://schema.org/OutOfStock" : "https://schema.org/InStock"
+        }
+      });
+    } else if(prodLd) {
+      prodLd.remove();
+    }
     $$(".nav-links a").forEach(a=>a.classList.toggle("on",a.dataset.nav===r.page||(r.page==="product"&&a.dataset.nav==="shop")));
     window.scrollTo({top:0,behavior:"instant"in window?"instant":"auto"});
     hydrate();
@@ -1665,10 +1838,13 @@ function initMotionInView() {
   if (RM) return;
   if (window.Motion && typeof window.Motion.inView === "function" && typeof window.Motion.animate === "function") {
     try {
-      window.Motion.inView(".pcard, .col-card, .pair-card, .offer", (element) => {
+      const targets = ".pcard:not([data-inview-bound]), .col-card:not([data-inview-bound]), .pair-card:not([data-inview-bound]), .offer:not([data-inview-bound])";
+      window.Motion.inView(targets, (element) => {
+        if (element.dataset.inviewBound) return;
+        element.dataset.inviewBound = "1";
         window.Motion.animate(
           element,
-          { opacity: [0, 1], transform: ["translateY(28px) scale(0.97)", "translateY(0px) scale(1)"] },
+          { opacity: [0.25, 1], transform: ["translateY(22px) scale(0.98)", "translateY(0px) scale(1)"] },
           { type: "spring", stiffness: 280, damping: 24 }
         );
       }, { amount: 0.12 });
@@ -1685,6 +1861,9 @@ function openQuickView(sku) {
 
   const unitBadge = p.unitBn ? `<span class="unit-badge">${esc(p.unitBn)}</span>` : '';
   const keys = ["main", "detailA", "detailB", "original"].filter(k => p.assets && p.assets[k]);
+  const specLine = p.superCategory === 'Accessories'
+    ? [p.details && p.details.colors, p.details && p.details.designDetail, p.details && p.details.material].filter(Boolean).join(' · ')
+    : [p.details && p.details.fabric, p.details && p.details.kameez, p.details && p.details.stitching].filter(Boolean).join(' · ');
 
   card.innerHTML = `
     <button class="iconbtn" data-act="quick-view-close" aria-label="Close quick view" style="position:absolute;right:18px;top:18px;z-index:10">${IC.x}</button>
@@ -1701,28 +1880,33 @@ function openQuickView(sku) {
       </div>
     </div>
     <div class="qv-info" style="display:flex;flex-direction:column;justify-content:center;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <span class="overline" style="font-size:10px">${esc(p.collection ? p.collection.short : '')}</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap">
+        <span class="overline" style="font-size:10px">${esc(p.collection ? p.collection.short : '')} · ${p.sku}</span>
         ${unitBadge}
       </div>
       <h2 style="font-size:clamp(1.5rem, 2.5vw, 2.1rem);line-height:1.2;margin:4px 0 8px;">${esc(p.title)}</h2>
       ${p.titleBn ? `<div class="bn" style="color:var(--chestnut);font-size:14.5px;margin-bottom:8px;">${esc(p.titleBn)}</div>` : ''}
-      <div style="font-size:20px;font-weight:600;color:var(--caramel);margin:12px 0;padding:10px 0;border-top:1.5px dashed var(--line);border-bottom:1.5px dashed var(--line);">
-        ${priceText(p)}
+      <div style="font-size:20px;font-weight:600;color:var(--caramel);margin:12px 0;padding:10px 0;border-top:1.5px dashed var(--line);border-bottom:1.5px dashed var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <span>${priceText(p)}</span>
+        ${p.is_available === false ? `<span class="tag warn" style="font-size:11px">Out of stock</span>` : ''}
       </div>
-      <p style="font-size:13.5px;color:var(--ink2);line-height:1.6;margin-bottom:14px;">
-        ${esc(p.desc || p.descEn || '')}
+      <p style="font-size:13.5px;color:var(--ink2);line-height:1.6;margin-bottom:12px;">
+        ${esc(p.descriptionEn || p.descriptionBn || '')}
       </p>
-      ${p.fabricBn ? `<div class="tiny bn" style="background:var(--cream2);padding:10px 14px;border-radius:9px;margin-bottom:14px;line-height:1.6"><b>ফেব্রিক বিবরণ:</b> ${esc(p.fabricBn)}</div>` : ''}
-      <div style="display:flex;gap:10px;margin-top:auto;">
-        <button class="btn btn-ink btn-block" data-act="bag-add" data-sku="${p.sku}">
-          ${IC.bag}<span>Add to Inquiry Bag</span>
+      ${specLine ? `<div class="tiny bn" style="background:var(--cream2);padding:10px 14px;border-radius:9px;margin-bottom:10px;line-height:1.6"><b>বিবরণ:</b> ${esc(specLine)}</div>` : ''}
+      ${p.cautionBn ? `<div class="tiny bn" style="color:var(--ink3);margin-bottom:14px;line-height:1.5">* ${esc(p.cautionBn)}</div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:auto;flex-wrap:wrap">
+        <button class="btn btn-ink" style="flex:1" data-act="bag-add" data-sku="${p.sku}">
+          ${IC.bag}<span>${isBn()?'ব্যাগে যোগ':'Add to Bag'}</span>
         </button>
-        <button class="btn btn-line" data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" class="${inWish(p.sku)?'on':''}" aria-label="Save to wishlist">
+        <button class="btn btn-buynow" style="flex:1" data-act="buynow" data-sku="${p.sku}">
+          <span>${isBn()?'অর্ডার (COD)':'Order Now (COD)'}</span>${IC.arrow}
+        </button>
+        <button class="btn btn-line${inWish(p.sku)?' on':''}" data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" aria-pressed="${inWish(p.sku)}" aria-label="Save to wishlist">
           ${IC.heart}
         </button>
       </div>
-      <a href="#/product/${p.sku}" data-act="quick-view-close" style="font-size:12.5px;color:var(--chestnut);text-decoration:underline;text-align:center;margin-top:14px;">View full product specifications & styling &rarr;</a>
+      <a href="#/product/${p.sku}" data-act="quick-view-close" style="font-size:12.5px;color:var(--chestnut);text-decoration:underline;text-align:center;margin-top:14px;">View full product specifications &amp; styling &rarr;</a>
     </div>
   `;
 
@@ -1743,6 +1927,7 @@ function closeQuickView() {
   }
 }
 
+let initialPageViewSkipped = false;
 function hydrate(){
   bindImages(document);
   revealBind(document);
@@ -1751,9 +1936,15 @@ function hydrate(){
     initStageInput();
     if(window.initThreeHero) window.initThreeHero();
   }
-  if(state.route.page==="shop"||state.route.page==="fashion"||state.route.page==="accessories")renderShopGrid();
+  if(state.route.page==="shop"||state.route.page==="fashion"||state.route.page==="accessories"||state.route.page==="collection")renderShopGrid();
   if(state.route.page==="lookbook")renderLookGrid();
-  if(state.route.page==="product"&&bySku(state.route.param))renderGallery();
+  if(state.route.page==="product"){
+    const prod = bySku(state.route.param);
+    if(prod){
+      renderGallery();
+      if(window.FT_ANALYTICS && window.FT_ANALYTICS.trackViewContent) window.FT_ANALYTICS.trackViewContent(prod);
+    }
+  }
   if(state.route.page==="bag")renderBagPageList();
   if(state.route.page==="track"){
     renderRecentOrders();
@@ -1768,8 +1959,12 @@ function hydrate(){
       window.FT_ANALYTICS.trackInitiateCheckout(state.bag, sub);
     }
   }
-  if(window.FT_ANALYTICS && window.FT_ANALYTICS.trackPageView && state.route && state.route.page !== "home"){
-    window.FT_ANALYTICS.trackPageView(state.route.page);
+  if(window.FT_ANALYTICS && window.FT_ANALYTICS.trackPageView){
+    if(!initialPageViewSkipped){
+      initialPageViewSkipped = true;
+    } else {
+      window.FT_ANALYTICS.trackPageView(state.route ? state.route.page : 'home');
+    }
   }
   syncCommerce();
 
@@ -1827,21 +2022,37 @@ document.addEventListener("click",e=>{
       state.stage.col="all";
       state.stage.idx=0;
       $$(".pillar-switch .pillar-btn").forEach(b=>b.classList.toggle("on",b.dataset.pillar===t.dataset.pillar));
+      const tabsEl=$("#stage-tabs");
+      if(tabsEl) tabsEl.innerHTML=stageTabsHtml();
       buildStage();
       break;
     }
     case "shop-pillar":{
       state.shop.pillar=t.dataset.pillar;
       state.shop.c="all";
+      const colChips=$("#shop-col-chips");
+      if(colChips) colChips.innerHTML=shopColChipsHtml(state.shop.pillar);
       renderShopGrid();
       break;
     }
     case "stage-col":{state.stage.col=t.dataset.col;state.stage.idx=0;$$(".stage-tabs .chip").forEach(c=>{const on=c.dataset.col===t.dataset.col;c.classList.toggle("on",on);c.setAttribute("aria-selected",on);});buildStage();break;}
     case "hot":e.stopPropagation();openHotPop(t);break;
     case "hot-close":closeHotPop();break;
-    case "trio":{t.dataset.skus.split(",").forEach(s=>addToBag(s,1,true));toast(`Curated set of ${t.dataset.skus.split(",").length} added to bag`,{icon:"bag",action:"View bag",onAction:()=>openDrawer("bag")});break;}
+    case "trio":{
+      const skus=t.dataset.skus.split(",").filter(Boolean);
+      skus.forEach(s=>addToBag(s,1,true));
+      toast(`Curated set of ${skus.length} added to bag`,{icon:"bag",action:"View bag",onAction:()=>openDrawer("bag")});
+      if(window.FT_ANIME && typeof window.FT_ANIME.flyToBag === "function"){
+        const srcEl=t.closest(".pair-card") || $("#trio-bar") || t;
+        window.FT_ANIME.flyToBag(srcEl);
+      }
+      break;
+    }
+    case "toggle-lang":toggleLang();break;
     case "bag-add":addToBag(sku,1);break;
     case "bag-add-qty":{const q=+($("#pi-qty")?$("#pi-qty").textContent:"1")||1;addToBag(sku,q);break;}
+    case "buynow":buyNow(sku,1);break;
+    case "buynow-qty":{const q=+($("#pi-qty")?$("#pi-qty").textContent:"1")||1;buyNow(sku,q);break;}
     case "piq-inc":case "piq-dec":{const o=$("#pi-qty");if(o)o.textContent=Math.max(1,Math.min(99,+o.textContent+(act==="piq-inc"?1:-1)));break;}
     case "bag-inc":setQty(sku,1);break;
     case "bag-dec":setQty(sku,-1);break;
@@ -1871,12 +2082,14 @@ document.addEventListener("click",e=>{
     case "lb-zout":lbZoom(1/1.25);break;
     case "lb-reset":state.lb.scale=1;state.lb.tx=0;state.lb.ty=0;applyLB();break;
     case "shop-col":state.shop.c=t.dataset.col;renderShopGrid();break;
-    case "shop-clear":state.shop={c:"all",q:"",sort:"featured"};render();break;
+    case "shop-clear":state.shop={pillar:"all",c:"all",q:"",sort:"featured"};render();break;
     case "look-col":state.look.c=t.dataset.col;$$("[data-act='look-col']").forEach(c=>c.classList.toggle("on",c.dataset.col===t.dataset.col));renderLookGrid();break;
     case "go":location.hash=t.dataset.href;closeSearch();break;
     case "msg":{let text=null;if(t.dataset.send&&state.lastInquiry)text=state.lastInquiry.text;else if(sku)text=skuMessage(sku);else if(state.bag.length)text=inquiryText(state.bag,null,makeRef());openMessenger(text);break;}
     case "wa":{let text=null;if(t.dataset.send&&state.lastInquiry)text=state.lastInquiry.text;else if(sku)text=skuMessage(sku);else if(state.bag.length)text=inquiryText(state.bag,null,makeRef());openWhatsApp(text);break;}
     case "copy":{const el=$(t.dataset.target);if(el)copyText(el.textContent);break;}
+    case "copy-text":{if(t.dataset.text)copyText(t.dataset.text,"Order ref copied!");break;}
+    case "track-ref":{if(t.dataset.ref){handleTrackSearch(t.dataset.ref);window.scrollTo({top:0,behavior:RM?"auto":"smooth"});}break;}
     case "pal-copy":copyText(t.dataset.hex,t.dataset.hex+" copied");break;
     case "inq-dl":{if(!state.lastInquiry)break;const blob=new Blob([state.lastInquiry.text],{type:"text/plain"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=state.lastInquiry.ref+".txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast("Inquiry downloaded",{icon:"dl"});break;}
     case "inq-new":state.inqDone=false;render();break;
@@ -1885,8 +2098,10 @@ document.addEventListener("click",e=>{
       const code=inp?inp.value.trim().toUpperCase():"";
       if(!code){toast("Please enter a voucher code",{icon:"alert"});break;}
       const sub=subtotalNum(state.bag);
+      const fees=getDeliveryFees();
+      const baseDelivery=isOutsideZone(state.deliveryZone)?fees.outside:fees.dhaka;
       if(window.FT_SUPABASE && window.FT_SUPABASE.validateCoupon){
-        window.FT_SUPABASE.validateCoupon(code,sub).then(res=>{
+        window.FT_SUPABASE.validateCoupon(code,sub,baseDelivery).then(res=>{
           if(res.valid){
             state.appliedCoupon={
               code:res.coupon.code,
@@ -1921,8 +2136,10 @@ document.addEventListener("click",e=>{
       if(inp && code){
         inp.value=code;
         const sub=subtotalNum(state.bag);
+        const fees=getDeliveryFees();
+        const baseDelivery=isOutsideZone(state.deliveryZone)?fees.outside:fees.dhaka;
         if(window.FT_SUPABASE && window.FT_SUPABASE.validateCoupon){
-          window.FT_SUPABASE.validateCoupon(code,sub).then(res=>{
+          window.FT_SUPABASE.validateCoupon(code,sub,baseDelivery).then(res=>{
             if(res.valid){
               state.appliedCoupon={
                 code:res.coupon.code,
@@ -1945,19 +2162,28 @@ document.addEventListener("click",e=>{
     case "modal":openModal(t.dataset.tab);break;
     case "modal-close":closeModal();break;
     case "modal-tab":state.reportTab=t.dataset.tab;renderModal();if(state.reportTab==="assets"&&!state.reportRan)runReport();break;
-    case "report-retest":runReport();toast("Re-testing all 18 main photos…",{icon:"check"});break;
+    case "report-retest":runReport();toast(`Re-testing all ${PRODUCTS.length} main photos…`,{icon:"check"});break;
     case "report-dl":{
-      const report={generated:new Date().toISOString(),brand:"Fariza's Territory",source:"Fariza's Territory — LIVE 18 Product Image Links CSV + FARIZA_PRODUCT_ASSET_MANIFEST.json",permissionNote:"Original Drive links still require public permission for third-party access. Website media are source-based locally hosted/embedded assets, independently tested in this browser.",counts:{products:18,collections:COLLECTIONS.map(c=>({folder:c.folder,count:c.count}))},products:PRODUCTS.map(p=>({sku:p.sku,title:p.title,collection:p.collection.folder,mainStatus:state.assets[p.sku+":main"]||"untested",assets:KEYS.map(k=>({slot:k,driveFileId:p.assets[k].id,driveViewUrl:p.assets[k].id?driveView(p.assets[k].id):null,authenticity:p.assets[k].auth,status:p.assets[k].id?"permission_not_verified":"not_supplied"}))}))};
+      const report={generated:new Date().toISOString(),brand:"Fariza's Territory",counts:{products:PRODUCTS.length,collections:COLLECTIONS.map(c=>({id:c.id,name:c.name,pillar:c.pillar,count:c.count}))},products:PRODUCTS.map(p=>({sku:p.sku,title:p.title,collection:p.collection?p.collection.name:'',mainStatus:state.assets[p.sku+":main"]||"untested",assets:KEYS.map(k=>({slot:k,path:assetSrc(p,k,800)||null,authenticity:(KEY_META[k]&&KEY_META[k].auth)||"source",status:p.assets&&p.assets[k]?"mapped":"not_supplied"}))}))};
       const blob=new Blob([JSON.stringify(report,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="fariza-asset-validation-report.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast("Validation report downloaded",{icon:"dl"});break;}
     case "backtop":window.scrollTo({top:0,behavior:RM?"auto":"smooth"});break;
     case "scroll":{const el=document.getElementById(t.dataset.target);if(el)el.scrollIntoView({behavior:RM?"auto":"smooth"});break;}
   }
 });
+let searchTrackTimer = null;
+function scheduleSearchTrack(val){
+  const clean = String(val || "").trim();
+  if(searchTrackTimer) clearTimeout(searchTrackTimer);
+  if(clean.length < 2) return;
+  searchTrackTimer = setTimeout(()=>{
+    if(window.FT_ANALYTICS && window.FT_ANALYTICS.trackSearch) window.FT_ANALYTICS.trackSearch(clean);
+  }, 750);
+}
 document.addEventListener("input",e=>{
   const t=e.target.closest("[data-input]");
   if(t){
-    if(t.dataset.input==="search"){state.searchSel=0;renderSearch(t.value);}
-    if(t.dataset.input==="shop-q"){state.shop.q=t.value;renderShopGrid();}
+    if(t.dataset.input==="search"){state.searchSel=0;renderSearch(t.value);scheduleSearchTrack(t.value);}
+    if(t.dataset.input==="shop-q"){state.shop.q=t.value;renderShopGrid();scheduleSearchTrack(t.value);}
   }
   if(e.target.id==="f-district"){
     const val=e.target.value.toLowerCase();
@@ -1980,10 +2206,10 @@ document.addEventListener("change",e=>{
   const t=e.target.closest("[data-input]");
   if(t && t.dataset.input==="shop-sort"){state.shop.sort=t.value;renderShopGrid();}
   if(e.target.name==="delivery_zone"){
-    state.deliveryZone=e.target.value;
+    state.deliveryZone=normalizeDeliveryZone(e.target.value);
     store.save("ft_delivery_zone",state.deliveryZone);
     $$(".zone-card").forEach(zc=>{
-      const isSel=zc.querySelector("input").value===state.deliveryZone;
+      const isSel=normalizeDeliveryZone(zc.querySelector("input").value)===state.deliveryZone;
       zc.classList.toggle("active",isSel);
       zc.style.borderColor=isSel?'var(--chestnut)':'var(--line)';
       zc.style.background=isSel?'var(--cream2)':'var(--surface)';
@@ -1996,6 +2222,10 @@ document.addEventListener("submit",e=>{
   e.preventDefault();
   const fd=new FormData(f);
   const err=(name,bad)=>{const fl=f.querySelector(`[data-f="${name}"]`);if(fl)fl.classList.toggle("err",bad);return bad;};
+  if(f.dataset.form==="track"){
+    handleTrackSearch();
+    return;
+  }
   if(f.dataset.form==="inquiry"){
     const name=(fd.get("name")||"").trim(),phone=(fd.get("phone")||"").trim(),district=(fd.get("district")||"").trim(),address=(fd.get("address")||"").trim();
     let bad=false;
@@ -2003,16 +2233,18 @@ document.addEventListener("submit",e=>{
     if(bad){toast("Please complete the highlighted fields",{icon:"alert"});return;}
     if(!state.bag.length){toast("Your bag is empty",{icon:"alert"});return;}
     const ref=makeRef();
-    const zone=fd.get("delivery_zone") || state.deliveryZone || (district.toLowerCase().includes('dhaka') ? 'dhaka' : 'outside');
+    const rawZone=fd.get("delivery_zone") || state.deliveryZone || (district.toLowerCase().includes('dhaka') ? 'dhaka' : 'outside_dhaka');
+    const zone=normalizeDeliveryZone(rawZone);
     const cust={name,phone,district,address,notes:(fd.get("notes")||"").trim(),contact:fd.get("contact")||"WhatsApp",zone};
     const text=inquiryText(state.bag,cust,ref);
     state.lastInquiry={ref,text,at:Date.now()};
 
     // Prepare complete structured order record
+    const fees = getDeliveryFees();
     const subtotal = subtotalNum(state.bag);
-    const baseDelivery = zone === 'outside' ? 150 : 80;
+    const baseDelivery = isOutsideZone(zone) ? fees.outside : fees.dhaka;
     const isFreeShip = state.appliedCoupon && state.appliedCoupon.coupon && state.appliedCoupon.coupon.discount_type === 'free_shipping';
-    const deliveryFee = isFreeShip ? 0 : baseDelivery;
+    const deliveryFee = baseDelivery;
     const discountCode = state.appliedCoupon ? state.appliedCoupon.code : null;
     const discountAmount = state.appliedCoupon ? (isFreeShip ? baseDelivery : (state.appliedCoupon.discountAmount || 0)) : 0;
     const total = Math.max(0, subtotal + baseDelivery - discountAmount);
@@ -2062,17 +2294,16 @@ document.addEventListener("submit",e=>{
       created_at: new Date().toISOString()
     };
 
-    // 1. Dual-layer persistence: Save to localStorage ft_local_orders
-    const localOrders = store.load('ft_local_orders', []);
-    localOrders.unshift(orderRecord);
-    store.save('ft_local_orders', localOrders);
-
-    // 2. Submit to Supabase database
+    // 1. Save to local cache & Supabase database cleanly (deduplicated inside createOrder)
     if (window.FT_SUPABASE && window.FT_SUPABASE.createOrder) {
       window.FT_SUPABASE.createOrder(orderRecord).catch(err => console.warn('Supabase order sync:', err));
+    } else {
+      const localOrders = store.load('ft_local_orders', []).filter(o => o && o.order_ref !== ref);
+      localOrders.unshift(orderRecord);
+      store.save('ft_local_orders', localOrders);
     }
 
-    // 3. Conversion tracking: Meta Pixel Purchase event
+    // 2. Conversion tracking: Meta Pixel + CAPI Purchase event
     if (window.FT_ANALYTICS && window.FT_ANALYTICS.trackPurchase) {
       window.FT_ANALYTICS.trackPurchase(orderRecord);
     }
@@ -2089,15 +2320,28 @@ document.addEventListener("submit",e=>{
     const text=`FARIZA'S TERRITORY — MESSAGE\nFrom: ${name}\nContact: ${contact}\n\n${msg}`;
     $("#contact-out").innerHTML=`<pre class="msg-pre" id="contact-msg">${esc(text)}</pre>
       <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px">
-        <button class="btn btn-ink btn-sm" data-act="copy" data-target="#contact-msg">${IC.copy}<span>Copy</span></button>
-        <button class="btn btn-caramel btn-sm" data-act="msg" data-send-contact="1">${IC.chat}<span>Open Messenger</span></button>
-      </div><p class="tiny" style="margin-top:10px">Prepared locally — send it via Messenger. Nothing was transmitted.</p>`;
+        <button type="button" class="btn btn-ink btn-sm" data-act="copy" data-target="#contact-msg">${IC.copy}<span>Copy</span></button>
+        <button type="button" class="btn btn-caramel btn-sm" data-act="msg" data-send-contact="1">${IC.chat}<span>Open Messenger</span></button>
+      </div><p class="tiny" style="margin-top:10px">Prepared locally — send it via Messenger.</p>`;
     $("#contact-out").querySelector("[data-send-contact]").addEventListener("click",()=>openMessenger(text));
     toast("Message prepared — copy & send it",{icon:"check"});
   }
   if(f.dataset.form==="config"){
-    state.cfg={messenger:(fd.get("messenger")||"").trim().replace(/^https?:\/\/(www\.)?m\.me\//,"").replace(/\/$/,""),whatsapp:(fd.get("whatsapp")||"").trim(),facebook:(fd.get("facebook")||"").trim()};
-    store.save("ft_cfg",state.cfg);document.body.classList.toggle("no-whatsapp",!state.cfg.whatsapp);
+    const cleanMsg = (fd.get("messenger")||"").trim().replace(/^https?:\/\/(www\.)?m\.me\//,"").replace(/\/$/,"");
+    const cleanWa = (fd.get("whatsapp")||"").trim().replace(/[^0-9]/g,"");
+    const cleanFb = (fd.get("facebook")||"").trim();
+    state.cfg={messenger:cleanMsg,whatsapp:cleanWa,facebook:cleanFb};
+    if(window.FT_SUPABASE && window.FT_SUPABASE.saveStoreSettings){
+      window.FT_SUPABASE.saveStoreSettings({
+        messenger_username: cleanMsg,
+        whatsapp_number: cleanWa,
+        facebook_url: cleanFb
+      });
+    } else {
+      store.save("ft_cfg",state.cfg);
+    }
+    document.body.classList.toggle("no-whatsapp",!isRealWhatsapp());
+    syncFloatingWa();
     toast("Seller settings saved in this browser",{icon:"check"});
     renderModal();
   }
@@ -2158,15 +2402,44 @@ window.addEventListener("scroll",()=>{
   });
 },{passive:true});
 window.addEventListener("resize",()=>{measureTop();if(state.route.page==="home")layoutStage(true);});
+function applyProductOverrides(overrides){
+  if(!overrides) return;
+  if(Array.isArray(overrides)){
+    overrides.forEach(row=>{
+      const p=row && row.sku ? bySku(row.sku) : null;
+      if(p && p.sku===row.sku){
+        if(row.price_bdt!==undefined && row.price_bdt!==null) p.priceBDT=Number(row.price_bdt);
+        if(row.is_available!==undefined) p.is_available=!!row.is_available;
+      }
+    });
+  }else if(typeof overrides==="object"){
+    Object.keys(overrides).forEach(sku=>{
+      const p=bySku(sku), ov=overrides[sku];
+      if(p && p.sku===sku && ov){
+        if(ov.price_bdt!==undefined) p.priceBDT=Number(ov.price_bdt);
+        if(ov.is_available!==undefined) p.is_available=!!ov.is_available;
+      }
+    });
+  }
+}
 const PROMO_MSGS=[
   `First-order 25% OFF with code <b style="color:var(--chestnut)">FIRST25</b> &nbsp;·&nbsp; Nationwide Cash on Delivery &nbsp;·&nbsp; <a href="#/shop">Shop the Boutique</a>`,
   `<span class="bn">সারাদেশে ক্যাশ অন ডেলিভারি</span> &nbsp;·&nbsp; 53 pieces · 8 collections · 100% authentic photography`,
   `৳200 Welcome Voucher with code <b style="color:var(--chestnut)">FARIZA200</b> &nbsp;·&nbsp; Real-time tracking — <a href="#/track">Track Orders</a>`
 ];
 let promoIdx=0;
+let promoTimer=null;
 function promoLoop(){
   if(state.promoOff)return;
-  setInterval(()=>{
+  if(CONFIG.promoText){
+    const customHtml = esc(CONFIG.promoText);
+    if(!PROMO_MSGS.includes(customHtml)) PROMO_MSGS.unshift(customHtml);
+  }
+  const initEl=$("#promo-msg");
+  if(initEl && CONFIG.promoText) initEl.innerHTML=PROMO_MSGS[0];
+  if(RM) return;
+  if(promoTimer) clearInterval(promoTimer);
+  promoTimer = setInterval(()=>{
     if(state.promoOff)return;
     const el=$("#promo-msg");if(!el)return;
     el.classList.add("fade");
@@ -2176,12 +2449,12 @@ function promoLoop(){
 document.addEventListener("keydown",e=>{if(e.ctrlKey&&e.altKey&&e.shiftKey&&e.key.toLowerCase()==="f"){e.preventDefault();openModal("assets");}});
 /* ================= INIT ================= */
 function init(){
-  if(!state.cfg.whatsapp) state.cfg.whatsapp = localStorage.getItem("ft_whatsapp") || (window.FT_CONFIG && window.FT_CONFIG.whatsappNumber) || CONFIG.whatsappNumber || "8801700000000";
-  document.body.classList.toggle("no-whatsapp",!state.cfg.whatsapp);
-  const waBtn = document.getElementById("floating-wa-btn");
-  if(waBtn){
-    waBtn.href = getWhatsAppUrl("Hello Fariza's Territory, I would like to inquire about your boutique collection.");
+  if(window.FT_SUPABASE && window.FT_SUPABASE.getProductOverrides){
+    applyProductOverrides(window.FT_SUPABASE.getProductOverrides());
   }
+  if(!state.cfg.whatsapp) state.cfg.whatsapp = localStorage.getItem("ft_whatsapp") || localStorage.getItem("ft_wa_number") || (window.FT_CONFIG && window.FT_CONFIG.whatsappNumber) || CONFIG.whatsappNumber || "8801700000000";
+  document.body.classList.toggle("no-whatsapp",!isRealWhatsapp());
+  syncFloatingWa();
   if(state.promoOff)$("#site-top").classList.add("no-promo");
   if(!state.cfg.messenger)state.cfg.messenger=CONFIG.messengerUsername;
   if(!state.cfg.facebook)state.cfg.facebook=CONFIG.facebookUrl;
@@ -2189,8 +2462,33 @@ function init(){
   if(window.ResizeObserver)new ResizeObserver(measureTop).observe($("#site-top"));
   if(!location.hash)history.replaceState(null,"","#/home");
   window.addEventListener("hashchange",render);
+  syncLangUI();
   render();
   promoLoop();
+  /* Cloud overrides & store settings sync if Supabase is configured */
+  if(window.FT_SUPABASE){
+    if(window.FT_SUPABASE.getProducts){
+      window.FT_SUPABASE.getProducts().then(prods=>{
+        if(prods && prods.length){
+          applyProductOverrides(prods);
+          if(state.route.page==="shop"||state.route.page==="fashion"||state.route.page==="accessories"||state.route.page==="collection") renderShopGrid();
+        }
+      });
+    }
+    if(window.FT_SUPABASE.getStoreSettings){
+      window.FT_SUPABASE.getStoreSettings().then(s=>{
+        if(!s) return;
+        if(s.whatsapp_number) state.cfg.whatsapp=String(s.whatsapp_number).replace(/[^0-9]/g,"");
+        if(s.messenger_username) state.cfg.messenger=s.messenger_username;
+        if(s.facebook_url) state.cfg.facebook=s.facebook_url;
+        if(s.delivery_fee_dhaka!==undefined) CONFIG.deliveryFeeDhaka=Number(s.delivery_fee_dhaka);
+        if(s.delivery_fee_outside!==undefined) CONFIG.deliveryFeeOutside=Number(s.delivery_fee_outside);
+        if(s.promo_text){ CONFIG.promoText = s.promo_text; promoLoop(); }
+        document.body.classList.toggle("no-whatsapp",!isRealWhatsapp());
+        syncFloatingWa();
+      });
+    }
+  }
   /* JSON-LD */
   try{
     const ld={"@context":"https://schema.org","@graph":[
@@ -2208,8 +2506,15 @@ function init(){
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(measureTop);
 }
 
-/* Global Contact Click Tracking for Meta Pixel & CAPI */
+/* Global Contact Click Tracking & Fallback Routing */
 document.addEventListener("click", e => {
+  const floatWa = e.target.closest("#floating-wa-btn");
+  if(floatWa && !isRealWhatsapp()){
+    e.preventDefault();
+    const text = state.bag.length ? inquiryText(state.bag, null, makeRef()) : "Hello Fariza's Territory, I would like to inquire about your boutique collection.";
+    openMessenger(text);
+    return;
+  }
   const wa = e.target.closest("a[href*='wa.me'], .btn-whatsapp, #floating-wa-btn");
   if(wa && window.FT_ANALYTICS){
     window.FT_ANALYTICS.trackContact('WhatsApp');

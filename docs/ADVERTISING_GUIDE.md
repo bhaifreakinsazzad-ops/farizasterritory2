@@ -17,10 +17,10 @@ The platform includes **Dual-Layer Conversion Tracking** combining both client-s
 * **CAPI Access Token:** Managed via Vercel Project Environment Variable (`META_CAPI_ACCESS_TOKEN`)
 
 ### How Dual-Layer Tracking Works:
-1. **Client-Side Pixel:** Loaded in `<head>` of `index.html`, `admin.html`, and `ghl-bundle.html`. Fires real-time browser events (`PageView`, `ViewContent`, `AddToCart`, `InitiateCheckout`, `Purchase`, `Lead`, `Contact`).
-2. **Server-Side Conversions API (CAPI):** Dispatches identical events directly from the serverless edge to Meta Graph API (`https://graph.facebook.com/v19.0/1657670575734647/events`), bypassing ad blockers, Safari ITP, and network dropouts.
-3. **Event Deduplication:** Every browser event and server event shares an identical `event_id` (e.g. `ft_atc_...` or the order reference `ORD-FT-...`). Meta automatically merges them, ensuring 100% accurate attribution without double-counting.
-4. **Data Normalization & SHA-256 Hashing:** Customer phone numbers are normalized to E.164 (`88017XXXXXXXX`), emails are lowercase-trimmed, and names/cities are securely SHA-256 hashed to guarantee Event Match Quality (EMQ) scores of 8.5+ to 10 out of 10.
+1. **Client-Side Pixel:** Loaded on the public storefront (`index.html` and `ghl-bundle.html`; intentionally omitted from `admin.html` so staff sessions never pollute ad attribution). Fires real-time browser events (`PageView`, `ViewContent`, `Search`, `AddToCart`, `InitiateCheckout`, `Purchase`, `Lead`, `Contact`).
+2. **Server-Side Conversions API (CAPI):** Dispatches identical events directly from the Express / Vercel serverless endpoint to Meta Graph API (`https://graph.facebook.com/v19.0/1657670575734647/events`), bypassing ad blockers, Safari ITP, and network dropouts.
+3. **Event Deduplication:** Every browser event and server event shares an identical `event_id` (e.g. `ft_atc_...` or the order reference `FT-...`). Meta automatically merges them, ensuring 100% accurate attribution without double-counting.
+4. **Data Normalization & SHA-256 Hashing:** Customer phone numbers are normalized to E.164 (`88017XXXXXXXX`), emails are lowercase-trimmed, and names/cities (when provided) are securely SHA-256 hashed to guarantee strong Event Match Quality (EMQ) scores.
 
 ---
 
@@ -30,10 +30,11 @@ The platform includes **Dual-Layer Conversion Tracking** combining both client-s
 |---|---|---|---|
 | `PageView` | On initial load and every SPA route change | `{ page_name: "#/shop" }` | `pv_timestamp_rand` |
 | `ViewContent` | When customer views a product page | `{ content_name, content_ids: [sku], value, currency: 'BDT' }` | `vc_timestamp_rand` |
+| `Search` | When customer searches catalog (750ms debounce) | `{ search_string }` | `srch_timestamp_rand` |
 | `AddToCart` | When customer adds an item to bag | `{ content_name, content_ids: [sku], value: price * qty, num_items }` | `atc_timestamp_rand` |
 | `InitiateCheckout` | When customer opens inquiry bag / checkout | `{ content_ids: [skus], num_items, value: subtotal, currency: 'BDT' }` | `ic_timestamp_rand` |
-| `Purchase` | When customer submits order inquiry | `{ content_name, content_ids, num_items, value: total, order_id }` | Order Reference (`ORD-...`) |
-| `Lead` | When customer submits inquiry | `{ content_name: 'Boutique Order Inquiry Lead', value: total }` | `ORD-..._lead` |
+| `Purchase` | When customer submits order inquiry | `{ content_name, content_ids, num_items, value: total, order_id }` | Order Reference (`FT-...`) |
+| `Lead` | When customer submits inquiry | `{ content_name: 'Boutique Order Inquiry Lead', content_ids, num_items, value: total, currency: 'BDT' }` | `FT-..._lead` |
 | `Contact` | When customer clicks WhatsApp or Messenger | `{ contact_channel: 'WhatsApp' \| 'Messenger' }` | `cnt_timestamp_rand` |
 
 ---
@@ -88,5 +89,5 @@ Ensure your ad copy and landing page always highlight:
 - **Cash on Delivery (COD)** available nationwide.
 - **Inside Dhaka:** ৳80 delivery fee (1-2 days).
 - **Outside Dhaka:** ৳150 delivery fee (2-4 days via Steadfast / Pathao / RedX courier).
-- **Free delivery on 3+ pieces**.
+- **Active Launch Vouchers:** `FIRST25` (25% off, max ৳500), `FARIZA200` (৳200 off orders ৳2,000+), `FREESHIP` (free shipping above ৳3,000).
 - Direct seller verification before shipping.

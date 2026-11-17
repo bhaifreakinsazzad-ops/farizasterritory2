@@ -12,8 +12,20 @@
       "dest": "/api/$1"
     },
     {
+      "src": "/robots.txt",
+      "dest": "/robots.txt"
+    },
+    {
+      "src": "/sitemap.xml",
+      "dest": "/sitemap.xml"
+    },
+    {
       "src": "/admin",
       "dest": "/admin.html"
+    },
+    {
+      "src": "/ghl-bundle",
+      "dest": "/ghl-bundle.html"
     },
     {
       "src": "/(.*)",

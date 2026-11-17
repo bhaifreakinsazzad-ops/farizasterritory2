@@ -465,13 +465,28 @@ INSERT INTO public.product_assets (product_sku, asset_key, asset_url, ratio, lab
 
 -- 5. Seed Verified Coupons
 INSERT INTO public.coupons (code, discount_type, discount_value, min_spend, max_discount, is_active, notes)
-VALUES ('FIRST25', 'percentage', 25.00, 2000.00, 500.00, true, 'First order advertised discount up to 25% (max ৳500)')
-ON CONFLICT (code) DO NOTHING;
+VALUES ('FIRST25', 'percentage', 25.00, 2000.00, 500.00, true, 'First-order 25% discount (Max ৳500)')
+ON CONFLICT (code) DO UPDATE SET
+  discount_type = EXCLUDED.discount_type,
+  discount_value = EXCLUDED.discount_value,
+  min_spend = EXCLUDED.min_spend,
+  max_discount = EXCLUDED.max_discount,
+  notes = EXCLUDED.notes;
 
 INSERT INTO public.coupons (code, discount_type, discount_value, min_spend, max_discount, is_active, notes)
-VALUES ('FREESHIP', 'fixed', 80.00, 1500.00, 150.00, true, 'Free delivery coupon for orders over ৳1500')
-ON CONFLICT (code) DO NOTHING;
+VALUES ('FREESHIP', 'free_shipping', 150.00, 3000.00, 150.00, true, 'Free delivery on orders above ৳3,000')
+ON CONFLICT (code) DO UPDATE SET
+  discount_type = EXCLUDED.discount_type,
+  discount_value = EXCLUDED.discount_value,
+  min_spend = EXCLUDED.min_spend,
+  max_discount = EXCLUDED.max_discount,
+  notes = EXCLUDED.notes;
 
 INSERT INTO public.coupons (code, discount_type, discount_value, min_spend, max_discount, is_active, notes)
-VALUES ('FARIZA200', 'fixed', 200.00, 3000.00, 200.00, true, 'Festive flat ৳200 discount for multi-item orders')
-ON CONFLICT (code) DO NOTHING;
+VALUES ('FARIZA200', 'fixed', 200.00, 2000.00, 200.00, true, '৳200 flat boutique welcome voucher')
+ON CONFLICT (code) DO UPDATE SET
+  discount_type = EXCLUDED.discount_type,
+  discount_value = EXCLUDED.discount_value,
+  min_spend = EXCLUDED.min_spend,
+  max_discount = EXCLUDED.max_discount,
+  notes = EXCLUDED.notes;

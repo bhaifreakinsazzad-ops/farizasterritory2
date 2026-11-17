@@ -8,9 +8,9 @@
 ## 🌟 Overview
 
 The Fariza's Territory e-commerce platform uses Supabase PostgreSQL to power:
-1. **Collections**: 5 curated boutique collections with custom color palettes and descriptions.
-2. **Products**: 18 verified boutique three-piece dress items with bilingual (English/Bengali) titles, descriptions, fabric specifications, and BDT pricing.
-3. **Product Assets**: High-resolution studio photography records (8 perspectives/crops per product).
+1. **Collections**: 8 curated boutique collections across Fashion (5 lines) and Artisan Accessories & Decor (3 lines), with custom color palettes and descriptions.
+2. **Products**: 53 verified catalog SKUs (18 boutique fashion three-piece dresses + 35 artisan accessories) with bilingual (English/Bengali) titles, descriptions, craft/fabric specifications, and verified BDT pricing.
+3. **Product Assets**: High-resolution studio photography records (multi-angle crops for fashion dresses + `.webp` & catalog photos for accessories).
 4. **Orders & Inquiries**: Real-time customer orders, customer details, delivery location (Inside/Outside Dhaka), delivery fees, line items, coupon discounts, courier dispatch numbers, and fulfillment statuses.
 5. **Coupons & Promotions**: Active promotional discount vouchers (`FIRST25`, `FREESHIP`, `FARIZA200`).
 6. **Store Settings**: WhatsApp number, Facebook Page/Messenger, Meta Pixel ID, delivery fees, and promo announcements.
@@ -42,13 +42,13 @@ This creates the following tables with Row Level Security (RLS) policies and per
 
 ---
 
-## 📦 Step 3: Run Database Seed (Catalog, Coupons & Initial Orders)
+## 📦 Step 3: Run Database Seed (Catalog & Coupons)
 
 1. In the Supabase SQL Editor, click **+ New Query**.
 2. Open the file `supabase/seed.sql` from this repository.
 3. Copy the entire contents and paste it into the editor.
 4. Click **Run**.
-5. All 5 collections, 18 boutique three-piece dress sets, active discount vouchers, and realistic orders will be populated immediately!
+5. Collections, boutique three-piece sets, and active discount vouchers (`FIRST25`, `FREESHIP`, `FARIZA200`) will be populated immediately.
 
 ---
 
@@ -64,11 +64,11 @@ This creates the following tables with Row Level Security (RLS) policies and per
 ## 🚀 Step 5: Connect Your Storefront & Admin Portal
 
 ### Method A: Via Admin Portal (Fastest — 10 seconds)
-1. Open `admin.html` in your browser.
+1. Open `admin.html` in your browser and unlock with the Admin PIN (`1430` by default; change in Store Settings).
 2. Click **Store Settings** in the sidebar.
 3. Paste your copied `anon` key into the **Supabase Anon Key** field.
-4. Enter your official business **WhatsApp Number** (e.g., `8801700000000`).
-5. Enter your **Meta Pixel ID** (if running Facebook/Instagram ads).
+4. Enter your official business **WhatsApp Number** (e.g., `88017XXXXXXXX`) and optionally update your Admin Portal PIN.
+5. Enter your **Meta Pixel ID** and optional **GA4 Measurement ID**.
 6. Click **Save Changes**.
 7. The status indicator at the top will turn green: **Supabase Cloud: Connected & Synced**!
 

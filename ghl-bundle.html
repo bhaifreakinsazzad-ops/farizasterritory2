@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://raw.githack.com/notrealenginellc/Fariza-s-Territory/main/assets/css/style.css">
 
-<!-- Meta Pixel Code -->
+<!-- Meta Pixel Code with Deduplication ID -->
 <script>
 !function(f,b,e,v,n,t,s)
 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -31,8 +31,11 @@ n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];
 s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
-fbq('init', '1657670575734647');
-fbq('track', 'PageView');
+var __ftPixelId = '1657670575734647';
+try { __ftPixelId = localStorage.getItem('ft_meta_pixel_id') || __ftPixelId; } catch (e) {}
+fbq('init', __ftPixelId);
+window.__FT_INITIAL_PAGEVIEW_ID = 'pv_init_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
+fbq('track', 'PageView', {}, { eventID: window.__FT_INITIAL_PAGEVIEW_ID });
 </script>
 <noscript><img height="1" width="1" style="display:none"
 src="https://www.facebook.com/tr?id=1657670575734647&ev=PageView&noscript=1"
@@ -42,8 +45,8 @@ src="https://www.facebook.com/tr?id=1657670575734647&ev=PageView&noscript=1"
 <!-- Core External Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/motion@11.11.17/dist/motion.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/motion@11.11.17/dist/motion.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
 
 <!-- Boutique Core DOM Elements -->
 <div id="scroll-progress" aria-hidden="true"></div>
@@ -52,7 +55,7 @@ src="https://www.facebook.com/tr?id=1657670575734647&ev=PageView&noscript=1"
 
 <div class="site-top" id="site-top">
   <div class="promo" id="promo" role="region" aria-label="Store offers">
-    <span class="p-msg" id="promo-msg">First-order offer up to 25%* &nbsp;·&nbsp; Free delivery* &nbsp;·&nbsp; Order via Messenger — <a href="#/policies">*terms confirmed by seller</a></span>
+    <span class="p-msg" id="promo-msg">First-order 25% OFF with code <b>FIRST25</b> &nbsp;·&nbsp; Free delivery over ৳3,000 (<b>FREESHIP</b>) &nbsp;·&nbsp; <a href="#/policies">Offer terms</a></span>
     <button class="promo-x" data-act="promo-x" aria-label="Dismiss offers bar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
   </div>
   <header class="nav">
@@ -71,6 +74,7 @@ src="https://www.facebook.com/tr?id=1657670575734647&ev=PageView&noscript=1"
         <a href="#/track" data-nav="track">Track Order</a>
       </nav>
       <div class="nav-icons">
+        <button class="lang-toggle" id="lang-toggle-btn" data-act="toggle-lang" aria-label="Switch language between English and Bangla" title="Switch language (EN / বাংলা)">বাংলা</button>
         <button class="iconbtn" data-act="search" aria-label="Search the boutique"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.2-3.2"/></svg></button>
         <button class="iconbtn" data-act="drawer" data-kind="wish" aria-label="Wishlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 20s-7.5-4.6-9.3-9.3C1.4 7.3 3.6 4 7 4c2.2 0 3.9 1.3 5 3 1.1-1.7 2.8-3 5-3 3.4 0 5.6 3.3 4.3 6.7C19.5 15.4 12 20 12 20z"/></svg><span class="count-badge zero" id="wish-count">0</span></button>
         <button class="iconbtn" data-act="drawer" data-kind="bag" aria-label="Inquiry bag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M5 8h14l-1.2 12.2a1.8 1.8 0 0 1-1.8 1.6H8a1.8 1.8 0 0 1-1.8-1.6L5 8z"/><path d="M8.5 10V6.5a3.5 3.5 0 0 1 7 0V10"/></svg><span class="count-badge zero" id="bag-count">0</span></button>
@@ -87,14 +91,17 @@ src="https://www.facebook.com/tr?id=1657670575734647&ev=PageView&noscript=1"
   </div>
   <nav aria-label="Mobile">
     <a href="#/home" data-act="menu-close">Home <span>01</span></a>
-    <a href="#/shop" data-act="menu-close">Shop <span>02</span></a>
-    <a href="#/collections" data-act="menu-close">Collections <span>03</span></a>
-    <a href="#/lookbook" data-act="menu-close">Lookbook <span>04</span></a>
-    <a href="#/bag" data-act="menu-close">Inquiry Bag <span>05</span></a>
-    <a href="#/about" data-act="menu-close">About <span>06</span></a>
-    <a href="#/contact" data-act="menu-close">Contact <span>07</span></a>
-    <a href="#/faq" data-act="menu-close">FAQ <span>08</span></a>
-    <a href="#/policies" data-act="menu-close">Policies <span>09</span></a>
+    <a href="#/shop" data-act="menu-close">Shop All (53) <span>02</span></a>
+    <a href="#/fashion" data-act="menu-close">Fashion (18) <span>03</span></a>
+    <a href="#/accessories" data-act="menu-close">Accessories (35) <span>04</span></a>
+    <a href="#/collections" data-act="menu-close">Collections <span>05</span></a>
+    <a href="#/lookbook" data-act="menu-close">Lookbook <span>06</span></a>
+    <a href="#/bag" data-act="menu-close">Inquiry Bag <span>07</span></a>
+    <a href="#/track" data-act="menu-close">Track Order <span>08</span></a>
+    <a href="#/about" data-act="menu-close">About <span>09</span></a>
+    <a href="#/contact" data-act="menu-close">Contact <span>10</span></a>
+    <a href="#/faq" data-act="menu-close">FAQ <span>11</span></a>
+    <a href="#/policies" data-act="menu-close">Policies <span>12</span></a>
   </nav>
   <p class="bn">ফারিজা'স টেরিটরি — মিরপুর, ঢাকা। প্রতিটি খুঁটিনাটিতে মার্জিত রুচি।</p>
 </div>
@@ -176,7 +183,10 @@ src="https://www.facebook.com/tr?id=1657670575734647&ev=PageView&noscript=1"
           <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><path d="M48 10c17 8 24 28 18 45-5 15-19 22-31 16-10-5-13-18-6-26 5-7 14-7 18-1 3 5 1 11-5 12"/><circle cx="45" cy="54" r="3" fill="currentColor" stroke="none"/><path d="M62 14c4-3 9-4 13-2M70 24c4-1 8 0 11 3" stroke-width="3"/></svg>
           <span class="logo-t"><b>Fariza's Territory</b><span>Elegance in Every Detail</span></span>
         </a>
-        <p>Fashion clothing &amp; accessories from Mirpur, Dhaka, Bangladesh. Heritage patternwork, artisanal tactility — shared with a community of 13,000+.</p>
+        <div class="ft-brand-logo-wrap" title="Fariza's Territory Official Brand Crest (Minimum 152px width honored per Pomelli Brand Book)">
+          <img src="https://raw.githack.com/notrealenginellc/Fariza-s-Territory/main/assets/brand/brand_logo_1.webp" alt="Fariza's Territory Handmade &amp; Crafts Official Crest" loading="lazy" width="196" height="118">
+        </div>
+        <p>Fashion clothing &amp; accessories based in Mirpur, Dhaka, Bangladesh. Folk-art ornamentation, heritage patternwork &amp; artisanal tactility — connecting with a community of 13,000+ followers.</p>
         <p class="bn" style="color:var(--caramel)">প্রতিটি খুঁটিনাটিতে মার্জিত রুচি।</p>
         <div class="ft-social">
           <button data-act="msg" aria-label="Order via Facebook Messenger" title="Messenger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3C6.9 3 3 6.8 3 11.4c0 2.6 1.3 4.9 3.3 6.4V21l3-1.6c.9.2 1.8.4 2.7.4 5.1 0 9-3.8 9-8.4S17.1 3 12 3z"/><path d="M7.5 13.5l3-3.2 2.4 2 3.1-2.6-3 3.4-2.4-2z" fill="currentColor" stroke="none"/></svg></button>
@@ -193,35 +203,36 @@ src="https://www.facebook.com/tr?id=1657670575734647&ev=PageView&noscript=1"
           <li><a href="#/collections">Eight collections</a></li>
           <li><a href="#/lookbook">Lookbook &amp; reels</a></li>
           <li><a href="#/bag">Inquiry bag</a></li>
-          <li><a href="#/inquiry">Order inquiry</a></li>
+          <li><a href="#/inquiry">Order inquiry (COD)</a></li>
           <li><a href="#/track">Track your order</a></li>
         </ul>
       </div>
       <div>
         <div class="ft-h">Support</div>
         <ul class="ft-links">
-          <li><a href="#/about">Our story</a>
-        <a href="#/track">Track order</a></li>
+          <li><a href="#/about">Our story &amp; Brand Book</a></li>
+          <li><a href="#/track">Track order</a></li>
           <li><a href="#/contact">Contact &amp; ordering</a></li>
           <li><a href="#/faq">FAQ</a></li>
           <li><a href="#/policies">Policies &amp; offer terms</a></li>
+          <li><button type="button" class="link-btn" style="color:rgba(253,240,221,.68)" data-act="modal">Boutique Console &amp; QA</button></li>
         </ul>
       </div>
       <div>
         <div class="ft-h">Our approach</div>
         <ul class="ft-links">
           <li><a href="#/lookbook">See authentic product photos</a></li>
-          <li><a href="#/faq">Ordering questions</a></li>
-          <li><a href="#/policies">Delivery &amp; exchange information</a></li>
+          <li><a href="/api/catalog-feed.csv" target="_blank" rel="noopener">Meta Commerce Catalog Feed (CSV)</a></li>
+          <li><a href="https://raw.githack.com/notrealenginellc/Fariza-s-Territory/main/assets/aistudio/fariza_s_territory_brand_book_by_pomelli_1e38cd9b.pdf" target="_blank" rel="noopener">Official Brand Book (PDF)</a></li>
           <li><a href="https://www.facebook.com/farizasterritory143" target="_blank" rel="noopener">Follow on Facebook</a></li>
         </ul>
-        <p class="small" style="color:rgba(253,240,221,.5);margin-top:14px">Offers as advertised by the brand: first-order discount up to 25% and free delivery. Eligibility and final terms are confirmed by the seller on Messenger. No automatic discount is applied here.</p>
+        <p class="small" style="color:rgba(253,240,221,.5);margin-top:14px">Apply active voucher codes (FIRST25, FARIZA200, FREESHIP) inside your Order Inquiry. Sizing, availability and Cash on Delivery dispatch are confirmed by the seller concierge.</p>
       </div>
     </div>
     <div class="ft-bottom">
       <span>© 2026 Fariza's Territory · Mirpur, Dhaka, Bangladesh</span>
       <span class="bn">ঢাকা থেকে, ভালোবাসা দিয়ে।</span>
-      <span>Photography-first · AI previews always labelled · Inquiry-based checkout</span>
+      <span>Photography-first · AI previews always labelled · Inquiry-based COD checkout</span>
     </div>
   </div>
 </footer>

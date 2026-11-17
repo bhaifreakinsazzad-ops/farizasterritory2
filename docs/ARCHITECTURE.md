@@ -20,8 +20,8 @@ Fariza's Territory is designed with five core engineering principles:
    - Orders are queued in browser `localStorage` and synchronized automatically when connection to Supabase is established.
 
 3. **High-Speed Static Media Delivery**:
-   - All 140 studio product images have been extracted from large base64 strings into optimized, standalone modern `.webp` images.
-   - This reduced page bundle size by over 98% and enables browser-level lazy loading (`loading="lazy"`), caching, and edge CDN distribution.
+   - Studio product and accessory photos are served as standalone optimized `.webp` images with progressive loading.
+   - This keeps page bundles fast and enables browser-level lazy loading (`loading="lazy"`), caching, and edge CDN distribution.
 
 4. **Bi-directional Order Routing**:
    - Every order submitted through the boutique storefront is simultaneously:
@@ -45,12 +45,15 @@ Fariza-s-Territory/
 │   ├── css/
 │   │   └── style.css           # Luxury boutique styling, animations, responsive design
 │   ├── js/
-│   │   ├── config.js           # Brand config, Supabase URL, Meta Pixel, Analytics
+│   │   ├── config.js           # Brand config, Supabase URL, Meta Pixel, CAPI, GA4 Analytics
 │   │   ├── supabaseClient.js   # Supabase client wrapper & database CRUD operations
-│   │   ├── catalogData.js      # Verified catalog data, 18 products across 5 collections
+│   │   ├── catalogData.js      # Verified catalog data, 53 products across 8 collections
+│   │   ├── threeHero.js        # Three.js hero canvas animation
+│   │   ├── animePolish.js      # Motion & ripple micro-interactions
 │   │   └── app.js              # Complete boutique e-commerce application logic & routing
 │   ├── brand/
 │   │   └── brand_logo_1.webp   # Fariza's Territory official luxury brand mark
+│   ├── accessories/            # 35 artisan accessory .webp & .jpg images (FT-HM/JWL/BA)
 │   └── products/
 │       ├── CAT-001/ ... CAT-018/
 │       │   ├── main.webp
@@ -61,10 +64,12 @@ Fariza-s-Territory/
 │       │   ├── detailA.webp
 │       │   ├── detailB.webp
 │       │   └── aiStylingPreview.webp
+├── robots.txt                  # Search engine crawler directives (blocks /admin)
+├── sitemap.xml                 # XML sitemap
 ├── supabase/
 │   ├── migrations/
 │   │   └── 01_initial_schema.sql # Complete Supabase PostgreSQL schema with RLS and indexes
-│   └── seed.sql                # Seed script with all 5 collections and 18 products
+│   └── seed.sql                # Seed script with collections, products & active coupons
 ├── docs/
 │   ├── SUPABASE_SETUP.md       # Step-by-step database setup guide
 │   ├── ADVERTISING_GUIDE.md    # Meta Pixel & Facebook Ad campaign setup guide
@@ -154,6 +159,6 @@ Fariza-s-Territory/
      1. Form fields validated (Phone, Name, District, Address).
      2. Unique reference generated: `FT-YYMMDD-XXXX`.
      3. Delivery fee calculated: ৳80 (Dhaka) or ৳150 (Outside Dhaka).
-     4. Record saved to Supabase `orders` table.
-     5. Telemetry fired: `fbq('track', 'Lead')`.
-     6. Success screen shows pre-filled WhatsApp and Messenger dispatch buttons.
+     4. Record saved to Supabase `orders` table (with local queue backup).
+     5. Telemetry fired: `Purchase` (`eventID = orderRef`) + `Lead` (`eventID = orderRef + '_lead'`) across Meta Pixel, CAPI `/api/capi`, and GA4.
+     6. Success screen shows pre-filled WhatsApp (with Messenger fallback when placeholder) dispatch buttons.

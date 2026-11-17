@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
   <title>Fariza's Territory — Boutique Command Center & Admin Portal</title>
   
   <!-- Fonts & Libraries -->
@@ -192,6 +193,66 @@
     .btn-admin-primary:hover {
       background: #D4A33B;
       color: #1E1D1C;
+    }
+    .btn-admin-gold {
+      background: linear-gradient(135deg, #D1803A, #C6952B);
+      border-color: #C6952B;
+      color: #1E1D1C;
+      font-weight: 600;
+    }
+    .btn-admin-gold:hover {
+      background: linear-gradient(135deg, #DF924D, #D9A93D);
+      color: #1E1D1C;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-pending { background: var(--admin-gold-bg); color: var(--admin-gold); border: 1px solid rgba(198,149,43,0.35); }
+    .badge-processing { background: var(--admin-blue-bg); color: #67B7E8; border: 1px solid rgba(41,128,185,0.4); }
+    .badge-delivered { background: var(--admin-green-bg); color: #58D68D; border: 1px solid rgba(39,174,96,0.4); }
+    .badge-cancelled { background: var(--admin-red-bg); color: #F1948A; border: 1px solid rgba(192,57,43,0.4); }
+    .admin-toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 360px;
+      pointer-events: none;
+    }
+    .admin-toast {
+      pointer-events: auto;
+      background: var(--admin-surface2);
+      color: var(--admin-text);
+      border: 1px solid var(--admin-gold);
+      border-left: 4px solid var(--admin-gold);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      animation: adminToastIn 0.22s ease;
+    }
+    .admin-toast.err { border-color: var(--admin-red); border-left-color: var(--admin-red); }
+    .admin-toast.ok { border-color: var(--admin-green); border-left-color: var(--admin-green); }
+    @keyframes adminToastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 820px) {
+      .admin-layout { flex-direction: column; }
+      .admin-sidebar { width: 100%; height: auto; position: relative; }
+      .admin-nav-menu { flex-direction: row; overflow-x: auto; padding: 8px 10px; }
+      .admin-nav-item { white-space: nowrap; width: auto; }
+      .admin-nav-item.active { border-left: none; border-bottom: 3px solid var(--admin-gold); border-radius: 8px 8px 0 0; }
+      .admin-topbar { padding: 10px 14px; height: auto; flex-wrap: wrap; gap: 10px; }
+      .admin-content { padding: 16px; }
     }
     .admin-content {
       padding: 28px;
@@ -394,27 +455,77 @@
         padding: 20px;
       }
     }
+    .pin-gate-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      background: rgba(16, 15, 14, 0.96);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .pin-gate-backdrop.active {
+      display: flex;
+    }
+    .pin-gate-card {
+      width: 100%;
+      max-width: 390px;
+      background: var(--admin-surface);
+      border: 1px solid rgba(198, 149, 43, 0.45);
+      border-radius: 16px;
+      padding: 28px 24px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.65);
+      text-align: center;
+    }
+    .pin-gate-card h2 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+      color: var(--admin-text);
+    }
+    .pin-gate-card p {
+      margin: 0 0 18px 0;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--admin-text2);
+    }
+    .readiness-banner {
+      background: rgba(198, 149, 43, 0.12);
+      border: 1px solid rgba(198, 149, 43, 0.45);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .readiness-banner.ready {
+      background: rgba(39, 174, 96, 0.12);
+      border-color: rgba(39, 174, 96, 0.4);
+    }
   </style>
-<!-- Meta Pixel Code with Deduplication ID -->
-  <script>
-  !function(f,b,e,v,n,t,s)
-  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-  n.queue=[];t=b.createElement(e);t.async=!0;
-  t.src=v;s=b.getElementsByTagName(e)[0];
-  s.parentNode.insertBefore(t,s)}(window, document,'script',
-  'https://connect.facebook.net/en_US/fbevents.js');
-  fbq('init', '1657670575734647');
-  window.__FT_INITIAL_PAGEVIEW_ID = 'pv_init_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
-  fbq('track', 'PageView', {}, { eventID: window.__FT_INITIAL_PAGEVIEW_ID });
-  </script>
-  <noscript><img height="1" width="1" style="display:none"
-  src="https://www.facebook.com/tr?id=1657670575734647&ev=PageView&noscript=1"
-  /></noscript>
-  <!-- End Meta Pixel Code -->
 </head>
 <body class="admin-body">
+
+  <!-- ADMIN PIN LOCK GATE -->
+  <div id="admin-pin-gate" class="pin-gate-backdrop" role="dialog" aria-modal="true" aria-labelledby="pin-gate-title">
+    <div class="pin-gate-card">
+      <div class="badge badge-pending" style="margin-bottom:10px">Staff Access Protected</div>
+      <h2 id="pin-gate-title">Fariza's Territory Admin</h2>
+      <p>Enter your staff PIN to access orders, customer contacts, and storefront settings. Default initial PIN: <strong>1430</strong> (update anytime in Settings).</p>
+      <form onsubmit="event.preventDefault();unlockAdminPortal();">
+        <input type="password" id="admin-pin-input" inputmode="numeric" autocomplete="current-password" placeholder="Enter Admin PIN" required style="width:100%;padding:11px 14px;text-align:center;letter-spacing:4px;font-size:16px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:10px;margin-bottom:12px;">
+        <div id="admin-pin-error" style="color:#F1948A;font-size:12.5px;min-height:18px;margin-bottom:10px;"></div>
+        <button type="submit" class="btn-admin btn-admin-primary" style="width:100%;justify-content:center;padding:11px 16px;">Unlock Command Center</button>
+      </form>
+      <div style="margin-top:14px;">
+        <a href="/" style="font-size:12px;color:var(--admin-text2);text-decoration:underline;">← Return to Storefront</a>
+      </div>
+    </div>
+  </div>
 
   <div class="admin-layout">
     
@@ -445,6 +556,7 @@
         </button>
       </nav>
       <div style="padding:16px 20px;border-top:1px solid var(--admin-border);font-size:12px;color:var(--admin-text2)">
+        <button type="button" class="btn-admin" style="width:100%;justify-content:center;margin-bottom:10px" onclick="lockAdminPortal()">🔒 Lock Portal</button>
         <div>Mirpur, Dhaka, Bangladesh</div>
         <div style="margin-top:4px">v2.0.0 Production</div>
       </div>
@@ -462,7 +574,7 @@
           </div>
         </div>
         <div class="topbar-right">
-          <a href="index.html" target="_blank" class="btn-admin">View Live Storefront ↗</a>
+          <a href="/" target="_blank" rel="noopener noreferrer" class="btn-admin">View Live Storefront ↗</a>
           <button class="btn-admin" onclick="refreshAdminData()">↻ Refresh</button>
           <button class="btn-admin btn-admin-primary" onclick="openNewOrderModal()">+ New Manual Order</button>
         </div>
@@ -470,6 +582,8 @@
 
       <!-- Content Area -->
       <main class="admin-content">
+
+        <div id="setup-readiness-banner" class="readiness-banner" style="display:none"></div>
 
         <!-- 1. ORDERS TAB (DEFAULT) -->
         <div id="tab-orders" class="view-tab active">
@@ -518,6 +632,8 @@
                   <option value="dhaka">Inside Dhaka (৳80)</option>
                   <option value="outside_dhaka">Outside Dhaka (৳150)</option>
                 </select>
+                <button class="btn-admin" onclick="loadDemoOrdersAdmin()">Load Demo Orders</button>
+                <button class="btn-admin" onclick="clearDemoOrdersAdmin()">Clear Demo Orders</button>
                 <button class="btn-admin" onclick="exportOrdersCSV()">Export CSV</button>
               </div>
             </div>
@@ -552,6 +668,7 @@
             <div class="panel-header">
               <h2>Complete Boutique Catalog (53 Verified SKUs across 8 Collections)</h2>
               <div class="panel-actions">
+                <input type="search" class="search-input" id="cat-search" placeholder="Search SKU, title, craft..." oninput="renderCatalogTable()">
                 <select class="filter-select" id="cat-col-filter" onchange="renderCatalogTable()">
                   <option value="all">All 8 Collections (53 SKUs)</option>
                   <option value="fashion_all">All Fashion Garments (18)</option>
@@ -575,7 +692,7 @@
                     <th>SKU</th>
                     <th>Product Title</th>
                     <th>Collection</th>
-                    <th>Bengali Description</th>
+                    <th>Selling Unit</th>
                     <th>Price (BDT)</th>
                     <th>Stock Status</th>
                     <th>Actions</th>
@@ -706,6 +823,10 @@
                 <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Delivery Fee Outside Dhaka (BDT)</label>
                 <input type="number" id="set-fee-outside" value="150" style="width:100%;padding:10px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;">
               </div>
+              <div>
+                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Admin Portal PIN (4+ chars, default 1430)</label>
+                <input type="password" id="set-admin-pin" placeholder="Leave blank to keep current PIN" style="width:100%;padding:10px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;">
+              </div>
               <div style="grid-column: 1 / -1">
                 <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Storefront Promo Announcement Banner</label>
                 <input type="text" id="set-promo" value="Welcome to Fariza's Territory · Fast Dhaka & Nationwide Cash-on-Delivery Delivery" style="width:100%;padding:10px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;">
@@ -741,6 +862,79 @@
                 <span id="capi-status-badge" class="badge badge-pending">Ready to test</span>
               </div>
               <pre id="capi-output" style="margin:0;font-family:monospace;font-size:12px;color:rgba(253,240,221,0.8);white-space:pre-wrap;max-height:160px;overflow-y:auto;">Click "Send Test CAPI Event" to trigger an instant server-to-server conversion payload to Meta Graph API.</pre>
+            </div>
+          </section>
+
+          <section class="admin-panel" style="margin-top:20px">
+            <div class="panel-header">
+              <div>
+                <h2>Meta Commerce Manager Feeds &amp; Ad Campaign URL Builder</h2>
+                <p style="font-size:12px;color:var(--admin-text2);margin:4px 0 0">Live 53-SKU Dynamic Product Ad (DPA) feeds for Facebook/Instagram Shops &amp; UTM Attribution Builder for Reels/Story Ads</p>
+              </div>
+              <a href="/api/catalog-feed.csv" target="_blank" rel="noopener noreferrer" class="btn-admin">Download 53-SKU Feed (.csv) ↗</a>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:16px;margin-bottom:18px;">
+              <div style="background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:8px;padding:12px;">
+                <div style="font-size:11px;font-weight:700;color:var(--admin-gold);text-transform:uppercase;margin-bottom:4px">Meta Commerce CSV Feed (53 SKUs)</div>
+                <div style="font-size:12px;color:var(--admin-text2);margin-bottom:10px">Paste into Meta Commerce Manager &rarr; Data Sources &rarr; Data Feed (Scheduled Fetch).</div>
+                <div style="display:flex;gap:8px">
+                  <input type="text" id="feed-url-csv" value="/api/catalog-feed.csv" readonly style="flex:1;padding:8px;background:var(--admin-surface2);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:6px;font-size:12px">
+                  <button type="button" class="btn-admin btn-admin-gold" onclick="copyFeedUrl('/api/catalog-feed.csv')">Copy URL</button>
+                </div>
+              </div>
+              <div style="background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:8px;padding:12px;">
+                <div style="font-size:11px;font-weight:700;color:var(--admin-gold);text-transform:uppercase;margin-bottom:4px">Google / Meta RSS 2.0 XML Feed</div>
+                <div style="font-size:12px;color:var(--admin-text2);margin-bottom:10px">Compatible with Google Merchant Center &amp; Meta XML Catalog auto-sync.</div>
+                <div style="display:flex;gap:8px">
+                  <input type="text" id="feed-url-xml" value="/api/catalog-feed.xml" readonly style="flex:1;padding:8px;background:var(--admin-surface2);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:6px;font-size:12px">
+                  <button type="button" class="btn-admin btn-admin-gold" onclick="copyFeedUrl('/api/catalog-feed.xml')">Copy URL</button>
+                </div>
+              </div>
+              <div style="background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:8px;padding:12px;">
+                <div style="font-size:11px;font-weight:700;color:var(--admin-gold);text-transform:uppercase;margin-bottom:4px">Official Brand Book &amp; Master JSON</div>
+                <div style="font-size:12px;color:var(--admin-text2);margin-bottom:10px">Authoritative Pomelli Brand Book PDF &amp; 53-SKU Master Manifest.</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <a href="/assets/aistudio/fariza_s_territory_brand_book_by_pomelli_1e38cd9b.pdf" target="_blank" rel="noopener noreferrer" class="btn-admin">Brand Book PDF ↗</a>
+                  <a href="/assets/aistudio/PRODUCTS_53_MASTER_DATABASE_d064c566.json" target="_blank" rel="noopener noreferrer" class="btn-admin">Master 53 JSON ↗</a>
+                </div>
+              </div>
+            </div>
+
+            <div style="background:var(--admin-bg);border:1px solid var(--admin-border);border-radius:8px;padding:16px;">
+              <div style="font-size:12px;font-weight:700;color:var(--admin-gold);text-transform:uppercase;margin-bottom:10px">Facebook &amp; Instagram Ad Campaign Link Generator (with UTM Attribution)</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px;margin-bottom:12px;">
+                <div>
+                  <label style="display:block;font-size:11px;color:var(--admin-text2);margin-bottom:4px">Target Destination</label>
+                  <select id="utm-target" onchange="buildAdCampaignUrl()" style="width:100%;padding:8px;background:var(--admin-surface);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:6px;font-size:12px">
+                    <option value="">Storefront Home (/)</option>
+                    <option value="sku:CAT-008">Hero Fashion: CAT-008 (Navy Royal Bloom)</option>
+                    <option value="sku:CAT-002">Hero Fashion: CAT-002 (Emerald Teal Batik)</option>
+                    <option value="sku:CAT-014">Hero Fashion: CAT-014 (Golden Mustard Mirror)</option>
+                    <option value="sku:FT-BA-001">Hero Bangle: FT-BA-001 (Pancharangi Anchor)</option>
+                    <option value="sku:FT-JWL-010">Hero Jewelry: FT-JWL-010 (Rickshaw Art Set)</option>
+                    <option value="sku:FT-HM-001">Hero Mirror: FT-HM-001 (Petal Frame Mirror)</option>
+                    <option value="col:bangles-accessories">Collection: Bangles &amp; Accessories (11)</option>
+                    <option value="col:handmade-jewelry">Collection: Handmade Jewelry (19)</option>
+                    <option value="col:handheld-mirrors">Collection: Handheld Mirrors (5)</option>
+                  </select>
+                </div>
+                <div>
+                  <label style="display:block;font-size:11px;color:var(--admin-text2);margin-bottom:4px">UTM Source</label>
+                  <input type="text" id="utm-source" value="facebook" oninput="buildAdCampaignUrl()" style="width:100%;padding:8px;background:var(--admin-surface);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:6px;font-size:12px">
+                </div>
+                <div>
+                  <label style="display:block;font-size:11px;color:var(--admin-text2);margin-bottom:4px">UTM Medium</label>
+                  <input type="text" id="utm-medium" value="paid_social_reels" oninput="buildAdCampaignUrl()" style="width:100%;padding:8px;background:var(--admin-surface);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:6px;font-size:12px">
+                </div>
+                <div>
+                  <label style="display:block;font-size:11px;color:var(--admin-text2);margin-bottom:4px">UTM Campaign Name</label>
+                  <input type="text" id="utm-campaign" value="dhaka_eid_festive_2026" oninput="buildAdCampaignUrl()" style="width:100%;padding:8px;background:var(--admin-surface);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:6px;font-size:12px">
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="text" id="utm-result-url" readonly style="flex:1;padding:10px;background:var(--admin-surface2);border:1px solid var(--admin-border);color:var(--admin-gold);border-radius:6px;font-family:monospace;font-size:12px">
+                <button type="button" class="btn-admin btn-admin-primary" onclick="copyCampaignUrl()">Copy Ad URL</button>
+              </div>
             </div>
           </section>
         </div>
@@ -892,6 +1086,24 @@
     </div>
   </div>
 
+  <!-- PRODUCT DETAIL & STOCK/PRICE MODAL -->
+  <div class="modal-backdrop" id="product-detail-modal">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h3 id="prod-modal-title">Product Details</h3>
+        <button class="btn-admin" onclick="closeProductDetailModal()">✕ Close</button>
+      </div>
+      <div class="modal-body" id="prod-modal-body"></div>
+      <div class="modal-foot">
+        <button type="button" class="btn-admin" onclick="closeProductDetailModal()">Cancel</button>
+        <button type="button" class="btn-admin btn-admin-primary" onclick="saveProductDetailChanges()">Save Price &amp; Stock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATIONS -->
+  <div id="admin-toast-wrap" class="admin-toast-container" aria-live="polite"></div>
+
   <!-- Scripts -->
   <script src="assets/js/config.js"></script>
   <script src="assets/js/supabaseClient.js"></script>
@@ -900,14 +1112,174 @@
   <script>
     let currentOrders = [];
     let selectedOrder = null;
+    let selectedProductSku = null;
+
+    function escHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
+
+    function showAdminToast(message, type) {
+      const wrap = document.getElementById('admin-toast-wrap');
+      if (!wrap) return;
+      const el = document.createElement('div');
+      el.className = 'admin-toast ' + (type || 'ok');
+      el.innerHTML = `<span>${escHtml(message)}</span><button type="button" style="background:none;border:none;color:inherit;cursor:pointer;font-size:15px" onclick="this.parentNode.remove()">✕</button>`;
+      wrap.appendChild(el);
+      setTimeout(() => { if (el.parentNode) el.remove(); }, 4200);
+    }
+
+    function openExternalUrl(url) {
+      if (!url) return;
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    function applyAdminProductOverrides(overrides) {
+      if (!window.FT_CATALOG || !overrides) return;
+      if (Array.isArray(overrides)) {
+        overrides.forEach(row => {
+          const p = row && row.sku ? window.FT_CATALOG.PRODUCTS_BY_SKU[row.sku] : null;
+          if (p) {
+            if (row.price_bdt !== undefined && row.price_bdt !== null) p.priceBDT = Number(row.price_bdt);
+            if (row.is_available !== undefined) p.is_available = !!row.is_available;
+          }
+        });
+      } else {
+        Object.keys(overrides).forEach(sku => {
+          const p = window.FT_CATALOG.PRODUCTS_BY_SKU[sku];
+          const ov = overrides[sku];
+          if (p && ov) {
+            if (ov.price_bdt !== undefined) p.priceBDT = Number(ov.price_bdt);
+            if (ov.is_available !== undefined) p.is_available = !!ov.is_available;
+          }
+        });
+      }
+    }
+
+    function getAdminPin() {
+      try {
+        return localStorage.getItem('ft_admin_pin') || '1430';
+      } catch (e) {
+        return '1430';
+      }
+    }
+
+    function showPinGate(msg) {
+      const gate = document.getElementById('admin-pin-gate');
+      const err = document.getElementById('admin-pin-error');
+      const input = document.getElementById('admin-pin-input');
+      if (err) err.textContent = msg || '';
+      if (input) input.value = '';
+      if (gate) gate.classList.add('active');
+      if (input) setTimeout(() => input.focus(), 50);
+    }
+
+    function hidePinGate() {
+      const gate = document.getElementById('admin-pin-gate');
+      if (gate) gate.classList.remove('active');
+    }
+
+    function checkPinLock() {
+      try {
+        if (sessionStorage.getItem('ft_admin_unlocked') === '1') {
+          hidePinGate();
+          return true;
+        }
+      } catch (e) {}
+      showPinGate('');
+      return false;
+    }
+
+    async function unlockAdminPortal() {
+      const input = document.getElementById('admin-pin-input');
+      const err = document.getElementById('admin-pin-error');
+      const entered = input ? String(input.value || '').trim() : '';
+      if (entered && entered === getAdminPin()) {
+        try { sessionStorage.setItem('ft_admin_unlocked', '1'); } catch (e) {}
+        hidePinGate();
+        if (!window.__FT_ADMIN_BOOTED) {
+          await bootAdminWorkspace();
+        }
+      } else {
+        if (err) err.textContent = 'Incorrect PIN. Please try again.';
+        if (input) {
+          input.value = '';
+          input.focus();
+        }
+      }
+    }
+
+    function lockAdminPortal() {
+      try { sessionStorage.removeItem('ft_admin_unlocked'); } catch (e) {}
+      showPinGate('Portal locked.');
+    }
+
+    function updateReadinessBanner() {
+      const banner = document.getElementById('setup-readiness-banner');
+      if (!banner) return;
+      const wa = document.getElementById('set-wa').value.trim();
+      const sbKey = document.getElementById('set-sb-key').value.trim();
+      const isWaPlaceholder = window.FT_CONFIG && window.FT_CONFIG.isPlaceholderWhatsapp
+        ? window.FT_CONFIG.isPlaceholderWhatsapp(wa)
+        : (!wa || wa === '8801700000000');
+
+      const warnings = [];
+      if (isWaPlaceholder) {
+        warnings.push('Official WhatsApp number is not set (storefront inquiries route to Facebook Messenger until configured)');
+      }
+      if (!sbKey) {
+        warnings.push('Supabase Anon Key missing (orders stay in this browser until connected)');
+      }
+
+      if (warnings.length === 0) {
+        banner.style.display = 'flex';
+        banner.className = 'readiness-banner ready';
+        banner.innerHTML = `<div style="font-size:13px"><strong>Production Ready:</strong> WhatsApp, Messenger, Meta Pixel &amp; Supabase Cloud Sync are configured.</div><button type="button" class="btn-admin" onclick="switchTab('settings')">Review Settings</button>`;
+      } else {
+        banner.style.display = 'flex';
+        banner.className = 'readiness-banner';
+        banner.innerHTML = `<div style="font-size:13px"><strong>Launch Setup Checklist:</strong> ${warnings.map(escHtml).join(' · ')}</div><button type="button" class="btn-admin btn-admin-primary" onclick="switchTab('settings')">Complete Setup →</button>`;
+      }
+    }
+
+    function hydrateSettingsInputs(settings) {
+      if (!settings) return;
+      if (settings.whatsapp_number) document.getElementById('set-wa').value = settings.whatsapp_number;
+      if (settings.messenger_username) document.getElementById('set-fb').value = settings.messenger_username;
+      if (settings.meta_pixel_id) document.getElementById('set-pixel').value = settings.meta_pixel_id;
+      if (settings.ga4_measurement_id !== undefined) document.getElementById('set-ga4').value = settings.ga4_measurement_id || '';
+      if (settings.delivery_fee_dhaka !== undefined) document.getElementById('set-fee-dhaka').value = settings.delivery_fee_dhaka;
+      if (settings.delivery_fee_outside !== undefined) document.getElementById('set-fee-outside').value = settings.delivery_fee_outside;
+      if (settings.promo_text) document.getElementById('set-promo').value = settings.promo_text;
+      if (window.FT_CONFIG) {
+        if (settings.whatsapp_number) window.FT_CONFIG.whatsappNumber = settings.whatsapp_number;
+        if (settings.messenger_username) window.FT_CONFIG.messengerUsername = settings.messenger_username;
+        if (settings.delivery_fee_dhaka !== undefined) window.FT_CONFIG.deliveryFeeDhaka = Number(settings.delivery_fee_dhaka) || 80;
+        if (settings.delivery_fee_outside !== undefined) window.FT_CONFIG.deliveryFeeOutside = Number(settings.delivery_fee_outside) || 150;
+        if (settings.promo_text) window.FT_CONFIG.promoText = settings.promo_text;
+      }
+    }
 
     async function initDashboard() {
-      // Load saved settings
+      if (!checkPinLock()) return;
+      await bootAdminWorkspace();
+    }
+
+    async function bootAdminWorkspace() {
+      window.__FT_ADMIN_BOOTED = true;
       const savedKey = localStorage.getItem('ft_supabase_anon_key') || '';
       document.getElementById('set-sb-key').value = savedKey;
 
-      const savedWa = localStorage.getItem('ft_wa_number') || window.FT_CONFIG.whatsappNumber || '';
+      const savedWa = localStorage.getItem('ft_whatsapp') || localStorage.getItem('ft_wa_number') || (window.FT_CONFIG && window.FT_CONFIG.whatsappNumber) || '';
       document.getElementById('set-wa').value = savedWa;
+
+      const savedFb = localStorage.getItem('ft_messenger') || (window.FT_CONFIG && window.FT_CONFIG.messengerUsername) || 'farizasterritory143';
+      document.getElementById('set-fb').value = savedFb;
 
       const savedPixel = localStorage.getItem('ft_meta_pixel_id') || (window.FT_CONFIG && window.FT_CONFIG.marketing ? window.FT_CONFIG.marketing.metaPixelId : '') || '1657670575734647';
       document.getElementById('set-pixel').value = savedPixel;
@@ -915,15 +1287,51 @@
       const savedGa = localStorage.getItem('ft_ga4_id') || '';
       document.getElementById('set-ga4').value = savedGa;
 
+      const savedDhaka = localStorage.getItem('ft_delivery_dhaka');
+      if (savedDhaka !== null && savedDhaka !== '') document.getElementById('set-fee-dhaka').value = savedDhaka;
+
+      const savedOutside = localStorage.getItem('ft_delivery_outside');
+      if (savedOutside !== null && savedOutside !== '') document.getElementById('set-fee-outside').value = savedOutside;
+
+      const savedPromo = localStorage.getItem('ft_promo_text');
+      if (savedPromo !== null && savedPromo !== '') document.getElementById('set-promo').value = savedPromo;
+
       if (savedKey) {
         window.FT_SUPABASE.init(window.FT_CONFIG.supabase.url, savedKey);
+        if (window.FT_SUPABASE.getStoreSettings) {
+          const cloudSettings = await window.FT_SUPABASE.getStoreSettings();
+          if (cloudSettings) hydrateSettingsInputs(cloudSettings);
+        }
       }
 
+      applyAdminProductOverrides(window.FT_SUPABASE.getProductOverrides());
+
       await checkCloudHealth();
+      updateReadinessBanner();
       await refreshAdminData();
+
+      if (window.FT_SUPABASE.getProducts) {
+        const cloudProds = await window.FT_SUPABASE.getProducts();
+        if (cloudProds && cloudProds.length) applyAdminProductOverrides(cloudProds);
+      }
+
       renderCatalogTable();
       renderCouponsTable();
       populateManualOrderProducts();
+    }
+
+    async function loadDemoOrdersAdmin() {
+      if (!window.FT_SUPABASE || !window.FT_SUPABASE.seedDemoOrders) return;
+      window.FT_SUPABASE.seedDemoOrders();
+      await refreshAdminData();
+      showAdminToast('4 sample demo orders loaded locally for preview.', 'ok');
+    }
+
+    async function clearDemoOrdersAdmin() {
+      if (!window.FT_SUPABASE || !window.FT_SUPABASE.clearDemoOrders) return;
+      window.FT_SUPABASE.clearDemoOrders();
+      await refreshAdminData();
+      showAdminToast('Sample demo orders cleared.', 'ok');
     }
 
     function populateManualOrderProducts() {
@@ -933,7 +1341,7 @@
       sel.innerHTML = prods.map(p => {
         const price = p.priceBDT ? `৳${p.priceBDT.toLocaleString()}` : 'Inquire';
         const cat = p.superCategory || 'Fashion';
-        return `<option value="${p.sku}">[${cat}] ${p.sku} · ${p.title} (${price})</option>`;
+        return `<option value="${escHtml(p.sku)}">[${escHtml(cat)}] ${escHtml(p.sku)} · ${escHtml(p.title)} (${price})</option>`;
       }).join('');
     }
 
@@ -1012,18 +1420,18 @@
 
         return `
           <tr>
-            <td><strong style="color:var(--admin-gold);cursor:pointer;" onclick="openOrderDetail('${ref}')">${ref}</strong></td>
-            <td>${date}</td>
-            <td><strong>${name}</strong></td>
-            <td><a href="tel:${phone}" style="color:var(--admin-text);text-decoration:underline;">${phone}</a></td>
-            <td><small style="color:var(--admin-text2)">${address.slice(0, 32)}...</small></td>
+            <td><strong style="color:var(--admin-gold);cursor:pointer;" onclick="openOrderDetail('${escHtml(ref)}')">${escHtml(ref)}</strong>${o.is_demo ? ' <span class="badge badge-pending">DEMO</span>' : ''}</td>
+            <td>${escHtml(date)}</td>
+            <td><strong>${escHtml(name)}</strong></td>
+            <td><a href="tel:${escHtml(phone)}" style="color:var(--admin-text);text-decoration:underline;">${escHtml(phone)}</a></td>
+            <td><small style="color:var(--admin-text2)">${escHtml(address.slice(0, 32))}${address.length > 32 ? '...' : ''}</small></td>
             <td><span class="badge" style="background:var(--admin-surface2);padding:3px 8px;border-radius:6px;">${piecesCount} pcs</span></td>
             <td><strong>৳ ${total}</strong></td>
-            <td><span class="st-badge st-${st}">${st}</span></td>
+            <td><span class="st-badge st-${escHtml(st)}">${escHtml(st)}</span></td>
             <td>
               <div style="display:flex;gap:6px">
-                <button class="btn-admin" onclick="openOrderDetail('${ref}')" title="View details">Inspect</button>
-                <button class="btn-admin" onclick="quickWhatsAppCustomer('${ref}')" title="WhatsApp Customer" style="color:#25D366">WA</button>
+                <button class="btn-admin" onclick="openOrderDetail('${escHtml(ref)}')" title="View details">Inspect</button>
+                <button class="btn-admin" onclick="quickWhatsAppCustomer('${escHtml(ref)}')" title="WhatsApp Customer" style="color:#25D366">WA</button>
               </div>
             </td>
           </tr>
@@ -1042,11 +1450,20 @@
                              (o.order_ref || '').toLowerCase().includes(q) ||
                              (o.customer_address || '').toLowerCase().includes(q);
         const matchSt = st === 'all' || (o.status || 'pending') === st;
-        const matchZone = zone === 'all' || (o.delivery_zone || 'dhaka') === zone;
+        const normZone = window.FT_SUPABASE && window.FT_SUPABASE.normalizeZone ? window.FT_SUPABASE.normalizeZone(o.delivery_zone) : (o.delivery_zone || 'dhaka');
+        const matchZone = zone === 'all' || normZone === zone;
         return matchQ && matchSt && matchZone;
       });
 
       renderOrdersTable(filtered);
+    }
+
+    function getOrderDeliveryFee(o) {
+      if (o && o.delivery_fee !== undefined && o.delivery_fee !== null) {
+        return Number(o.delivery_fee);
+      }
+      const isOut = o && (o.delivery_zone === 'outside' || o.delivery_zone === 'outside_dhaka');
+      return isOut ? 150 : 80;
     }
 
     function openOrderDetail(ref) {
@@ -1059,27 +1476,29 @@
       if (Array.isArray(selectedOrder.items)) {
         itemsHtml = selectedOrder.items.map(it => `
           <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--admin-border)">
-            ${it.image ? `<img src="${it.image}" style="width:48px;height:60px;object-fit:cover;border-radius:6px;">` : ''}
+            ${it.image ? `<img src="${escHtml(it.image)}" style="width:48px;height:60px;object-fit:cover;border-radius:6px;">` : ''}
             <div style="flex:1">
-              <div style="font-weight:600">${it.title || it.sku}</div>
-              <small style="color:var(--admin-text2)">SKU: ${it.sku} · Qty: ${it.qty || 1}</small>
+              <div style="font-weight:600">${escHtml(it.title || it.sku)}</div>
+              <small style="color:var(--admin-text2)">SKU: ${escHtml(it.sku)} · Qty: ${it.qty || 1}</small>
             </div>
             <div><strong>৳ ${Number(it.price || 0).toLocaleString()}</strong></div>
           </div>
         `).join('');
       }
 
+      const feeVal = getOrderDeliveryFee(selectedOrder);
+
       document.getElementById('modal-order-body').innerHTML = `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
           <div>
             <label style="font-size:12px;color:var(--admin-text2)">Customer Name</label>
-            <div style="font-size:16px;font-weight:600;margin-top:2px">${selectedOrder.customer_name}</div>
+            <div style="font-size:16px;font-weight:600;margin-top:2px">${escHtml(selectedOrder.customer_name)}</div>
             
             <label style="font-size:12px;color:var(--admin-text2);margin-top:10px;display:block">Phone</label>
-            <div style="margin-top:2px"><a href="tel:${selectedOrder.customer_phone}" style="color:var(--admin-gold)">${selectedOrder.customer_phone}</a></div>
+            <div style="margin-top:2px"><a href="tel:${escHtml(selectedOrder.customer_phone)}" style="color:var(--admin-gold)">${escHtml(selectedOrder.customer_phone)}</a></div>
 
             <label style="font-size:12px;color:var(--admin-text2);margin-top:10px;display:block">Delivery Address</label>
-            <div style="margin-top:2px">${selectedOrder.customer_address}</div>
+            <div style="margin-top:2px">${escHtml(selectedOrder.customer_address)}</div>
           </div>
           <div>
             <label style="font-size:12px;color:var(--admin-text2)">Status</label>
@@ -1093,10 +1512,10 @@
             </select>
 
             <label style="font-size:12px;color:var(--admin-text2);margin-top:10px;display:block">Courier Partner</label>
-            <input type="text" id="modal-courier-name" value="${selectedOrder.courier_name || 'Steadfast Courier'}" class="search-input" style="width:100%;margin-top:4px">
+            <input type="text" id="modal-courier-name" value="${escHtml(selectedOrder.courier_name || 'Steadfast Courier')}" class="search-input" style="width:100%;margin-top:4px">
 
             <label style="font-size:12px;color:var(--admin-text2);margin-top:10px;display:block">Tracking Number</label>
-            <input type="text" id="modal-tracking-num" value="${selectedOrder.tracking_number || ''}" placeholder="e.g. STF-12345" class="search-input" style="width:100%;margin-top:4px">
+            <input type="text" id="modal-tracking-num" value="${escHtml(selectedOrder.tracking_number || '')}" placeholder="e.g. STF-12345" class="search-input" style="width:100%;margin-top:4px">
           </div>
         </div>
 
@@ -1111,11 +1530,11 @@
           </div>
           ${selectedOrder.discount_amount ? `
             <div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--admin-green)">
-              <span>Discount (${selectedOrder.discount_code || 'Voucher'}):</span> <span>- ৳ ${Number(selectedOrder.discount_amount).toLocaleString()}</span>
+              <span>Discount (${escHtml(selectedOrder.discount_code || 'Voucher')}):</span> <span>- ৳ ${Number(selectedOrder.discount_amount).toLocaleString()}</span>
             </div>
           ` : ''}
           <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-            <span>Delivery Fee:</span> <span>৳ ${Number(selectedOrder.delivery_fee || 80).toLocaleString()}</span>
+            <span>Delivery Fee:</span> <span>৳ ${feeVal.toLocaleString()}</span>
           </div>
           <div style="display:flex;justify-content:space-between;font-weight:700;font-size:16px;padding-top:8px;border-top:1px solid var(--admin-border)">
             <span>Total COD Payable:</span> <span>৳ ${Number(selectedOrder.total || 0).toLocaleString()}</span>
@@ -1133,19 +1552,20 @@
 
     async function saveOrderModalChanges() {
       if (!selectedOrder) return;
+      const ref = selectedOrder.order_ref;
       const newStatus = document.getElementById('modal-order-status').value;
       const courier = document.getElementById('modal-courier-name').value.trim();
       const tracking = document.getElementById('modal-tracking-num').value.trim();
 
-      await window.FT_SUPABASE.updateOrderStatus(selectedOrder.order_ref, newStatus);
-      await window.FT_SUPABASE.updateOrderDetails(selectedOrder.order_ref, {
+      await window.FT_SUPABASE.updateOrderStatus(ref, newStatus);
+      await window.FT_SUPABASE.updateOrderDetails(ref, {
         courier_name: courier,
         tracking_number: tracking
       });
 
-      alert(`Order ${selectedOrder.order_ref} updated successfully!`);
       closeOrderModal();
       await refreshAdminData();
+      showAdminToast(`Order ${ref} updated successfully!`, 'ok');
     }
 
     function quickWhatsAppCustomer(ref) {
@@ -1154,13 +1574,14 @@
       const cleanPhone = (order.customer_phone || '').replace(/[^0-9]/g, '');
       const fullPhone = cleanPhone.startsWith('88') ? cleanPhone : ('88' + cleanPhone);
       const msg = `Assalamu Alaikum ${order.customer_name},\nThis is Fariza's Territory regarding your boutique order ${order.order_ref}.\nTotal amount: ৳ ${Number(order.total || 0).toLocaleString()} (Cash on Delivery).\nDelivery address: ${order.customer_address}.\nPlease let us know if you have any questions!`;
-      window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+      openExternalUrl(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`);
     }
 
     function printCurrentOrderInvoice() {
       if (!selectedOrder) return;
       const o = selectedOrder;
       const printArea = document.getElementById('print-area');
+      const feeVal = getOrderDeliveryFee(o);
       
       printArea.innerHTML = `
         <div style="max-width:700px;margin:0 auto;font-family:sans-serif;color:#111;padding:20px;border:1px solid #ccc">
@@ -1171,7 +1592,7 @@
             </div>
             <div style="text-align:right">
               <h3 style="margin:0;color:#C6952B">INVOICE</h3>
-              <div><b>Ref: ${o.order_ref}</b></div>
+              <div><b>Ref: ${escHtml(o.order_ref)}</b></div>
               <small>${new Date(o.created_at || Date.now()).toLocaleDateString('en-GB')}</small>
             </div>
           </div>
@@ -1179,14 +1600,14 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
             <div>
               <h4 style="margin:0 0 6px 0">CUSTOMER / SHIPPING:</h4>
-              <div><b>${o.customer_name}</b></div>
-              <div>Phone: ${o.customer_phone}</div>
-              <div>Address: ${o.customer_address}</div>
+              <div><b>${escHtml(o.customer_name)}</b></div>
+              <div>Phone: ${escHtml(o.customer_phone)}</div>
+              <div>Address: ${escHtml(o.customer_address)}</div>
             </div>
             <div style="text-align:right">
               <h4 style="margin:0 0 6px 0">COURIER DISPATCH:</h4>
-              <div>Courier: ${o.courier_name || 'Steadfast Courier'}</div>
-              <div>Tracking: ${o.tracking_number || 'Pending'}</div>
+              <div>Courier: ${escHtml(o.courier_name || 'Steadfast Courier')}</div>
+              <div>Tracking: ${escHtml(o.tracking_number || 'Pending')}</div>
               <div>Payment: <b>Cash on Delivery (COD)</b></div>
             </div>
           </div>
@@ -1204,8 +1625,8 @@
             <tbody>
               ${(o.items || []).map(it => `
                 <tr style="border-bottom:1px solid #eee">
-                  <td style="padding:8px">${it.title || it.sku}</td>
-                  <td style="padding:8px">${it.sku}</td>
+                  <td style="padding:8px">${escHtml(it.title || it.sku)}</td>
+                  <td style="padding:8px">${escHtml(it.sku)}</td>
                   <td style="padding:8px;text-align:center">${it.qty || 1}</td>
                   <td style="padding:8px;text-align:right">৳ ${Number(it.price || 0).toLocaleString()}</td>
                   <td style="padding:8px;text-align:right">৳ ${(Number(it.price || 0) * (it.qty || 1)).toLocaleString()}</td>
@@ -1224,7 +1645,7 @@
               </div>
             ` : ''}
             <div style="display:flex;justify-content:space-between;padding:4px 0">
-              <span>Delivery Fee:</span> <span>৳ ${Number(o.delivery_fee || 80).toLocaleString()}</span>
+              <span>Delivery Fee:</span> <span>৳ ${feeVal.toLocaleString()}</span>
             </div>
             <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid #111;font-size:18px;font-weight:700">
               <span>Cash to Collect:</span> <span>৳ ${Number(o.total || 0).toLocaleString()}</span>
@@ -1243,7 +1664,10 @@
     }
 
     function exportOrdersCSV() {
-      if (currentOrders.length === 0) return alert('No orders to export.');
+      if (currentOrders.length === 0) {
+        showAdminToast('No orders to export.', 'err');
+        return;
+      }
       const headers = ['Order Ref', 'Date', 'Customer Name', 'Phone', 'Address', 'Zone', 'Subtotal', 'Discount', 'Delivery Fee', 'Total', 'Status', 'Courier', 'Tracking'];
       const rows = currentOrders.map(o => [
         `"${o.order_ref}"`,
@@ -1254,7 +1678,7 @@
         `"${o.delivery_zone || 'dhaka'}"`,
         o.subtotal || 0,
         o.discount_amount || 0,
-        o.delivery_fee || 80,
+        getOrderDeliveryFee(o),
         o.total || 0,
         `"${o.status || 'pending'}"`,
         `"${o.courier_name || 'Steadfast'}"`,
@@ -1268,19 +1692,24 @@
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      showAdminToast('Exported ' + currentOrders.length + ' orders to CSV.', 'ok');
     }
 
     // Catalog Table
     function renderCatalogTable() {
       const col = document.getElementById('cat-col-filter').value;
+      const searchEl = document.getElementById('cat-search');
+      const q = (searchEl ? searchEl.value : '').trim().toLowerCase();
       const tbody = document.getElementById('catalog-table-body');
       const products = window.FT_CATALOG ? window.FT_CATALOG.PRODUCTS : [];
 
       const filtered = products.filter(p => {
-        if (col === 'all') return true;
-        if (col === 'fashion_all') return p.superCategory === 'Fashion';
-        if (col === 'acc_all') return p.superCategory === 'Accessories';
-        return p.colId === col || p.col === col;
+        if (col === 'fashion_all' && p.superCategory !== 'Fashion') return false;
+        else if (col === 'acc_all' && p.superCategory !== 'Accessories') return false;
+        else if (col !== 'all' && col !== 'fashion_all' && col !== 'acc_all' && p.colId !== col && p.col !== col) return false;
+        if (!q) return true;
+        const hay = [p.sku, p.title, p.titleBn, p.fabric, p.unit, p.unitBn, p.collection && p.collection.name].filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(q);
       });
 
       tbody.innerHTML = filtered.map(p => {
@@ -1290,24 +1719,93 @@
         const colShort = p.collection ? p.collection.short : (p.collectionShort || '');
         const pillar = p.superCategory || (p.collection ? p.collection.pillar : 'Fashion');
         const unit = p.unitBn || p.unit || '';
+        const isLive = p.is_available !== false;
         return `
           <tr>
-            <td><img src="${imgSrc}" style="width:40px;height:50px;object-fit:cover;border-radius:4px" onerror="this.style.display='none'"></td>
-            <td><strong>${p.sku}</strong></td>
-            <td>${p.title}<br><small style="color:var(--admin-text2)">${p.titleBn || ''}</small></td>
+            <td><img src="${escHtml(imgSrc)}" style="width:40px;height:50px;object-fit:cover;border-radius:4px" onerror="this.style.display='none'"></td>
+            <td><strong>${escHtml(p.sku)}</strong></td>
+            <td>${escHtml(p.title)}<br><small style="color:var(--admin-text2)">${escHtml(p.titleBn || '')}</small></td>
             <td>
-              <span class="badge" style="background:var(--admin-surface2)">${colShort}</span>
-              <span class="badge" style="background:rgba(209,128,58,0.2);color:var(--admin-gold);font-size:10px">${pillar}</span>
+              <span class="badge" style="background:var(--admin-surface2)">${escHtml(colShort)}</span>
+              <span class="badge" style="background:rgba(209,128,58,0.2);color:var(--admin-gold);font-size:10px">${escHtml(pillar)}</span>
             </td>
-            <td><small style="color:var(--admin-text2)">${unit}</small></td>
+            <td><small style="color:var(--admin-text2)">${escHtml(unit)}</small></td>
             <td><strong>৳ ${p.priceBDT ? p.priceBDT.toLocaleString() : 'Inquire'}</strong></td>
-            <td><span class="st-badge st-delivered">Live</span></td>
+            <td><span class="st-badge ${isLive ? 'st-delivered' : 'st-cancelled'}">${isLive ? 'Live' : 'Out'}</span></td>
             <td>
-              <button class="btn-admin" onclick="alert('SKU: ${p.sku}\nPrice: ৳ ${p.priceBDT}\nUnit: ${unit}\nCaution: ${p.cautionBn||'None'}')">Details</button>
+              <button class="btn-admin" onclick="openProductDetailModal('${escHtml(p.sku)}')">Inspect / Edit</button>
             </td>
           </tr>
         `;
       }).join('');
+    }
+
+    function openProductDetailModal(sku) {
+      if (!window.FT_CATALOG) return;
+      const p = window.FT_CATALOG.PRODUCTS_BY_SKU[sku];
+      if (!p) return;
+      selectedProductSku = sku;
+      const imgSrc = (p.assets && typeof p.assets.main === 'string') ? p.assets.main : ('assets/products/' + p.sku + '/main.webp');
+      const isLive = p.is_available !== false;
+      document.getElementById('prod-modal-title').textContent = `${p.sku} — ${p.title}`;
+      document.getElementById('prod-modal-body').innerHTML = `
+        <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:18px;align-items:flex-start">
+          <img src="${escHtml(imgSrc)}" style="width:110px;height:140px;object-fit:cover;border-radius:10px;border:1px solid var(--admin-border)">
+          <div style="flex:1;min-width:220px">
+            <div style="font-size:16px;font-weight:700">${esc(p.title)}</div>
+            ${p.titleBn ? `<div style="color:var(--admin-gold);font-size:13.5px;margin-top:4px">${escHtml(p.titleBn)}</div>` : ''}
+            <div style="font-size:12.5px;color:var(--admin-text2);margin-top:8px">Collection: ${escHtml(p.collection ? p.collection.name : '')} (${escHtml(p.superCategory)})</div>
+            <div style="font-size:12.5px;color:var(--admin-text2);margin-top:4px">Selling Unit: ${escHtml(p.unitBn || p.unit || 'N/A')}</div>
+            ${p.cautionBn ? `<div style="margin-top:8px;padding:8px 10px;background:var(--admin-gold-bg);border-radius:8px;font-size:12px;color:var(--admin-gold)">⚠️ ${escHtml(p.cautionBn)}</div>` : ''}
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div>
+            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Price (BDT)</label>
+            <input type="number" id="prod-edit-price" value="${Number(p.priceBDT || 0)}" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Availability Status</label>
+            <select id="prod-edit-stock" class="filter-select" style="width:100%">
+              <option value="true" ${isLive ? 'selected' : ''}>Live (In Stock)</option>
+              <option value="false" ${!isLive ? 'selected' : ''}>Out of Stock</option>
+            </select>
+          </div>
+        </div>
+      `;
+      document.getElementById('product-detail-modal').classList.add('open');
+    }
+
+    function esc(s) { return escHtml(s); }
+
+    function closeProductDetailModal() {
+      document.getElementById('product-detail-modal').classList.remove('open');
+      selectedProductSku = null;
+    }
+
+    async function saveProductDetailChanges() {
+      if (!selectedProductSku || !window.FT_CATALOG) return;
+      const p = window.FT_CATALOG.PRODUCTS_BY_SKU[selectedProductSku];
+      if (!p) return;
+      const rawPrice = document.getElementById('prod-edit-price').value.trim();
+      const parsedPrice = Number(rawPrice);
+      if (rawPrice === '' || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
+        showAdminToast('Please enter a valid non-negative price in BDT.', 'err');
+        return;
+      }
+      const newPrice = Math.round(parsedPrice);
+      const newAvail = document.getElementById('prod-edit-stock').value === 'true';
+
+      p.priceBDT = newPrice;
+      p.is_available = newAvail;
+
+      await window.FT_SUPABASE.updateProductPrice(selectedProductSku, newPrice);
+      await window.FT_SUPABASE.toggleProductStock(selectedProductSku, newAvail);
+
+      renderCatalogTable();
+      populateManualOrderProducts();
+      closeProductDetailModal();
+      showAdminToast(`Updated ${p.sku}: ৳${newPrice.toLocaleString()} (${newAvail ? 'Live' : 'Out of Stock'})`, 'ok');
     }
 
     // Coupons Table
@@ -1316,15 +1814,15 @@
       const coupons = await window.FT_SUPABASE.getCoupons();
       tbody.innerHTML = coupons.map(c => `
         <tr>
-          <td><strong style="color:var(--admin-gold)">${c.code}</strong></td>
-          <td>${c.discount_type}</td>
+          <td><strong style="color:var(--admin-gold)">${escHtml(c.code)}</strong></td>
+          <td>${escHtml(c.discount_type)}</td>
           <td><b>${c.discount_type === 'percentage' ? c.discount_value + '%' : '৳ ' + c.discount_value}</b></td>
           <td>৳ ${Number(c.min_spend || 0).toLocaleString()}</td>
           <td>${c.max_discount ? '৳ ' + c.max_discount : 'None'}</td>
           <td><span class="st-badge ${c.is_active ? 'st-delivered' : 'st-cancelled'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
-          <td><small>${c.notes || ''}</small></td>
+          <td><small>${escHtml(c.notes || '')}</small></td>
           <td>
-            <button class="btn-admin" onclick="toggleCouponStatus('${c.code}', ${!c.is_active})">${c.is_active ? 'Disable' : 'Enable'}</button>
+            <button class="btn-admin" onclick="toggleCouponStatus('${escHtml(c.code)}', ${!c.is_active})">${c.is_active ? 'Disable' : 'Enable'}</button>
           </td>
         </tr>
       `).join('');
@@ -1337,6 +1835,7 @@
         target.is_active = newStatus;
         await window.FT_SUPABASE.saveCoupon(target);
         renderCouponsTable();
+        showAdminToast(`Coupon ${code} ${newStatus ? 'enabled' : 'disabled'}.`, 'ok');
       }
     }
 
@@ -1363,18 +1862,21 @@
       });
 
       const list = Object.values(customerMap).filter(c => !q || c.name.toLowerCase().includes(q) || c.phone.includes(q));
-      tbody.innerHTML = list.map(c => `
+      tbody.innerHTML = list.map(c => {
+        const digits = c.phone.replace(/[^0-9]/g, '');
+        const waPhone = digits.startsWith('88') ? digits : ('88' + digits);
+        return `
         <tr>
-          <td><strong>${c.name}</strong></td>
-          <td><a href="tel:${c.phone}" style="color:var(--admin-text)">${c.phone}</a></td>
-          <td><small>${c.address.slice(0, 36)}</small></td>
+          <td><strong>${escHtml(c.name)}</strong></td>
+          <td><a href="tel:${escHtml(c.phone)}" style="color:var(--admin-text)">${escHtml(c.phone)}</a></td>
+          <td><small>${escHtml(c.address.slice(0, 36))}</small></td>
           <td><span class="badge" style="background:var(--admin-surface2)">${c.ordersCount} orders</span></td>
           <td><strong>৳ ${c.totalSpent.toLocaleString()}</strong></td>
           <td>
-            <a href="https://wa.me/${c.phone.replace(/[^0-9]/g,'')}?text=Assalamu%20Alaikum%20${encodeURIComponent(c.name)}" target="_blank" class="btn-admin" style="color:#25D366">WhatsApp</a>
+            <a href="https://wa.me/${waPhone}?text=Assalamu%20Alaikum%20${encodeURIComponent(c.name)}" target="_blank" rel="noopener noreferrer" class="btn-admin" style="color:#25D366">WhatsApp</a>
           </td>
-        </tr>
-      `).join('');
+        </tr>`;
+      }).join('');
     }
 
     // Courier Table
@@ -1382,15 +1884,15 @@
       const tbody = document.getElementById('courier-table-body');
       tbody.innerHTML = currentOrders.map(o => `
         <tr>
-          <td><strong style="color:var(--admin-gold)">${o.order_ref}</strong></td>
-          <td>${o.customer_name}</td>
-          <td>${o.customer_phone}</td>
-          <td><small>${o.customer_address}</small></td>
+          <td><strong style="color:var(--admin-gold)">${escHtml(o.order_ref)}</strong></td>
+          <td>${escHtml(o.customer_name)}</td>
+          <td>${escHtml(o.customer_phone)}</td>
+          <td><small>${escHtml(o.customer_address)}</small></td>
           <td><strong>৳ ${Number(o.total || 0).toLocaleString()}</strong></td>
-          <td>${o.courier_name || 'Steadfast Courier'}</td>
-          <td>${o.tracking_number || '—'}</td>
+          <td>${escHtml(o.courier_name || 'Steadfast Courier')}</td>
+          <td>${escHtml(o.tracking_number || '—')}</td>
           <td>
-            <button class="btn-admin" onclick="copyCourierFormat('${o.order_ref}')">📋 Copy</button>
+            <button class="btn-admin" onclick="copyCourierFormat('${escHtml(o.order_ref)}')">📋 Copy</button>
           </td>
         </tr>
       `).join('');
@@ -1400,8 +1902,11 @@
       const o = currentOrders.find(ord => ord.order_ref === ref);
       if (!o) return;
       const text = `${o.customer_name} | ${o.customer_phone} | ${o.customer_address} | ৳${o.total}`;
-      navigator.clipboard.writeText(text);
-      alert('Courier dispatch info copied to clipboard!');
+      navigator.clipboard.writeText(text).then(() => {
+        showAdminToast('Courier dispatch info copied to clipboard!', 'ok');
+      }).catch(() => {
+        showAdminToast('Failed to copy automatically.', 'err');
+      });
     }
 
     function switchTab(tabId) {
@@ -1411,7 +1916,7 @@
       const target = document.getElementById('tab-' + tabId);
       if (target) target.classList.add('active');
 
-      const btn = Array.from(document.querySelectorAll('.admin-nav-item')).find(b => b.textContent.toLowerCase().includes(tabId));
+      const btn = Array.from(document.querySelectorAll('.admin-nav-item')).find(b => (b.getAttribute('onclick') || '').includes("'" + tabId + "'"));
       if (btn) btn.classList.add('active');
     }
 
@@ -1421,7 +1926,7 @@
       const testCode = document.getElementById('capi-test-code').value.trim() || 'TEST64994';
       badge.textContent = 'Sending...';
       badge.className = 'badge badge-processing';
-      out.textContent = 'Sending serverless CAPI POST request to /api/capi with code ' + testCode + '...';
+      out.textContent = 'Sending CAPI POST request to /api/capi with code ' + testCode + '...';
 
       try {
         const payload = {
@@ -1458,29 +1963,73 @@
       } catch (err) {
         badge.textContent = 'Network Error';
         badge.className = 'badge badge-cancelled';
-        out.textContent = 'Failed to connect to /api/capi: ' + err.message + '\nNote: On local development without a node server running /api/capi, this endpoint will be live once deployed to Vercel.';
+        out.textContent = 'Failed to connect to /api/capi: ' + err.message;
       }
     }
 
-    function saveStoreSettings() {
+    async function saveStoreSettings() {
       const key = document.getElementById('set-sb-key').value.trim();
-      const wa = document.getElementById('set-wa').value.trim();
+      const wa = document.getElementById('set-wa').value.trim().replace(/[^0-9]/g, '');
+      const fb = document.getElementById('set-fb').value.trim().replace(/^https?:\/\/(www\.)?m\.me\//, '').replace(/\/$/, '');
       const pixel = document.getElementById('set-pixel').value.trim();
       const ga4 = document.getElementById('set-ga4').value.trim();
-      const dhaka = document.getElementById('set-fee-dhaka').value.trim();
-      const outside = document.getElementById('set-fee-outside').value.trim();
+      const dhaka = parseInt(document.getElementById('set-fee-dhaka').value, 10);
+      const outside = parseInt(document.getElementById('set-fee-outside').value, 10);
+      const promo = document.getElementById('set-promo').value.trim();
+      const newPinEl = document.getElementById('set-admin-pin');
+      const newPin = newPinEl ? newPinEl.value.trim() : '';
 
-      if (key) localStorage.setItem('ft_supabase_anon_key', key);
-      if (wa) localStorage.setItem('ft_wa_number', wa);
-      if (pixel) localStorage.setItem('ft_meta_pixel_id', pixel);
-      if (ga4) localStorage.setItem('ft_ga4_id', ga4);
+      if (newPin) {
+        if (newPin.length < 4) {
+          showAdminToast('Admin PIN must be at least 4 characters.', 'err');
+          return;
+        }
+        try { localStorage.setItem('ft_admin_pin', newPin); } catch (e) {}
+        newPinEl.value = '';
+      }
 
-      alert('All boutique settings saved successfully!');
-      location.reload();
+      if (key) {
+        localStorage.setItem('ft_supabase_anon_key', key);
+        window.FT_SUPABASE.init(window.FT_CONFIG.supabase.url, key);
+      } else {
+        localStorage.removeItem('ft_supabase_anon_key');
+      }
+
+      const settingsPayload = {
+        whatsapp_number: wa || '8801700000000',
+        messenger_username: fb || 'farizasterritory143',
+        facebook_url: 'https://www.facebook.com/' + encodeURIComponent(fb || 'farizasterritory143'),
+        meta_pixel_id: pixel || '1657670575734647',
+        ga4_measurement_id: ga4,
+        delivery_fee_dhaka: Number.isFinite(dhaka) ? dhaka : 80,
+        delivery_fee_outside: Number.isFinite(outside) ? outside : 150,
+        promo_text: promo
+      };
+
+      await window.FT_SUPABASE.saveStoreSettings(settingsPayload);
+
+      if (window.FT_CONFIG) {
+        window.FT_CONFIG.whatsappNumber = settingsPayload.whatsapp_number;
+        window.FT_CONFIG.messengerUsername = settingsPayload.messenger_username;
+        window.FT_CONFIG.deliveryFeeDhaka = settingsPayload.delivery_fee_dhaka;
+        window.FT_CONFIG.deliveryFeeOutside = settingsPayload.delivery_fee_outside;
+        window.FT_CONFIG.promoText = promo;
+      }
+
+      await checkCloudHealth();
+      updateReadinessBanner();
+      await refreshAdminData();
+      showAdminToast('All boutique settings saved & synced!', 'ok');
     }
 
-    
     function openNewOrderModal() {
+      const dhakaFee = (window.FT_CONFIG && Number.isFinite(window.FT_CONFIG.deliveryFeeDhaka)) ? window.FT_CONFIG.deliveryFeeDhaka : 80;
+      const outFee = (window.FT_CONFIG && Number.isFinite(window.FT_CONFIG.deliveryFeeOutside)) ? window.FT_CONFIG.deliveryFeeOutside : 150;
+      const zoneSel = document.getElementById('man-zone');
+      if (zoneSel) {
+        zoneSel.options[0].textContent = `Inside Dhaka (৳${dhakaFee})`;
+        zoneSel.options[1].textContent = `Outside Dhaka (৳${outFee})`;
+      }
       document.getElementById('new-order-modal').classList.add('open');
     }
     function closeNewOrderModal() {
@@ -1494,21 +2043,30 @@
       const zone = document.getElementById('man-zone').value;
       const sku = document.getElementById('man-product').value;
       const qty = parseInt(document.getElementById('man-qty').value, 10) || 1;
-      const coupCode = document.getElementById('man-discount-code').value.trim();
+      const coupCode = document.getElementById('man-discount-code').value.trim().toUpperCase();
       const notes = document.getElementById('man-notes').value.trim();
 
       const prod = window.FT_CATALOG ? window.FT_CATALOG.PRODUCTS_BY_SKU[sku] : null;
-      const price = prod ? prod.priceBDT : 2000;
+      const price = prod ? (prod.priceBDT || 0) : 2000;
       const subtotal = price * qty;
-      const fee = zone === 'dhaka' ? 80 : 150;
+      const dhakaFee = (window.FT_CONFIG && Number.isFinite(window.FT_CONFIG.deliveryFeeDhaka)) ? window.FT_CONFIG.deliveryFeeDhaka : 80;
+      const outFee = (window.FT_CONFIG && Number.isFinite(window.FT_CONFIG.deliveryFeeOutside)) ? window.FT_CONFIG.deliveryFeeOutside : 150;
+      const fee = zone === 'dhaka' ? dhakaFee : outFee;
       
       let discountAmount = 0;
+      let isFreeShip = false;
       if (coupCode) {
-        const v = await window.FT_SUPABASE.validateCoupon(coupCode, subtotal);
-        if (v.valid) discountAmount = v.discountAmount;
+        const v = await window.FT_SUPABASE.validateCoupon(coupCode, subtotal, fee);
+        if (v.valid) {
+          discountAmount = v.discountAmount;
+          isFreeShip = v.coupon && v.coupon.discount_type === 'free_shipping';
+        } else {
+          showAdminToast(v.message || 'Coupon invalid', 'err');
+        }
       }
 
-      const total = subtotal + fee - discountAmount;
+      const appliedDeliveryFee = fee;
+      const total = Math.max(0, subtotal + appliedDeliveryFee - discountAmount);
       const d = new Date(), ymd = String(d.getFullYear()).slice(2) + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
       const ref = "FT-" + ymd + "-" + Math.random().toString(36).slice(2,6).toUpperCase();
 
@@ -1518,26 +2076,29 @@
         phone: phone,
         district: zone === 'dhaka' ? 'Dhaka' : 'Outside Dhaka',
         address: address,
-        deliveryFee: fee,
+        delivery_zone: zone,
+        deliveryFee: appliedDeliveryFee,
         subtotal: subtotal,
         discountCode: coupCode || null,
         discountAmount: discountAmount,
         total: total,
         paymentMethod: 'Cash on Delivery (COD)',
         notes: notes || 'Manual order created from Admin Portal',
+        source: 'admin_manual',
         items: [{
           sku: sku,
           title: prod ? prod.title : sku,
           price: price,
           qty: qty,
-          image: (prod && prod.assets && typeof prod.assets.main === 'string') ? prod.assets.main : (prod && prod.assets && prod.assets.main && prod.assets.main.localUrl ? prod.assets.main.localUrl : '')
+          image: (prod && prod.assets && typeof prod.assets.main === 'string') ? prod.assets.main : ('assets/products/' + sku + '/main.webp')
         }]
       };
 
       await window.FT_SUPABASE.createOrder(orderPayload);
-      alert('Order ' + ref + ' created successfully!');
+      document.getElementById('new-order-form').reset();
       closeNewOrderModal();
       await refreshAdminData();
+      showAdminToast('Order ' + ref + ' created successfully!', 'ok');
     }
 
     function openNewCouponModal() {
@@ -1549,6 +2110,7 @@
 
     async function submitNewCoupon() {
       const code = document.getElementById('coup-code').value.trim().toUpperCase();
+      if (!code) return;
       const type = document.getElementById('coup-type').value;
       const val = parseFloat(document.getElementById('coup-val').value) || 0;
       const min = parseFloat(document.getElementById('coup-min').value) || 0;
@@ -1565,12 +2127,63 @@
       };
 
       await window.FT_SUPABASE.saveCoupon(coupon);
-      alert('Coupon ' + code + ' created successfully!');
       closeNewCouponModal();
-      renderCouponsTable();
+      await renderCouponsTable();
+      showAdminToast('Coupon ' + code + ' saved successfully!', 'ok');
     }
 
-    window.addEventListener('DOMContentLoaded', initDashboard);
+    function copyFeedUrl(relPath) {
+      const fullUrl = window.location.origin + relPath;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(fullUrl).then(() => {
+          showAdminToast('Copied feed URL: ' + fullUrl, 'ok');
+        }).catch(() => {});
+      }
+    }
+
+    function buildAdCampaignUrl() {
+      const target = (document.getElementById('utm-target') || {}).value || '';
+      const src = ((document.getElementById('utm-source') || {}).value || 'facebook').trim();
+      const med = ((document.getElementById('utm-medium') || {}).value || 'paid_social').trim();
+      const camp = ((document.getElementById('utm-campaign') || {}).value || 'dhaka_launch').trim();
+      const params = new URLSearchParams();
+      if (target.startsWith('sku:')) {
+        params.set('sku', target.slice(4));
+      } else if (target.startsWith('col:')) {
+        params.set('collection', target.slice(4));
+      }
+      if (src) params.set('utm_source', src);
+      if (med) params.set('utm_medium', med);
+      if (camp) params.set('utm_campaign', camp);
+
+      let hash = '#/home';
+      if (target.startsWith('sku:')) hash = '#/product/' + target.slice(4);
+      else if (target.startsWith('col:')) hash = '#/collection/' + target.slice(4);
+
+      const outEl = document.getElementById('utm-result-url');
+      if (outEl) {
+        outEl.value = window.location.origin + '/?' + params.toString() + hash;
+      }
+      const csvInput = document.getElementById('feed-url-csv');
+      if (csvInput) csvInput.value = window.location.origin + '/api/catalog-feed.csv';
+      const xmlInput = document.getElementById('feed-url-xml');
+      if (xmlInput) xmlInput.value = window.location.origin + '/api/catalog-feed.xml';
+    }
+
+    function copyCampaignUrl() {
+      buildAdCampaignUrl();
+      const outEl = document.getElementById('utm-result-url');
+      if (outEl && outEl.value && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(outEl.value).then(() => {
+          showAdminToast('Ad campaign URL copied to clipboard!', 'ok');
+        }).catch(() => {});
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initDashboard();
+      buildAdCampaignUrl();
+    });
   </script>
 </body>
 </html>

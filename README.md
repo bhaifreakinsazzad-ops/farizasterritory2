@@ -18,12 +18,12 @@ The platform is designed to be **100% production-ready for general public access
 ## ✨ Key Features & Facilities
 
 ### 🛍️ Luxury Boutique Storefront (`index.html`)
-- **Curated Collections**: 5 boutique lines (Aarong Seller Label, Alfi Boutique Batik, Mome Noir, Zam Zam Swiss Lawn, Cotton Mirror & Embroidery).
-- **18 Studio-Verified Pieces**: Detailed bilingual descriptions (English & Bengali), authentic fabric breakdown (Kameez, Salwar, Dupatta), and verified BDT pricing (৳1,650 – ৳2,450).
-- **140 High-Resolution WebP Images**: 8 custom perspectives/crops per product (Main, Original, Alternate, Social Square 1:1, Story/Reel 9:16, Close-up Detail A & B, and AI Styling Illustrations).
-- **Interactive Hero Carousel & 3D Fluid Lightbox**: Touch-friendly, 60fps hardware-accelerated fluid zoom using Motion.dev & Anime.js.
+- **Curated Collections**: 8 boutique lines across two pillars — 5 Fashion lines (Aarong Seller Label, Alfi Boutique Batik, Mome Noir, Zam Zam Swiss Lawn, Cotton Mirror & Embroidery) and 3 Artisan Accessory & Decor lines (Decorative Hand Mirrors, Pendants & Jewelry, Bangles & Accessories).
+- **53 Studio-Verified Pieces**: Detailed bilingual descriptions (English & Bengali), authentic fabric/craft breakdowns, and verified BDT pricing across 18 Fashion garments and 35 Accessories.
+- **Optimized WebP Studio Media**: Custom perspectives & crops per fashion garment (Main, Original, Alternate, Social Square 1:1, Story/Reel 9:16, Close-up Detail A & B, and Styling Illustrations) alongside dedicated `.webp` & catalog photography for all 35 accessories.
+- **Interactive Hero Carousel & 3D Fluid Lightbox**: Touch-friendly, 60fps hardware-accelerated fluid zoom using Three.js, Motion.dev & Anime.js.
 - **Inquiry & Checkout Engine**: Fast client bag, Dhaka (৳80) / Outside Dhaka (৳150) delivery calculation, Cash on Delivery support, and automated unique order reference generation (`FT-YYMMDD-XXXX`).
-- **Promotional Coupons & Voucher Codes**: Real-time discount application at checkout (`FIRST25` for up to 25% off, `FREESHIP` for free shipping, `FARIZA200` for ৳200 welcome gift).
+- **Promotional Coupons & Voucher Codes**: Real-time discount application at checkout (`FIRST25` for up to 25% off, `FREESHIP` for free shipping above ৳3,000, `FARIZA200` for ৳200 welcome gift).
 - **Live Customer Order Tracking (`#/track` & `#/track/:ref`)**: Dedicated order lookup page where customers can enter their Order Reference or phone number to view live verification, workshop tailoring, and courier tracking status!
 
 ### 📊 Comprehensive Boutique Admin Dashboard (`admin.html`)
@@ -34,10 +34,11 @@ The platform is designed to be **100% production-ready for general public access
   - 💬 **One-Click WhatsApp Templates**: Pre-filled customer outreach messages for Order Confirmation, Courier Tracking ID, and Delivery Complete.
   - 📝 **Manual Order Creation**: Form for the boutique team to manually enter orders placed over phone calls, Facebook DMs, or physical visits.
   - 📥 **Export to CSV**: Download all orders into an Excel/Google Sheets-compatible `.csv` file.
-  - 👗 **Product Catalog & Stock Controls**: View all 18 pieces, check pricing, and toggle in-stock/out-of-stock.
-  - 🏷️ **Coupon Code Manager**: Create, edit, and toggle discount vouchers with minimum spend and percentage/fixed rules.
+  - 🔒 **Staff PIN Lock & Launch Readiness**: Protected with a configurable Admin PIN (default `1430`), `noindex` crawler protection, and a launch readiness checklist for WhatsApp & Supabase setup.
+  - 👗 **Product Catalog & Stock Controls**: View and search all 53 pieces (18 fashion + 35 accessories), adjust BDT pricing, and toggle in-stock/out-of-stock.
+  - 🏷️ **Coupon Code Manager**: Create, edit, and toggle discount vouchers with minimum spend and percentage/fixed/free-shipping rules.
   - 👥 **Customer CRM**: Searchable directory of past shoppers with order counts, lifetime spend, and direct WhatsApp chat links.
-  - ⚙️ **Storefront & Database Settings**: Manage Supabase keys, WhatsApp number, Facebook Messenger handle, Meta Pixel ID, and promo announcement bar.
+  - ⚙️ **Storefront & Database Settings**: Manage Supabase keys, WhatsApp number, Facebook Messenger handle, Meta Pixel ID, GA4 Measurement ID, and promo announcement bar.
 
 ### 🗄️ Supabase Cloud Database Integration
 - **Real-time Order Recording**: Every customer order inquiry is automatically stored in the Supabase PostgreSQL `orders` table.
@@ -46,10 +47,10 @@ The platform is designed to be **100% production-ready for general public access
 - **Offline-First Resilience**: If the database key is pending or offline, orders are safely stored in browser `localStorage` and queued for sync.
 
 ### 🎯 Ready for Advertising & Growth
-- **Built-in Meta Pixel (Facebook Pixel)**: Automatic tracking for `PageView`, `ViewContent`, `AddToCart`, `InitiateCheckout`, and `Lead` / `Purchase` events.
-- **OpenGraph & Twitter Card Tags**: Rich preview cards with images when shared on WhatsApp, Facebook, Instagram, and Twitter.
-- **Schema.org Structured Data**: JSON-LD `ClothingStore` and `Product` markup for Google search engine indexing and Meta catalog feeds.
-- **Floating WhatsApp Order CTA**: Sticky mobile-responsive button for quick ordering and customer inquiries.
+- **Built-in Meta Pixel & Server-Side CAPI**: Automatic deduplicated tracking for `PageView`, `ViewContent`, `Search`, `AddToCart`, `InitiateCheckout`, `Purchase`, `Lead`, and `Contact` events on the public storefront.
+- **OpenGraph, Robots & Sitemap**: Rich preview cards when shared on WhatsApp, Facebook, Instagram, and Twitter, plus `/robots.txt` and `/sitemap.xml`.
+- **Schema.org Structured Data**: JSON-LD `ClothingStore` and dynamic `Product` markup for search indexing and Meta catalog feeds.
+- **Floating Quick-Contact CTA**: Sticky mobile-responsive WhatsApp button (with automatic Facebook Messenger fallback until WhatsApp is configured).
 
 ---
 
@@ -64,18 +65,23 @@ The platform is designed to be **100% production-ready for general public access
 │   ├── css/
 │   │   └── style.css           # Luxury boutique styling, animations, responsive design
 │   ├── js/
-│   │   ├── config.js           # Brand config, Supabase URL, Meta Pixel, Analytics
+│   │   ├── config.js           # Brand config, Supabase URL, Meta Pixel, CAPI, GA4 Analytics
 │   │   ├── supabaseClient.js   # Supabase client wrapper & database CRUD operations
-│   │   ├── catalogData.js      # Verified catalog data, 18 products across 5 collections
+│   │   ├── catalogData.js      # Verified catalog data, 53 products across 8 collections
+│   │   ├── threeHero.js        # Three.js hero ambient scene
+│   │   ├── animePolish.js      # Micro-interactions & motion transitions
 │   │   └── app.js              # Complete boutique e-commerce application logic & routing
 │   ├── brand/
 │   │   └── brand_logo_1.webp   # Fariza's Territory official luxury brand mark
+│   ├── accessories/            # 35 artisan accessory .webp & .jpg studio photos (FT-HM/JWL/BA)
 │   └── products/
-│       ├── CAT-001/ ... CAT-018/ (140 high-resolution WebP product photos)
+│       ├── CAT-001/ ... CAT-018/ (Fashion three-piece multi-angle WebP photos)
+├── robots.txt                  # Search engine crawler policy (blocks /admin)
+├── sitemap.xml                 # XML sitemap for storefront discovery
 ├── supabase/
 │   ├── migrations/
 │   │   └── 01_initial_schema.sql # PostgreSQL schema DDL with RLS and indexes
-│   └── seed.sql                # Seed script with 5 collections, 18 products, coupons & sample orders
+│   └── seed.sql                # Seed script with collections, products & active coupons
 ├── docs/
 │   ├── SUPABASE_SETUP.md       # Step-by-step database setup guide
 │   ├── ADVERTISING_GUIDE.md    # Meta Pixel & Facebook Ad campaign setup guide

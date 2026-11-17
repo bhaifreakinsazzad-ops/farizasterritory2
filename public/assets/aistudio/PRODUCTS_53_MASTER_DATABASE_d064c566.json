@@ -1,0 +1,2225 @@
+{
+  "name": "Fariza's Territory combined retail manifest",
+  "totalProducts": 53,
+  "categories": {
+    "Fashion": 18,
+    "Accessories": 35
+  },
+  "separateSourceFilesRemainAuthoritative": true,
+  "important": "Do not treat proposed launch prices as approved checkout charges. Photo provenance and public accessibility must be checked before launch.",
+  "products": [
+    {
+      "sku": "CAT-001",
+      "superCategory": "Fashion",
+      "collection": "Aarong — seller label, affiliation unverified",
+      "collectionKey": "01_Aarong_Label_Unverified",
+      "titleEN": "Magenta Plum Printed Three Piece",
+      "titleBN": null,
+      "slug": "magenta-plum-printed-three-piece",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1rVtmIJhw922nPlgUrJppKw1sOtZayLTo/view?usp=drivesdk",
+          "driveFileId": "1rVtmIJhw922nPlgUrJppKw1sOtZayLTo",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1rdPzWBia3rg1L6k6CAtktGcqHJ4BGrX-/view?usp=drivesdk",
+          "driveFileId": "1rdPzWBia3rg1L6k6CAtktGcqHJ4BGrX-",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1ZDDNA4iaqfcG318gsfSHNukcvI_fbxAy/view?usp=drivesdk",
+          "driveFileId": "1ZDDNA4iaqfcG318gsfSHNukcvI_fbxAy",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1xHG21rmYOjcsLJrMYpGY4RTaKrEv_mda/view?usp=drivesdk",
+          "driveFileId": "1xHG21rmYOjcsLJrMYpGY4RTaKrEv_mda",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1YWSuqlPxHqZBRFQ-i-UEUWN_PRsfj4CO/view?usp=drivesdk",
+          "driveFileId": "1YWSuqlPxHqZBRFQ-i-UEUWN_PRsfj4CO",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/15fim5DTL-UrIa0ZvS1coQWd7zQChhiO8/view?usp=drivesdk",
+          "driveFileId": "15fim5DTL-UrIa0ZvS1coQWd7zQChhiO8",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/13o5mw1RA0ZUqlGk8sLV7sfxkdwVwmQE7/view?usp=drivesdk",
+          "driveFileId": "13o5mw1RA0ZUqlGk8sLV7sfxkdwVwmQE7",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/1vDPgDIZ-1SvO9djEEk4MEzljkTryj8Za/view?usp=drivesdk",
+          "driveFileId": "1vDPgDIZ-1SvO9djEEk4MEzljkTryj8Za",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-002",
+      "superCategory": "Fashion",
+      "collection": "Alfi Boutique",
+      "collectionKey": "02_Alfi_Boutique",
+      "titleEN": "Emerald Teal Batik",
+      "titleBN": null,
+      "slug": "emerald-teal-batik",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1EeTV6lgA43eRf2aJfKF7q-n-X5LnqAeV/view?usp=drivesdk",
+          "driveFileId": "1EeTV6lgA43eRf2aJfKF7q-n-X5LnqAeV",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1MaDHhdEswNCv6OHGv-LHdndCRZr4Gnhx/view?usp=drivesdk",
+          "driveFileId": "1MaDHhdEswNCv6OHGv-LHdndCRZr4Gnhx",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1c_FdPJo-hXqwfQTNFpIIZDa5p6jRVLJV/view?usp=drivesdk",
+          "driveFileId": "1c_FdPJo-hXqwfQTNFpIIZDa5p6jRVLJV",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1IFhaUok8Xruc_6AJcC9t_nEf2308NpbH/view?usp=drivesdk",
+          "driveFileId": "1IFhaUok8Xruc_6AJcC9t_nEf2308NpbH",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1hBWhP24tTLwmBjGxM860PFyIs_RdPcS0/view?usp=drivesdk",
+          "driveFileId": "1hBWhP24tTLwmBjGxM860PFyIs_RdPcS0",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1sz8rEQOo5KwEEqgZ8VrYDldphXlIarnZ/view?usp=drivesdk",
+          "driveFileId": "1sz8rEQOo5KwEEqgZ8VrYDldphXlIarnZ",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1E5r4XrEWv9GrHO31dWsYlCZ4TDVUPIVw/view?usp=drivesdk",
+          "driveFileId": "1E5r4XrEWv9GrHO31dWsYlCZ4TDVUPIVw",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/11ujWnVyM9uubt5iBkucgYP70IlIZGmVr/view?usp=drivesdk",
+          "driveFileId": "11ujWnVyM9uubt5iBkucgYP70IlIZGmVr",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-003",
+      "superCategory": "Fashion",
+      "collection": "Alfi Boutique",
+      "collectionKey": "02_Alfi_Boutique",
+      "titleEN": "Dusty Mauve Floral Batik",
+      "titleBN": null,
+      "slug": "dusty-mauve-floral-batik",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1UjsXvgcb0YZXXMpkhMVjWMCAJ_gxXAse/view?usp=drivesdk",
+          "driveFileId": "1UjsXvgcb0YZXXMpkhMVjWMCAJ_gxXAse",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1mFYeGz46GPUPQWGAa2LiP-TOelpLz6a3/view?usp=drivesdk",
+          "driveFileId": "1mFYeGz46GPUPQWGAa2LiP-TOelpLz6a3",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1jM_bM09llLvnXwtcS9e8Al8iJZD9mhRM/view?usp=drivesdk",
+          "driveFileId": "1jM_bM09llLvnXwtcS9e8Al8iJZD9mhRM",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1t1jMpP3yuap1WZbNJBjBRDD8PQMvxYC-/view?usp=drivesdk",
+          "driveFileId": "1t1jMpP3yuap1WZbNJBjBRDD8PQMvxYC-",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1L6P8Jx18fXHSGVfiyiPsobX966kJrbG0/view?usp=drivesdk",
+          "driveFileId": "1L6P8Jx18fXHSGVfiyiPsobX966kJrbG0",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1Gdzfy1dok5dHvx817t71S0c5npT2vVNP/view?usp=drivesdk",
+          "driveFileId": "1Gdzfy1dok5dHvx817t71S0c5npT2vVNP",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1CmfNJFtPLPcf4SFoyNZ4vnvSEZM1CQcY/view?usp=drivesdk",
+          "driveFileId": "1CmfNJFtPLPcf4SFoyNZ4vnvSEZM1CQcY",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/1S1Cf4yamkdR25I5dgGK5Oc2t0lED9W2b/view?usp=drivesdk",
+          "driveFileId": "1S1Cf4yamkdR25I5dgGK5Oc2t0lED9W2b",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-004",
+      "superCategory": "Fashion",
+      "collection": "Mome Boutique",
+      "collectionKey": "03_Mome_Boutique",
+      "titleEN": "Forest Elegance",
+      "titleBN": null,
+      "slug": "forest-elegance",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1hDDT7C57EUd7SlfhB_UTV1HM2CKmtmnY/view?usp=drivesdk",
+          "driveFileId": "1hDDT7C57EUd7SlfhB_UTV1HM2CKmtmnY",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1WiBEOxyy8VjoNLSs8rw2CcRwkDdnA7im/view?usp=drivesdk",
+          "driveFileId": "1WiBEOxyy8VjoNLSs8rw2CcRwkDdnA7im",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1vfg7AQV3qnWen2QRFj-3oUqmzWoKla3S/view?usp=drivesdk",
+          "driveFileId": "1vfg7AQV3qnWen2QRFj-3oUqmzWoKla3S",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1ZTx79yAqtDsUQyV4MLQZK6MQyVMGTwDl/view?usp=drivesdk",
+          "driveFileId": "1ZTx79yAqtDsUQyV4MLQZK6MQyVMGTwDl",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1v_OacKSvbvUyokVkuhGBnAQLTallA7mR/view?usp=drivesdk",
+          "driveFileId": "1v_OacKSvbvUyokVkuhGBnAQLTallA7mR",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1wGGaMDma1EfLPS4yP8NIRzeF8AeqmzZ9/view?usp=drivesdk",
+          "driveFileId": "1wGGaMDma1EfLPS4yP8NIRzeF8AeqmzZ9",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1EZqHbdRS81JS9qULgJn6UYfKdW2o0yS1/view?usp=drivesdk",
+          "driveFileId": "1EZqHbdRS81JS9qULgJn6UYfKdW2o0yS1",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-005",
+      "superCategory": "Fashion",
+      "collection": "Mome Boutique",
+      "collectionKey": "03_Mome_Boutique",
+      "titleEN": "Fuchsia Noir",
+      "titleBN": null,
+      "slug": "fuchsia-noir",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1_2XDPZF6EABqRrcV6yIUdB-pTbtbDEQX/view?usp=drivesdk",
+          "driveFileId": "1_2XDPZF6EABqRrcV6yIUdB-pTbtbDEQX",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1xGpk702f_n3NjJ7rawQV4UiGJodgfzYB/view?usp=drivesdk",
+          "driveFileId": "1xGpk702f_n3NjJ7rawQV4UiGJodgfzYB",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1gwTY0C8iJ5NiGwh268vxLzLTZA_05hba/view?usp=drivesdk",
+          "driveFileId": "1gwTY0C8iJ5NiGwh268vxLzLTZA_05hba",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1Frpm7Wy9TA2Bk01skTE0wuz4boCbVQ0m/view?usp=drivesdk",
+          "driveFileId": "1Frpm7Wy9TA2Bk01skTE0wuz4boCbVQ0m",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1oi0pAivSqg2sKh88lwKaZlAkz2ez-jtf/view?usp=drivesdk",
+          "driveFileId": "1oi0pAivSqg2sKh88lwKaZlAkz2ez-jtf",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1La2HhAhk_alrt6e7tM7w-twtDkdfn-Wj/view?usp=drivesdk",
+          "driveFileId": "1La2HhAhk_alrt6e7tM7w-twtDkdfn-Wj",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1Hk6LNUrP8FW8Y0grFCez2i46f_tApYFQ/view?usp=drivesdk",
+          "driveFileId": "1Hk6LNUrP8FW8Y0grFCez2i46f_tApYFQ",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-006",
+      "superCategory": "Fashion",
+      "collection": "Mome Boutique",
+      "collectionKey": "03_Mome_Boutique",
+      "titleEN": "Mustard Noir",
+      "titleBN": null,
+      "slug": "mustard-noir",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/100eDKNe1Vi0HpQkseTlgmalc_QKB60IW/view?usp=drivesdk",
+          "driveFileId": "100eDKNe1Vi0HpQkseTlgmalc_QKB60IW",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1gmibNVDuUwcRH_BPT5ElWx0WxGCidF9a/view?usp=drivesdk",
+          "driveFileId": "1gmibNVDuUwcRH_BPT5ElWx0WxGCidF9a",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1_fsEFCZSlXLgHhjTVTS3qklxyaw2oCYX/view?usp=drivesdk",
+          "driveFileId": "1_fsEFCZSlXLgHhjTVTS3qklxyaw2oCYX",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1JVfFup73S9pCOMhIDroy0nsscXXioN3V/view?usp=drivesdk",
+          "driveFileId": "1JVfFup73S9pCOMhIDroy0nsscXXioN3V",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1I0ARI1CirICmtlVeqkV61r1078uBOFoU/view?usp=drivesdk",
+          "driveFileId": "1I0ARI1CirICmtlVeqkV61r1078uBOFoU",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1WGsVHHOj2idziWDaed8n_EzLJ-WeGcag/view?usp=drivesdk",
+          "driveFileId": "1WGsVHHOj2idziWDaed8n_EzLJ-WeGcag",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1hFl7fEw8WD-tWetVgAc8OOJ6mbkjpNRV/view?usp=drivesdk",
+          "driveFileId": "1hFl7fEw8WD-tWetVgAc8OOJ6mbkjpNRV",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-007",
+      "superCategory": "Fashion",
+      "collection": "Mome Boutique",
+      "collectionKey": "03_Mome_Boutique",
+      "titleEN": "Burgundy Sunset",
+      "titleBN": null,
+      "slug": "burgundy-sunset",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1eNYXXVUsdmSV_DAJrKACyioxiD3kLeMB/view?usp=drivesdk",
+          "driveFileId": "1eNYXXVUsdmSV_DAJrKACyioxiD3kLeMB",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1oeJnUUs2x8ZCjkkzTXQw1YsmO5UvbPMW/view?usp=drivesdk",
+          "driveFileId": "1oeJnUUs2x8ZCjkkzTXQw1YsmO5UvbPMW",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/17CMksrurMaxtCPYordlcb-vx4EF4t3CD/view?usp=drivesdk",
+          "driveFileId": "17CMksrurMaxtCPYordlcb-vx4EF4t3CD",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/19J3TV-eIgdGtGc6gUJ5qbI_c3_C8h9Ow/view?usp=drivesdk",
+          "driveFileId": "19J3TV-eIgdGtGc6gUJ5qbI_c3_C8h9Ow",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1jbwmzOt9DS1B7RzpvGGbKyIZREc3-Lbp/view?usp=drivesdk",
+          "driveFileId": "1jbwmzOt9DS1B7RzpvGGbKyIZREc3-Lbp",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1V2z-m7wEI9czTkac0VODpLlsYy8Ur0tq/view?usp=drivesdk",
+          "driveFileId": "1V2z-m7wEI9czTkac0VODpLlsYy8Ur0tq",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1bfKwPtIbeAZb2JetlcNyI3gLWrq7MGpT/view?usp=drivesdk",
+          "driveFileId": "1bfKwPtIbeAZb2JetlcNyI3gLWrq7MGpT",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-008",
+      "superCategory": "Fashion",
+      "collection": "Zam Zam Swiss Lawn",
+      "collectionKey": "04_Zam_Zam_Swiss_Lawn",
+      "titleEN": "Navy Royal Bloom",
+      "titleBN": null,
+      "slug": "navy-royal-bloom",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1mlPaussfRo86RChIhbZekrkp3X_7Jzt6/view?usp=drivesdk",
+          "driveFileId": "1mlPaussfRo86RChIhbZekrkp3X_7Jzt6",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1aFV6ZPd6YTVCtoAxTDZwCi1ziFf1GoZd/view?usp=drivesdk",
+          "driveFileId": "1aFV6ZPd6YTVCtoAxTDZwCi1ziFf1GoZd",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1Ai-jtM9mOWjd8ZV3M2FjfVKfPW-zsRM7/view?usp=drivesdk",
+          "driveFileId": "1Ai-jtM9mOWjd8ZV3M2FjfVKfPW-zsRM7",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1PUX2b_qddZSJ-R7yC6tHQda9p0BnmhwG/view?usp=drivesdk",
+          "driveFileId": "1PUX2b_qddZSJ-R7yC6tHQda9p0BnmhwG",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1OWCAEeBxLVUlXuJwyj86jlB-lZG5u-nk/view?usp=drivesdk",
+          "driveFileId": "1OWCAEeBxLVUlXuJwyj86jlB-lZG5u-nk",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1eGt-3HH05v8_Gv-wM7s22orOyS_jhngQ/view?usp=drivesdk",
+          "driveFileId": "1eGt-3HH05v8_Gv-wM7s22orOyS_jhngQ",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1NXFBPqsvXvjq33toUkde95cLT5iVBoKB/view?usp=drivesdk",
+          "driveFileId": "1NXFBPqsvXvjq33toUkde95cLT5iVBoKB",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/1APOBMbjheYCNmWdutdqYjduswu1JcTnK/view?usp=drivesdk",
+          "driveFileId": "1APOBMbjheYCNmWdutdqYjduswu1JcTnK",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-009",
+      "superCategory": "Fashion",
+      "collection": "Zam Zam Swiss Lawn",
+      "collectionKey": "04_Zam_Zam_Swiss_Lawn",
+      "titleEN": "Autumn Floral Elegance",
+      "titleBN": null,
+      "slug": "autumn-floral-elegance",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1rBKCjJz7DijJDAtUKB8kUHdQTSXWAVFg/view?usp=drivesdk",
+          "driveFileId": "1rBKCjJz7DijJDAtUKB8kUHdQTSXWAVFg",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1BcKYgcdg86hqWORPVjfmFqHSi4HtjlPt/view?usp=drivesdk",
+          "driveFileId": "1BcKYgcdg86hqWORPVjfmFqHSi4HtjlPt",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1eUcBlLt99YSQkN5JlKzOMAyKzYAElTpu/view?usp=drivesdk",
+          "driveFileId": "1eUcBlLt99YSQkN5JlKzOMAyKzYAElTpu",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1UT01Vm2ndBbx2bBHmMqe22OLFTqwh_uw/view?usp=drivesdk",
+          "driveFileId": "1UT01Vm2ndBbx2bBHmMqe22OLFTqwh_uw",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1TnD9q5HvngrzGTkudVuPMaMYowHZZtdt/view?usp=drivesdk",
+          "driveFileId": "1TnD9q5HvngrzGTkudVuPMaMYowHZZtdt",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1wwmIq-vyeVpVvP4uBd4hjaKhLPbfszXA/view?usp=drivesdk",
+          "driveFileId": "1wwmIq-vyeVpVvP4uBd4hjaKhLPbfszXA",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/14HqpjBhvuoNbrdHBNZwnkNr8w4ZSDIEI/view?usp=drivesdk",
+          "driveFileId": "14HqpjBhvuoNbrdHBNZwnkNr8w4ZSDIEI",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/1BT_P4UKPq8zCvG-k5fFQT1xq2oylC7RQ/view?usp=drivesdk",
+          "driveFileId": "1BT_P4UKPq8zCvG-k5fFQT1xq2oylC7RQ",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-010",
+      "superCategory": "Fashion",
+      "collection": "Zam Zam Swiss Lawn",
+      "collectionKey": "04_Zam_Zam_Swiss_Lawn",
+      "titleEN": "Midnight Teal Heritage",
+      "titleBN": null,
+      "slug": "midnight-teal-heritage",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1MGzV7UR_eWD6RplV7VWooQ3qDq3_wtWQ/view?usp=drivesdk",
+          "driveFileId": "1MGzV7UR_eWD6RplV7VWooQ3qDq3_wtWQ",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1pmnIyOD8aJYNHtqZ8UQn4RYFUW9mDQw6/view?usp=drivesdk",
+          "driveFileId": "1pmnIyOD8aJYNHtqZ8UQn4RYFUW9mDQw6",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1MSmVTnaqPR9G0KNgCFvqZT0BCGuW26bM/view?usp=drivesdk",
+          "driveFileId": "1MSmVTnaqPR9G0KNgCFvqZT0BCGuW26bM",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1ag8HwkCzgwCm_dX69phvSmWIgpGWtpr9/view?usp=drivesdk",
+          "driveFileId": "1ag8HwkCzgwCm_dX69phvSmWIgpGWtpr9",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1liQV1rQ82doUZi_O13AlZbJYXHBtToF1/view?usp=drivesdk",
+          "driveFileId": "1liQV1rQ82doUZi_O13AlZbJYXHBtToF1",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1dtSM5cM7dMPKyB2qgV-7zTNxuehHkuFx/view?usp=drivesdk",
+          "driveFileId": "1dtSM5cM7dMPKyB2qgV-7zTNxuehHkuFx",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1tTe1Gx3r25cSAz2FB4JcpXRkAnKdOiHS/view?usp=drivesdk",
+          "driveFileId": "1tTe1Gx3r25cSAz2FB4JcpXRkAnKdOiHS",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/1hnTtyJwxQkHW6cNu4Jb87zQIp2aHFP_x/view?usp=drivesdk",
+          "driveFileId": "1hnTtyJwxQkHW6cNu4Jb87zQIp2aHFP_x",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-011",
+      "superCategory": "Fashion",
+      "collection": "Zam Zam Swiss Lawn",
+      "collectionKey": "04_Zam_Zam_Swiss_Lawn",
+      "titleEN": "Olive Garden Bloom",
+      "titleBN": null,
+      "slug": "olive-garden-bloom",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1kGU6uNBLuJW2z61mQPeipdF160n9eJfq/view?usp=drivesdk",
+          "driveFileId": "1kGU6uNBLuJW2z61mQPeipdF160n9eJfq",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1lHQTs0CAwWNfHsaQWdVwmr8W5KoYA6Jy/view?usp=drivesdk",
+          "driveFileId": "1lHQTs0CAwWNfHsaQWdVwmr8W5KoYA6Jy",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1bVHvarm2SrjycuBc76rhA96uas4flkNJ/view?usp=drivesdk",
+          "driveFileId": "1bVHvarm2SrjycuBc76rhA96uas4flkNJ",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1NGoldXL_fPqscHwLdn8Q5QOHw5LRLjzt/view?usp=drivesdk",
+          "driveFileId": "1NGoldXL_fPqscHwLdn8Q5QOHw5LRLjzt",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1tnzzXgr_zS3QivyOXIcIYg42ogguMHdY/view?usp=drivesdk",
+          "driveFileId": "1tnzzXgr_zS3QivyOXIcIYg42ogguMHdY",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1ALL2FCapADTrqSOSUIJlCqjbJ-CuRezh/view?usp=drivesdk",
+          "driveFileId": "1ALL2FCapADTrqSOSUIJlCqjbJ-CuRezh",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1uQNm08s5qTBOvdNQXCvMBFq8Uc2eH87b/view?usp=drivesdk",
+          "driveFileId": "1uQNm08s5qTBOvdNQXCvMBFq8Uc2eH87b",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/1gpYKJly-o4J3dDKbthTf41glX6Q1BRaH/view?usp=drivesdk",
+          "driveFileId": "1gpYKJly-o4J3dDKbthTf41glX6Q1BRaH",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-012",
+      "superCategory": "Fashion",
+      "collection": "Zam Zam Swiss Lawn",
+      "collectionKey": "04_Zam_Zam_Swiss_Lawn",
+      "titleEN": "Coral Geometric Bloom",
+      "titleBN": null,
+      "slug": "coral-geometric-bloom",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1oy9Zvg2dziafHMiPh5jUrBSjNtF4kebH/view?usp=drivesdk",
+          "driveFileId": "1oy9Zvg2dziafHMiPh5jUrBSjNtF4kebH",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1Jwb-Z1GHsDpuSKTLr-AMdc7qLNCdnNjx/view?usp=drivesdk",
+          "driveFileId": "1Jwb-Z1GHsDpuSKTLr-AMdc7qLNCdnNjx",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/13BHZvvmtZfhfDW-qEcCyPBtBsUuEFst3/view?usp=drivesdk",
+          "driveFileId": "13BHZvvmtZfhfDW-qEcCyPBtBsUuEFst3",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1S0be12fYRg0g2mQIGeEnljdP1hJvOhrN/view?usp=drivesdk",
+          "driveFileId": "1S0be12fYRg0g2mQIGeEnljdP1hJvOhrN",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1X3xRTzO1TuPVUpo1rq297WNEgJsiJ4Gx/view?usp=drivesdk",
+          "driveFileId": "1X3xRTzO1TuPVUpo1rq297WNEgJsiJ4Gx",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1s2Vb7OfeUlaPNtIxq5g9RnfpbIB2FZv1/view?usp=drivesdk",
+          "driveFileId": "1s2Vb7OfeUlaPNtIxq5g9RnfpbIB2FZv1",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1uW7EOZIQl0zEO1nhT1e7MW-Lvi8DxwTI/view?usp=drivesdk",
+          "driveFileId": "1uW7EOZIQl0zEO1nhT1e7MW-Lvi8DxwTI",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/15E8OC33v3rrKqXSr-e46EVvzy8g8SEic/view?usp=drivesdk",
+          "driveFileId": "15E8OC33v3rrKqXSr-e46EVvzy8g8SEic",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-013",
+      "superCategory": "Fashion",
+      "collection": "Zam Zam Swiss Lawn",
+      "collectionKey": "04_Zam_Zam_Swiss_Lawn",
+      "titleEN": "Crimson Floral Mosaic",
+      "titleBN": null,
+      "slug": "crimson-floral-mosaic",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1NouuV36F3jKSIbT7_ic_Wz8T0hd41Fhr/view?usp=drivesdk",
+          "driveFileId": "1NouuV36F3jKSIbT7_ic_Wz8T0hd41Fhr",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1I3wCaHQwvMEp3ktMWJrmmBSZsxIKPisP/view?usp=drivesdk",
+          "driveFileId": "1I3wCaHQwvMEp3ktMWJrmmBSZsxIKPisP",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1TKYQyKmK2JoGypMkW6l1EkHwbcAnX_Hz/view?usp=drivesdk",
+          "driveFileId": "1TKYQyKmK2JoGypMkW6l1EkHwbcAnX_Hz",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1jiUhx0WKHCcFgII73sFBxjStiAhsaGLy/view?usp=drivesdk",
+          "driveFileId": "1jiUhx0WKHCcFgII73sFBxjStiAhsaGLy",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1XS8H_k4iW6UcOpCrTDXTlCgej-mT3hZX/view?usp=drivesdk",
+          "driveFileId": "1XS8H_k4iW6UcOpCrTDXTlCgej-mT3hZX",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1TnBVi7hXuO1CIRNefX9SU9JR1MpNUFab/view?usp=drivesdk",
+          "driveFileId": "1TnBVi7hXuO1CIRNefX9SU9JR1MpNUFab",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1f2qHNZrmppGWKPx7lfIR8wtelpJbKxwh/view?usp=drivesdk",
+          "driveFileId": "1f2qHNZrmppGWKPx7lfIR8wtelpJbKxwh",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/1XRXq9gAxdUwlUdYktZR7_k3K-WnXi_cH/view?usp=drivesdk",
+          "driveFileId": "1XRXq9gAxdUwlUdYktZR7_k3K-WnXi_cH",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-014",
+      "superCategory": "Fashion",
+      "collection": "Cotton Mirror & Embroidery",
+      "collectionKey": "05_Cotton_Mirror_Embroidery",
+      "titleEN": "Golden Mustard Mirror Elegance",
+      "titleBN": null,
+      "slug": "golden-mustard-mirror-elegance",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1WfBj8B0ZNuXQxSb9-ThFe3zY4tym7LWO/view?usp=drivesdk",
+          "driveFileId": "1WfBj8B0ZNuXQxSb9-ThFe3zY4tym7LWO",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1VO2qgFxoLaoXp8Jt1KymgrEaK2XaEwLZ/view?usp=drivesdk",
+          "driveFileId": "1VO2qgFxoLaoXp8Jt1KymgrEaK2XaEwLZ",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/10Z54B--g_0F9tVXG7o-uvAxMCos_mUuK/view?usp=drivesdk",
+          "driveFileId": "10Z54B--g_0F9tVXG7o-uvAxMCos_mUuK",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1A9_d9AB_4zSxMve0zOegE6IVeLmgtsLX/view?usp=drivesdk",
+          "driveFileId": "1A9_d9AB_4zSxMve0zOegE6IVeLmgtsLX",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1tAEfabSYvBnEtY45HrGW63n85SY2cIIl/view?usp=drivesdk",
+          "driveFileId": "1tAEfabSYvBnEtY45HrGW63n85SY2cIIl",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1P4le3sHbyee9xipyp66qKoqWklRzGI1V/view?usp=drivesdk",
+          "driveFileId": "1P4le3sHbyee9xipyp66qKoqWklRzGI1V",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1dd_hYdf87ll4FGRVNpZ-CyFF296_zQn0/view?usp=drivesdk",
+          "driveFileId": "1dd_hYdf87ll4FGRVNpZ-CyFF296_zQn0",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/1jnanstYvLBmgwigx3ekV0ixd5H-ieRs-/view?usp=drivesdk",
+          "driveFileId": "1jnanstYvLBmgwigx3ekV0ixd5H-ieRs-",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-015",
+      "superCategory": "Fashion",
+      "collection": "Cotton Mirror & Embroidery",
+      "collectionKey": "05_Cotton_Mirror_Embroidery",
+      "titleEN": "Midnight Black Ethnic Charm",
+      "titleBN": null,
+      "slug": "midnight-black-ethnic-charm",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1XmBDRziSoJfbvtv72xZp4ZRkxXvDAwxD/view?usp=drivesdk",
+          "driveFileId": "1XmBDRziSoJfbvtv72xZp4ZRkxXvDAwxD",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1boPKkmXqnsi1gS93_nwuoNiyWOXPnnsS/view?usp=drivesdk",
+          "driveFileId": "1boPKkmXqnsi1gS93_nwuoNiyWOXPnnsS",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1yMPp4Q5Rz4iu6axOc1ON0idb-QqCRuCy/view?usp=drivesdk",
+          "driveFileId": "1yMPp4Q5Rz4iu6axOc1ON0idb-QqCRuCy",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1IllpPUWIUQWFDsoQAKa14nleZEPf3pua/view?usp=drivesdk",
+          "driveFileId": "1IllpPUWIUQWFDsoQAKa14nleZEPf3pua",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1_x5eRj-8E2BC7I9KiAalXOkmxMAQNE5W/view?usp=drivesdk",
+          "driveFileId": "1_x5eRj-8E2BC7I9KiAalXOkmxMAQNE5W",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/14tZ_ErXKLJineANpKfFADzwC2iNCQoG4/view?usp=drivesdk",
+          "driveFileId": "14tZ_ErXKLJineANpKfFADzwC2iNCQoG4",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/17YPvsWJuuviSn9FyJnWFaqVPhOVDpZwD/view?usp=drivesdk",
+          "driveFileId": "17YPvsWJuuviSn9FyJnWFaqVPhOVDpZwD",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/1C88SSAIU0xKHu86zLCLBI2Crn26Pd7KZ/view?usp=drivesdk",
+          "driveFileId": "1C88SSAIU0xKHu86zLCLBI2Crn26Pd7KZ",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-016",
+      "superCategory": "Fashion",
+      "collection": "Cotton Mirror & Embroidery",
+      "collectionKey": "05_Cotton_Mirror_Embroidery",
+      "titleEN": "Fuchsia Bloom Aqua Delight",
+      "titleBN": null,
+      "slug": "fuchsia-bloom-aqua-delight",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1X1I5aO4OjAnAcAN1CgCgMsB5sLp-A5iV/view?usp=drivesdk",
+          "driveFileId": "1X1I5aO4OjAnAcAN1CgCgMsB5sLp-A5iV",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1iZo-RHkNwrcLjT3PTVWXQtbOU7Ldtsr1/view?usp=drivesdk",
+          "driveFileId": "1iZo-RHkNwrcLjT3PTVWXQtbOU7Ldtsr1",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1xmLJvyWb7yG06to0BSMPmpEXkNXA0Ra_/view?usp=drivesdk",
+          "driveFileId": "1xmLJvyWb7yG06to0BSMPmpEXkNXA0Ra_",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1tY1lkkpwSXR84k4lYgXvJ9gEA6JItuRu/view?usp=drivesdk",
+          "driveFileId": "1tY1lkkpwSXR84k4lYgXvJ9gEA6JItuRu",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1b5DisdH_HdRNroKMrJ_uOYGqIiUH7A4b/view?usp=drivesdk",
+          "driveFileId": "1b5DisdH_HdRNroKMrJ_uOYGqIiUH7A4b",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1Mo5P6hKz4jXBRVGDOpEDIEd7meKDAPYi/view?usp=drivesdk",
+          "driveFileId": "1Mo5P6hKz4jXBRVGDOpEDIEd7meKDAPYi",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1XFPm4TC6F9usJqABbUGn3gmMQYNfiVaJ/view?usp=drivesdk",
+          "driveFileId": "1XFPm4TC6F9usJqABbUGn3gmMQYNfiVaJ",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/1A_YKVtHBqxb1iV33hyr7Zog-rOPOzMy7/view?usp=drivesdk",
+          "driveFileId": "1A_YKVtHBqxb1iV33hyr7Zog-rOPOzMy7",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-017",
+      "superCategory": "Fashion",
+      "collection": "Cotton Mirror & Embroidery",
+      "collectionKey": "05_Cotton_Mirror_Embroidery",
+      "titleEN": "Electric Blue Mirror Blossom",
+      "titleBN": null,
+      "slug": "electric-blue-mirror-blossom",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/14nYu8_CGhy6w7-9CClx4-ZJmnpFKCgm0/view?usp=drivesdk",
+          "driveFileId": "14nYu8_CGhy6w7-9CClx4-ZJmnpFKCgm0",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1ET4ytkPGaO70caCQoItvcXaVOm17BnlT/view?usp=drivesdk",
+          "driveFileId": "1ET4ytkPGaO70caCQoItvcXaVOm17BnlT",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/1SjkGJfbHEP8KydmJymdbxWBX3YvqWPNi/view?usp=drivesdk",
+          "driveFileId": "1SjkGJfbHEP8KydmJymdbxWBX3YvqWPNi",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1mbtj-6mycnxSz1SziLyJuGaZttNuBtLj/view?usp=drivesdk",
+          "driveFileId": "1mbtj-6mycnxSz1SziLyJuGaZttNuBtLj",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/1Nra-qYkD6qENdjRYSFSYh4d4bLauoVaP/view?usp=drivesdk",
+          "driveFileId": "1Nra-qYkD6qENdjRYSFSYh4d4bLauoVaP",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/1SingmH-aVoO9ummR-t-PgSW2twSE5dZ-/view?usp=drivesdk",
+          "driveFileId": "1SingmH-aVoO9ummR-t-PgSW2twSE5dZ-",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1CsPRtZkMlVqHFNnArUZcjFE4Ob91V-eS/view?usp=drivesdk",
+          "driveFileId": "1CsPRtZkMlVqHFNnArUZcjFE4Ob91V-eS",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/1Y6jTd7wYK6CzWHNMD4zxmmO9v6G2s_hH/view?usp=drivesdk",
+          "driveFileId": "1Y6jTd7wYK6CzWHNMD4zxmmO9v6G2s_hH",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "CAT-018",
+      "superCategory": "Fashion",
+      "collection": "Cotton Mirror & Embroidery",
+      "collectionKey": "05_Cotton_Mirror_Embroidery",
+      "titleEN": "Sand Beige Floral Grace",
+      "titleBN": null,
+      "slug": "sand-beige-floral-grace",
+      "priceBDT": null,
+      "priceStatus": "unverified_unprovided",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "main",
+          "url": "https://drive.google.com/file/d/1F_QTOiagqQ76wJ5nQgvcQO1JzOtxF_Lt/view?usp=drivesdk",
+          "driveFileId": "1F_QTOiagqQ76wJ5nQgvcQO1JzOtxF_Lt",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "original",
+          "url": "https://drive.google.com/file/d/1sgqD4bdKO9YC8e3JpYq7Seyo7zBDAngi/view?usp=drivesdk",
+          "driveFileId": "1sgqD4bdKO9YC8e3JpYq7Seyo7zBDAngi",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "alternate",
+          "url": "https://drive.google.com/file/d/14_LW-wIeBKOc-hXxiLlEi7vJoLuT0D8S/view?usp=drivesdk",
+          "driveFileId": "14_LW-wIeBKOc-hXxiLlEi7vJoLuT0D8S",
+          "authenticity": "source-product-photography",
+          "publiclyVerified": false
+        },
+        {
+          "role": "socialSquare",
+          "url": "https://drive.google.com/file/d/1kZrokduheHupCl-1g7xsrHYJSVPjh57c/view?usp=drivesdk",
+          "driveFileId": "1kZrokduheHupCl-1g7xsrHYJSVPjh57c",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "storyReel",
+          "url": "https://drive.google.com/file/d/10igjMN2s27erhelkE1FuJuqmY7jgBjb_/view?usp=drivesdk",
+          "driveFileId": "10igjMN2s27erhelkE1FuJuqmY7jgBjb_",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailA",
+          "url": "https://drive.google.com/file/d/10eJOsiH2LdBc5a8WHKODJJWxC6eZxgCb/view?usp=drivesdk",
+          "driveFileId": "10eJOsiH2LdBc5a8WHKODJJWxC6eZxgCb",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "detailB",
+          "url": "https://drive.google.com/file/d/1gb0xQlp85HGZyrekbYBGUJh2MbQybNOO/view?usp=drivesdk",
+          "driveFileId": "1gb0xQlp85HGZyrekbYBGUJh2MbQybNOO",
+          "authenticity": "derived-source-crop",
+          "publiclyVerified": false
+        },
+        {
+          "role": "aiStylingPreview",
+          "url": "https://drive.google.com/file/d/1ane8Lin32BbJs6fxJiwv9BDlCwsyTEQZ/view?usp=drivesdk",
+          "driveFileId": "1ane8Lin32BbJs6fxJiwv9BDlCwsyTEQZ",
+          "authenticity": "ai-illustration",
+          "publiclyVerified": false
+        }
+      ],
+      "source": "FASHION_18_ORIGINAL_ASSET_MANIFEST.json"
+    },
+    {
+      "sku": "FT-HM-001",
+      "superCategory": "Accessories",
+      "collection": "Decorative Mirrors",
+      "collectionKey": "Decorative Mirrors",
+      "titleEN": "Lavender Rose",
+      "slug": "ft-hm-001",
+      "suggestedLaunchPriceBDT": 499,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "per mirror",
+      "setContentsCaution": "Price for one decorative mirror. Stand, box, floral props not automatically included.",
+      "descriptionEN": "An ornate round mirror with petal-inspired detailing, made expressive through its signature color combination.",
+      "colors": "Lavender / Rose Red / Warm Gold",
+      "designDetail": "Decorative circular mirror with layered petal- inspired frame",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-HM-001_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 4
+    },
+    {
+      "sku": "FT-HM-002",
+      "superCategory": "Accessories",
+      "collection": "Decorative Mirrors",
+      "collectionKey": "Decorative Mirrors",
+      "titleEN": "Golden Marigold",
+      "slug": "ft-hm-002",
+      "suggestedLaunchPriceBDT": 499,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "per mirror",
+      "setContentsCaution": "Price for one decorative mirror. Stand, box, floral props not automatically included.",
+      "descriptionEN": "An ornate round mirror with petal-inspired detailing, made expressive through its signature color combination.",
+      "colors": "Marigold Yellow / Royal Blue / Gold",
+      "designDetail": "Decorative circular mirror with layered petal- inspired frame",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-HM-002_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 5
+    },
+    {
+      "sku": "FT-HM-003",
+      "superCategory": "Accessories",
+      "collection": "Decorative Mirrors",
+      "collectionKey": "Decorative Mirrors",
+      "titleEN": "Crimson Heritage",
+      "slug": "ft-hm-003",
+      "suggestedLaunchPriceBDT": 499,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "per mirror",
+      "setContentsCaution": "Price for one decorative mirror. Stand, box, floral props not automatically included.",
+      "descriptionEN": "An ornate round mirror with petal-inspired detailing, made expressive through its signature color combination.",
+      "colors": "Crimson Red / Navy Blue / Natural Gold",
+      "designDetail": "Decorative circular mirror with layered petal- inspired frame",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-HM-003_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 6
+    },
+    {
+      "sku": "FT-HM-004",
+      "superCategory": "Accessories",
+      "collection": "Decorative Mirrors",
+      "collectionKey": "Decorative Mirrors",
+      "titleEN": "Royal Plum",
+      "slug": "ft-hm-004",
+      "suggestedLaunchPriceBDT": 499,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "per mirror",
+      "setContentsCaution": "Price for one decorative mirror. Stand, box, floral props not automatically included.",
+      "descriptionEN": "An ornate round mirror with petal-inspired detailing, made expressive through its signature color combination.",
+      "colors": "Deep Plum / Lavender Purple / Natural Gold",
+      "designDetail": "Decorative circular mirror with layered petal- inspired frame",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-HM-004_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 7
+    },
+    {
+      "sku": "FT-HM-005",
+      "superCategory": "Accessories",
+      "collection": "Decorative Mirrors",
+      "collectionKey": "Decorative Mirrors",
+      "titleEN": "Teal Bloom",
+      "slug": "ft-hm-005",
+      "suggestedLaunchPriceBDT": 499,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "per mirror",
+      "setContentsCaution": "Price for one decorative mirror. Stand, box, floral props not automatically included.",
+      "descriptionEN": "An ornate round mirror with petal-inspired detailing, made expressive through its signature color combination.",
+      "colors": "Deep Teal / Golden Yellow / Warm Brown",
+      "designDetail": "Decorative circular mirror with layered petal- inspired frame",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-HM-005_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 8
+    },
+    {
+      "sku": "FT-JWL-001",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Indigo Folk Relief Set",
+      "slug": "ft-jwl-001",
+      "suggestedLaunchPriceBDT": 699,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pictured jewelry grouping",
+      "setContentsCaution": "Pictured grouping; seller must confirm which matching pieces are actually included.",
+      "descriptionEN": "Blue-on-blue carved-look rectangular pieces give this arrangement a graphic, heritage-inspired appeal. The main necklace is shown alongside coordinating smaller pieces.",
+      "colors": "Navy, cobalt blue, aqua, silver-tone",
+      "designDetail": "Rectangular relief-style folk motifs; deep-blue framed pieces; dark cord and blue beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-001_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 13
+    },
+    {
+      "sku": "FT-JWL-002",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Saffron Folk Relief Set",
+      "slug": "ft-jwl-002",
+      "suggestedLaunchPriceBDT": 649,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pictured jewelry grouping",
+      "setContentsCaution": "Pictured grouping; seller must confirm which matching pieces are actually included.",
+      "descriptionEN": "Burnt-orange and ochre tones bring an earthy festive energy to this geometric motif necklace and its two pictured coordinating pieces.",
+      "colors": "Orange, saffron, ochre, warm gold",
+      "designDetail": "Twin raised folk-inspired motifs on a warm rectangular panel; beaded dark cord; two smaller coordinated panels",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-002_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 14
+    },
+    {
+      "sku": "FT-JWL-003",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Wildflower Bouquet Pendant",
+      "slug": "ft-jwl-003",
+      "suggestedLaunchPriceBDT": 349,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "A playful bouquet of painted floral shapes, layered leaves and a vibrant red cord creates an unmistakable craft-forward statement.",
+      "colors": "Yellow, orange-red, green, violet, red",
+      "designDetail": "Layered multicolor flowers and leaves; red braided cord; thread-wrapped green/yellow beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-003_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 15
+    },
+    {
+      "sku": "FT-JWL-004",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Crimson Mandala Pendant",
+      "slug": "ft-jwl-004",
+      "suggestedLaunchPriceBDT": 349,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "The round crimson medallion is filled with a bold folk-floral pattern, balanced by a strong green cord and rainbow-like bead accents.",
+      "colors": "Crimson, pink, green, blue, yellow",
+      "designDetail": "Circular painted floral mandala; green braided cord with bright small beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-004_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 16
+    },
+    {
+      "sku": "FT-JWL-005",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Carnival Sunflower Set",
+      "slug": "ft-jwl-005",
+      "suggestedLaunchPriceBDT": 699,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pictured jewelry grouping",
+      "setContentsCaution": "Pictured grouping; seller must confirm which matching pieces are actually included.",
+      "descriptionEN": "A striking burst of vividly colored petals surrounds the textured red floral center; matching smaller accessories are visible in the photograph.",
+      "colors": "Red, yellow, cobalt, white, pink",
+      "designDetail": "Layered sunflower-like multicolor petals; central pendant with two matching earrings and a small coordinating piece pictured",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-005_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 17
+    },
+    {
+      "sku": "FT-JWL-006",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Scarlet Blossom Pendant",
+      "slug": "ft-jwl-006",
+      "suggestedLaunchPriceBDT": 349,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "A bold scarlet flower with green leaves and a delicate spiral center adds an artisanal accent to a simple outfit.",
+      "colors": "Scarlet red, emerald, pink, beige",
+      "designDetail": "Five large red petals around a spiral floral center; green leaves; segmented colorful beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-006_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 18
+    },
+    {
+      "sku": "FT-JWL-007",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Paisley Folk Drop",
+      "slug": "ft-jwl-007",
+      "suggestedLaunchPriceBDT": 399,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "A large teardrop pendant celebrates folk ornamentation through rhythmic painted swirls, geometric borders and jewel-toned highlights.",
+      "colors": "Brick red, yellow, aqua, navy, orange",
+      "designDetail": "Oversized teardrop/paisley silhouette; densely painted concentric folk motifs; red rope cord",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-007_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 19
+    },
+    {
+      "sku": "FT-JWL-008",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Golden Jasmine Garland",
+      "slug": "ft-jwl-008",
+      "suggestedLaunchPriceBDT": 349,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "A cheerful row of yellow blooms with white centers evokes a floral garland and pairs naturally with light summer and festive styling.",
+      "colors": "Sunshine yellow, ivory white, leafy green",
+      "designDetail": "Linked yellow flowers with white raised- looking centers; leaf cluster; green/yellow/ white bead strand",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-008_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 20
+    },
+    {
+      "sku": "FT-JWL-009",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Ruby Sunburst Pendant",
+      "slug": "ft-jwl-009",
+      "suggestedLaunchPriceBDT": 329,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "The open-cut starburst silhouette and dotted golden highlights give this pendant a striking artisanal, festive finish.",
+      "colors": "Ruby, magenta, gold yellow",
+      "designDetail": "Symmetric openwork sunburst mandala; round yellow center; pink and orange wrapped beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-009_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 21
+    },
+    {
+      "sku": "FT-JWL-010",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Heritage Rickshaw Pendant",
+      "slug": "ft-jwl-010",
+      "suggestedLaunchPriceBDT": 449,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "A miniature folk-art rickshaw scene brings a distinctly Bangladeshi cultural motif into an expressive handmade-style necklace.",
+      "colors": "Forest green, orange, yellow, blue, red",
+      "designDetail": "Rectangular panel with a colorful decorated cycle-rickshaw motif and beaded green cord",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-010_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 22
+    },
+    {
+      "sku": "FT-JWL-011",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Azure Lace Square",
+      "slug": "ft-jwl-011",
+      "suggestedLaunchPriceBDT": 359,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "An airy white square border with blue floral accents offers a delicate geometric alternative to bold multicolor pieces.",
+      "colors": "Ivory white, sky blue, pale aqua",
+      "designDetail": "Square lacy floral openwork frame; pale-blue floral details; sky-blue and white beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-011_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 23
+    },
+    {
+      "sku": "FT-JWL-012",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Kaleido Mirror Bloom",
+      "slug": "ft-jwl-012",
+      "suggestedLaunchPriceBDT": 399,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "Tiny flower shapes create a kaleidoscopic frame around a shiny central accent, with a bright multicolor bead arrangement.",
+      "colors": "Aqua, blue, orange, yellow, white",
+      "designDetail": "Multicolored flower-like surround framing a small reflective-looking center; long rainbow beaded strand",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-012_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 24
+    },
+    {
+      "sku": "FT-JWL-013",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Turquoise Pinwheel",
+      "slug": "ft-jwl-013",
+      "suggestedLaunchPriceBDT": 389,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "The striking angular turquoise pinwheel delivers a contemporary graphic statement with subtle hand-finished character.",
+      "colors": "Turquoise, teal, burgundy, gold",
+      "designDetail": "Angular pinwheel/sunray motif with gold- toned outlines; blue and crimson beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-013_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 25
+    },
+    {
+      "sku": "FT-JWL-014",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Violet Garden Medallion",
+      "slug": "ft-jwl-014",
+      "suggestedLaunchPriceBDT": 379,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "Soft lilac blooms surround a rich violet ornamental frame, creating a quieter, romantic counterpoint to the brighter designs.",
+      "colors": "Violet, lilac, plum, pale pink",
+      "designDetail": "Layered dark-violet ornamental medallion and small lilac flowers around a solid lilac-painted center",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-014_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 26
+    },
+    {
+      "sku": "FT-JWL-015",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Cocoa Crosshatch Pendant",
+      "slug": "ft-jwl-015",
+      "suggestedLaunchPriceBDT": 299,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "Minimal brown-and-ivory graphic strokes turn a simple arched silhouette into an earthy, versatile accessory.",
+      "colors": "Cocoa brown, ivory, espresso",
+      "designDetail": "Arched brown pendant marked with white crosshatch strokes; alternating brown and cream beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-015_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 27
+    },
+    {
+      "sku": "FT-JWL-016",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Spring Leaf Pendant",
+      "slug": "ft-jwl-016",
+      "suggestedLaunchPriceBDT": 329,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "A leaf-inspired silhouette is accented with fresh green veins and lively dots, giving the pendant a light botanical mood.",
+      "colors": "Ivory white, spring green, yellow, red",
+      "designDetail": "White maple-like leaf silhouette with green veins and cheerful multicolor speckles; pastel beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-016_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 28
+    },
+    {
+      "sku": "FT-JWL-017",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Midnight Shell Fringe",
+      "slug": "ft-jwl-017",
+      "suggestedLaunchPriceBDT": 379,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "A black triangular canvas and a single white flower create a striking contrast, finished with dangling white shell-like pieces.",
+      "colors": "Black, ivory white, silver-tone, dusty red",
+      "designDetail": "Black inverted triangular pendant with a white flower and hanging shell-like white charms; metallic-looking round beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-017_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 29
+    },
+    {
+      "sku": "FT-JWL-018",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Aqua Daisy Bloom",
+      "slug": "ft-jwl-018",
+      "suggestedLaunchPriceBDT": 349,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "Painterly turquoise petals with green-tinted strokes lend this floral pendant a contemporary artsy appeal.",
+      "colors": "Aqua, turquoise, lime, wine red",
+      "designDetail": "Broad aqua flower petals with green brush strokes and a spiral center; green/red beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-018_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 30
+    },
+    {
+      "sku": "FT-JWL-019",
+      "superCategory": "Accessories",
+      "collection": "Pendants & Jewelry",
+      "collectionKey": "Pendants & Jewelry",
+      "titleEN": "Marigold Sunflower Pendant",
+      "slug": "ft-jwl-019",
+      "suggestedLaunchPriceBDT": 329,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "pendant necklace",
+      "setContentsCaution": "One pendant necklace; photo props not included.",
+      "descriptionEN": "A joyful flower silhouette in sunny yellow, warm orange and cream makes this pendant an easy finishing touch for a festive look.",
+      "colors": "Marigold yellow, orange, white, ruby red",
+      "designDetail": "Yellow-white open flower silhouette with orange-red painted accents; red/orange bead strand",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-JWL-019_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 31
+    },
+    {
+      "sku": "FT-BA-001",
+      "superCategory": "Accessories",
+      "collection": "Bangles & Accessories",
+      "collectionKey": "Bangles & Accessories",
+      "titleEN": "Painted Bangle Harmony Selection",
+      "slug": "ft-ba-001",
+      "suggestedLaunchPriceBDT": 219,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "per bangle",
+      "setContentsCaution": "Price per ONE selected bangle/colorway; multiple pictured colors are not a bundled set.",
+      "descriptionEN": "An expressive selection of colorful motif-painted bangles that brightens everyday styling.",
+      "colors": "Navy, orange, ivory, pink, red, cobalt",
+      "designDetail": "Painted floral and night-sky motifs; mixed colorways",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-BA-001_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 34
+    },
+    {
+      "sku": "FT-BA-002",
+      "superCategory": "Accessories",
+      "collection": "Bangles & Accessories",
+      "collectionKey": "Bangles & Accessories",
+      "titleEN": "Noir Silver-Tone Bead Bangles",
+      "slug": "ft-ba-002",
+      "suggestedLaunchPriceBDT": 479,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "illustrated pair",
+      "setContentsCaution": "Price per pictured TWO-bangle pair; confirm size/color/availability.",
+      "descriptionEN": "Graphic black patterned bangles with metallic-looking bead trims.",
+      "colors": "Black, sand, silver tone",
+      "designDetail": "Black patterned textile-look bands; silver-tone round beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-BA-002_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 35
+    },
+    {
+      "sku": "FT-BA-003",
+      "superCategory": "Accessories",
+      "collection": "Bangles & Accessories",
+      "collectionKey": "Bangles & Accessories",
+      "titleEN": "Sunburst Folk Accent Bangle",
+      "slug": "ft-ba-003",
+      "suggestedLaunchPriceBDT": 449,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "per bangle",
+      "setContentsCaution": "Price per ONE bangle. Separate round ornament pictured is only a styling prop.",
+      "descriptionEN": "An intricate orange statement bangle pictured beside a coordinating round folk-art accent.",
+      "colors": "Orange, pink, green, yellow, cobalt",
+      "designDetail": "Orange cutwork bangle with painted floral accent shown separately",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-BA-003_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 36
+    },
+    {
+      "sku": "FT-BA-004",
+      "superCategory": "Accessories",
+      "collection": "Bangles & Accessories",
+      "collectionKey": "Bangles & Accessories",
+      "titleEN": "Blush Beaded Stitch Trio",
+      "slug": "ft-ba-004",
+      "suggestedLaunchPriceBDT": 549,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "3 pictured",
+      "setContentsCaution": "Price per pictured THREE-bangle set; confirm size/color/availability.",
+      "descriptionEN": "Pastel thread-look bangles with stitched lines and cheerful bead accents.",
+      "colors": "Peach, blush pink, mint, red",
+      "designDetail": "Pastel fabric-wrapped bands with colorful stitch and bead clusters",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-BA-004_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 37
+    },
+    {
+      "sku": "FT-BA-005",
+      "superCategory": "Accessories",
+      "collection": "Bangles & Accessories",
+      "collectionKey": "Bangles & Accessories",
+      "titleEN": "Color Pop Stitch Trio",
+      "slug": "ft-ba-005",
+      "suggestedLaunchPriceBDT": 549,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "3 pictured",
+      "setContentsCaution": "Price per pictured THREE-bangle set; confirm size/color/availability.",
+      "descriptionEN": "Three colorful stitched bangles with playful bead flower accents.",
+      "colors": "Maroon, turquoise, chartreuse",
+      "designDetail": "Burgundy, teal, yellow-green bands with stitches and beads",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-BA-005_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 38
+    },
+    {
+      "sku": "FT-BA-006",
+      "superCategory": "Accessories",
+      "collection": "Bangles & Accessories",
+      "collectionKey": "Bangles & Accessories",
+      "titleEN": "Midnight Bloom Bangles",
+      "slug": "ft-ba-006",
+      "suggestedLaunchPriceBDT": 599,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "3 pictured",
+      "setContentsCaution": "Price per pictured THREE-bangle set; confirm size/color/availability.",
+      "descriptionEN": "Dark statement bangles accented with bright stitches and bead clusters.",
+      "colors": "Black, teal, orange, green",
+      "designDetail": "Black fabric look with multicolor stitches and beaded flowers",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-BA-006_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 39
+    },
+    {
+      "sku": "FT-BA-007",
+      "superCategory": "Accessories",
+      "collection": "Bangles & Accessories",
+      "collectionKey": "Bangles & Accessories",
+      "titleEN": "Daisy Sky Floral Pair",
+      "slug": "ft-ba-007",
+      "suggestedLaunchPriceBDT": 399,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "2 pictured",
+      "setContentsCaution": "Price per pictured TWO-bangle pair; confirm size/color/availability.",
+      "descriptionEN": "Two vivid sky-blue floral bangles with cheerful daisy accents.",
+      "colors": "Turquoise, royal blue, yellow",
+      "designDetail": "Turquoise-wide bangles with painted blue daisy motifs",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-BA-007_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 40
+    },
+    {
+      "sku": "FT-BA-008",
+      "superCategory": "Accessories",
+      "collection": "Bangles & Accessories",
+      "collectionKey": "Bangles & Accessories",
+      "titleEN": "Sunset Bloom Bangles",
+      "slug": "ft-ba-008",
+      "suggestedLaunchPriceBDT": 399,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "2 pictured",
+      "setContentsCaution": "Price per pictured TWO-bangle pair; confirm size/color/availability.",
+      "descriptionEN": "Two warm sunset orange bangles with vivid stitched and bead-flower embellishments.",
+      "colors": "Burnt orange, coral, violet, yellow",
+      "designDetail": "Warm orange stitched bands with multicolor bead clusters",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-BA-008_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 41
+    },
+    {
+      "sku": "FT-BA-009",
+      "superCategory": "Accessories",
+      "collection": "Bangles & Accessories",
+      "collectionKey": "Bangles & Accessories",
+      "titleEN": "Everyday Thread Luxe Trio",
+      "slug": "ft-ba-009",
+      "suggestedLaunchPriceBDT": 499,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "3 pictured",
+      "setContentsCaution": "Price per pictured THREE-bangle set; confirm size/color/availability.",
+      "descriptionEN": "An effortless three-tone thread-wrapped bangle edit with metallic-look details.",
+      "colors": "Peach, teal, burgundy",
+      "designDetail": "Three smooth thread-wrapped bands with metallic-looking accents",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-BA-009_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 42
+    },
+    {
+      "sku": "FT-BA-010",
+      "superCategory": "Accessories",
+      "collection": "Bangles & Accessories",
+      "collectionKey": "Bangles & Accessories",
+      "titleEN": "Sage Charm Stitch Trio",
+      "slug": "ft-ba-010",
+      "suggestedLaunchPriceBDT": 549,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "3 pictured",
+      "setContentsCaution": "Price per pictured THREE-bangle set; confirm size/color/availability.",
+      "descriptionEN": "Muted green stitched bangles with pastel bead clusters for a softer pop of color.",
+      "colors": "Sage green, mint, blush, aqua",
+      "designDetail": "Sage green wrapped bands with light-color stitches and bead flower accents",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-BA-010_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 43
+    },
+    {
+      "sku": "FT-BA-011",
+      "superCategory": "Accessories",
+      "collection": "Bangles & Accessories",
+      "collectionKey": "Bangles & Accessories",
+      "titleEN": "Carved Flora Colorway Pair",
+      "slug": "ft-ba-011",
+      "suggestedLaunchPriceBDT": 449,
+      "priceBDT": null,
+      "priceStatus": "proposed_only_unverified",
+      "unitLabel": "per pair",
+      "setContentsCaution": "Price per ONE chosen-color pair (2 bangles). Four colorways pictured; not all included.",
+      "descriptionEN": "Folk-inspired floral-cutwork bangle pairs offered as pictured color options.",
+      "colors": "Ivory yellow, emerald, cobalt, burgundy",
+      "designDetail": "Four colorways of intricately cut floral and leaf motif pairs",
+      "inventory": null,
+      "sizeOptions": null,
+      "gallery": [
+        {
+          "role": "catalogDerivedMain",
+          "localPath": "ACCESSORY_PRODUCT_IMAGES_35/FT-BA-011_CATALOG_PHOTO.jpg",
+          "authenticity": "catalog_photo_crop_unverified_as_supplier_photograph"
+        }
+      ],
+      "source": "SOURCE_ACCESSORIES_35_MASTER_CATALOG.pdf",
+      "sourcePage": 44
+    }
+  ]
+}

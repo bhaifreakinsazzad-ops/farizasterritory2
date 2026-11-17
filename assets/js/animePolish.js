@@ -141,7 +141,7 @@
     initCardTilt() {
       if (RM || isTouch) return;
 
-      const cards = document.querySelectorAll('.pcard:not([data-tilt-bound]), .col-card:not([data-tilt-bound]), .pair-card:not([data-tilt-bound]), .s-card:not([data-tilt-bound])');
+      const cards = document.querySelectorAll('.pcard:not([data-tilt-bound]), .col-card:not([data-tilt-bound]), .pair-card:not([data-tilt-bound])');
 
       cards.forEach(card => {
         card.setAttribute('data-tilt-bound', 'true');
@@ -475,7 +475,9 @@
           z-index: 10;
         `;
 
-        target.style.position = target.style.position === 'static' ? 'relative' : target.style.position;
+        if (window.getComputedStyle(target).position === 'static') {
+          target.style.position = 'relative';
+        }
         target.appendChild(ripple);
 
         anime({
@@ -493,16 +495,7 @@
      * Bind Fly-to-Cart on Bag/Buy Buttons
      */
     bindFlyToCartHooks() {
-      document.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-act="pi-add"], [data-act="add-bag"], [data-act="buy-quick"], [data-act="bag-add"], [data-act="trio"]');
-        if (!btn) return;
-
-        const card = btn.closest('.pcard') || btn.closest('.prod-grid') || btn.closest('.stage-col') || btn.closest('.piece-panel') || btn.closest('.pair-card');
-        if (card) {
-          const imgContainer = card.querySelector('.ph-img') || card.querySelector('.ph') || btn;
-          this.flyToBag(imgContainer);
-        }
-      }, { passive: true });
+      // Handled directly in app.js addToBag() and trio action to avoid duplicate particle animations.
     }
   };
 

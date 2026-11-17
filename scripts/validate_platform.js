@@ -74,8 +74,18 @@ if (missingAssets > 0) {
   process.exit(1);
 }
 
-// 3. Verify JavaScript files exist and have no syntax errors
+// 3. Verify collection integrity & JavaScript files exist with zero syntax errors
+const colIds = new Set(catalog.COLLECTIONS.map(c => c.id));
+catalog.PRODUCTS.forEach(p => {
+  if (!colIds.has(p.colId)) {
+    console.error(`FAIL: Product ${p.sku} references unknown colId: ${p.colId}`);
+    process.exit(1);
+  }
+});
+
 const jsFiles = [
+  'server.js',
+  'api/capi.js',
   'assets/js/config.js',
   'assets/js/supabaseClient.js',
   'assets/js/catalogData.js',
@@ -98,9 +108,13 @@ jsFiles.forEach(f => {
     console.error(`FAIL: Syntax error in ${f}:`, err.message);
     process.exit(1);
   }
+  if (/\b(?:window\.)?(?:alert|open)\s*\(/.test(code) && !f.startsWith('server')) {
+    console.error(`FAIL: Forbidden window.alert / window.open detected in ${f}`);
+    process.exit(1);
+  }
 });
 
-// 4. Verify index.html and admin.html
+// 4. Verify index.html, admin.html, ghl-bundle.html & inline scripts
 console.log('--- HTML Pages Verification ---');
 ['index.html', 'admin.html', 'ghl-bundle.html'].forEach(f => {
   if (!fs.existsSync(f)) {
@@ -108,7 +122,25 @@ console.log('--- HTML Pages Verification ---');
     process.exit(1);
   }
   const content = fs.readFileSync(f, 'utf8');
-  console.log(`PASS: ${f} (${(content.length / 1024).toFixed(1)} KB) present`);
+  const scriptRegex = /<script(?![^>]*src=)(?![^>]*application\/ld\+json)[^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  let inlineIdx = 0;
+  while ((match = scriptRegex.exec(content)) !== null) {
+    inlineIdx++;
+    const snippet = match[1].trim();
+    if (!snippet) continue;
+    try {
+      new Function(snippet);
+    } catch (err) {
+      console.error(`FAIL: Inline script #${inlineIdx} syntax error in ${f}:`, err.message);
+      process.exit(1);
+    }
+    if (/\b(?:window\.)?(?:alert|open)\s*\(/.test(snippet)) {
+      console.error(`FAIL: Forbidden window.alert / window.open in inline script #${inlineIdx} of ${f}`);
+      process.exit(1);
+    }
+  }
+  console.log(`PASS: ${f} (${(content.length / 1024).toFixed(1)} KB, ${inlineIdx} inline scripts OK)`);
 });
 
 console.log('\n=========================================');
