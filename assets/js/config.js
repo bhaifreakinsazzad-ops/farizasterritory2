@@ -5,7 +5,7 @@
  * Typography: Actor (Display/Sans) + Noto Sans Bengali
  * ============================================================================
  */
-(function (window) {
+(function (window, document) {
   'use strict';
 
   const DEFAULT_CONFIG = {
@@ -21,95 +21,115 @@
 
     // Social & Direct Ordering Channels
     facebookPageUrl: "https://www.facebook.com/farizasterritory143",
+    fbSearch: "https://www.facebook.com/farizasterritory143",
     messengerUsername: "farizasterritory143",
-    whatsappNumber: "8801700000000",
+    whatsappNumber: "",
+    whatsappActive: false,
 
     // Delivery & Currency Settings
     currency: "BDT",
     currencySymbol: "৳",
     deliveryFeeDhaka: 80,
     deliveryFeeOutside: 150,
-    freeShippingThreshold: 3500,
+    freeShippingThreshold: 3000,
+    promoText: "",
 
-    // Supabase Integration
+    // Supabase Integration (hydrated from /api/public-config)
     supabase: {
       url: "https://vjbhrdclcnxevunskodm.supabase.co",
-      anonKey: "sb_publishable_p212a31c2L6f4b3L6f4b3_xYz"
+      anonKey: ""
     },
 
     // Analytics & Ad Pixels
     analytics: {
       metaPixelId: "1657670575734647",
       ga4MeasurementId: "",
-      capiEndpoint: (function () {
-        try {
-          const host = window.location.hostname || '';
-          if (host.includes('github.io') || host.includes('githack.com')) {
-            return "https://farizas-territory.vercel.app/api/capi";
-          }
-        } catch (e) {}
-        return "/api/capi";
-      })()
+      capiEndpoint: "/api/capi"
     },
 
-    // Official Brand Assets & Provenance Files
+    // Official Brand Assets
     brandAssets: {
       logo: "assets/brand/brand_logo_1.webp",
       logoMinWidthPx: 152,
       logoClearSpacePx: 95,
-      masterDatabaseJson: "assets/aistudio/PRODUCTS_53_MASTER_DATABASE_d064c566.json",
       brandBookPdf: "assets/aistudio/fariza_s_territory_brand_book_by_pomelli_1e38cd9b.pdf"
     }
   };
 
-  function getSavedOverrides() {
-    try {
-      const saved = localStorage.getItem('ft_boutique_config_overrides');
-      const parsed = saved ? JSON.parse(saved) : {};
-      const keyOverride = localStorage.getItem('ft_supabase_anon_key');
-      if (keyOverride) {
-        parsed.supabase = parsed.supabase || {};
-        parsed.supabase.anonKey = keyOverride;
-      }
-      const waOverride = localStorage.getItem('ft_whatsapp_number');
-      if (waOverride) parsed.whatsappNumber = waOverride;
-      const fbOverride = localStorage.getItem('ft_messenger_username');
-      if (fbOverride) parsed.messengerUsername = fbOverride;
-      const pxOverride = localStorage.getItem('ft_meta_pixel_id');
-      if (pxOverride) {
-        parsed.analytics = parsed.analytics || {};
-        parsed.analytics.metaPixelId = pxOverride;
-      }
-      const capiUrlOverride = localStorage.getItem('ft_capi_endpoint');
-      if (capiUrlOverride) {
-        parsed.analytics = parsed.analytics || {};
-        parsed.analytics.capiEndpoint = capiUrlOverride;
-      }
-      return parsed;
-    } catch (e) {
-      return {};
+  // Clear legacy unencrypted PII / insecure admin keys if left over in visitor storage
+  (function purgeLegacySensitiveStorage() {
+    const legacyKeys = [
+      'ft_customer_profile',
+      'ft_local_orders',
+      'ft_my_orders',
+      'ft_supabase_anon_key',
+      'ft_admin_pin',
+      'ft_meta_test_event_code'
+    ];
+    for (let i = 0; i < legacyKeys.length; i++) {
+      try {
+        localStorage.removeItem(legacyKeys[i]);
+      } catch (_) {}
     }
-  }
+    try {
+      sessionStorage.removeItem('ft_admin_unlocked');
+    } catch (_) {}
+  })();
 
-  const overrides = getSavedOverrides();
-  window.FT_CONFIG = Object.assign({}, DEFAULT_CONFIG, overrides, {
-    supabase: Object.assign({}, DEFAULT_CONFIG.supabase, overrides.supabase || {}),
-    analytics: Object.assign({}, DEFAULT_CONFIG.analytics, overrides.analytics || {}),
-    brandAssets: Object.assign({}, DEFAULT_CONFIG.brandAssets, overrides.brandAssets || {})
+  window.FT_CONFIG = Object.assign({}, DEFAULT_CONFIG, {
+    supabase: Object.assign({}, DEFAULT_CONFIG.supabase),
+    analytics: Object.assign({}, DEFAULT_CONFIG.analytics),
+    brandAssets: Object.assign({}, DEFAULT_CONFIG.brandAssets)
   });
+
+  window.FT_CONFIG.hydrateFromServer = function () {
+    return fetch('/api/public-config', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !data.ok) return window.FT_CONFIG;
+        if (data.supabaseUrl) window.FT_CONFIG.supabase.url = data.supabaseUrl;
+        if (data.supabaseAnonKey) window.FT_CONFIG.supabase.anonKey = data.supabaseAnonKey;
+        if (data.metaPixelId) window.FT_CONFIG.analytics.metaPixelId = data.metaPixelId;
+        if (data.ga4MeasurementId !== undefined) window.FT_CONFIG.analytics.ga4MeasurementId = data.ga4MeasurementId || '';
+        if (data.deliveryFees) {
+          if (data.deliveryFees.dhaka !== undefined) window.FT_CONFIG.deliveryFeeDhaka = Number(data.deliveryFees.dhaka);
+          if (data.deliveryFees.outside_dhaka !== undefined) window.FT_CONFIG.deliveryFeeOutside = Number(data.deliveryFees.outside_dhaka);
+        }
+        if (data.freeShippingThreshold !== undefined) {
+          window.FT_CONFIG.freeShippingThreshold = Number(data.freeShippingThreshold);
+        }
+        if (data.promoText) {
+          window.FT_CONFIG.promoText = data.promoText;
+        }
+        if (data.officialChannels) {
+          if (data.officialChannels.facebookPageUrl) {
+            window.FT_CONFIG.facebookPageUrl = data.officialChannels.facebookPageUrl;
+            window.FT_CONFIG.fbSearch = data.officialChannels.facebookPageUrl;
+          }
+          if (data.officialChannels.messengerUsername) {
+            window.FT_CONFIG.messengerUsername = data.officialChannels.messengerUsername;
+          }
+          window.FT_CONFIG.whatsappActive = Boolean(data.officialChannels.whatsappActive);
+          window.FT_CONFIG.whatsappNumber = data.officialChannels.whatsappActive
+            ? String(data.officialChannels.whatsappNumber || '')
+            : '';
+        }
+        return window.FT_CONFIG;
+      })
+      .catch(function () { return window.FT_CONFIG; });
+  };
+
+  window.FT_CONFIG_READY = window.FT_CONFIG.hydrateFromServer();
 
   // --------------------------------------------------------------------------
   // AD CAMPAIGN ATTRIBUTION & FBCLID / UTM TRACKER
-  // Automatically captures UTM parameters & fbclid on ad landing, synthesizes
-  // Meta _fbc cookie when landing from Facebook/Instagram Ads, and supports
-  // query-string deep links (?sku=CAT-001 or ?collection=bangles-accessories).
   // --------------------------------------------------------------------------
   function captureAdAttribution() {
     let existing = {};
     try {
-      const raw = localStorage.getItem('ft_ad_attribution');
+      const raw = sessionStorage.getItem('ft_ad_attribution');
       if (raw) existing = JSON.parse(raw) || {};
-    } catch (e) {}
+    } catch (_) {}
 
     try {
       const params = new URLSearchParams(window.location.search || '');
@@ -132,36 +152,22 @@
       trackedKeys.forEach(function (k) {
         const val = params.get(k);
         if (val) {
-          captured[k] = val.trim();
+          captured[k] = val.trim().slice(0, 180);
           hasNewParam = true;
         }
       });
 
       if (hasNewParam) {
-        captured.landing_page = window.location.href;
+        captured.landing_page = window.location.pathname + window.location.search;
         captured.captured_at = new Date().toISOString();
         if (!captured.first_touch_at) {
           captured.first_touch_at = captured.captured_at;
         }
         try {
-          localStorage.setItem('ft_ad_attribution', JSON.stringify(captured));
-        } catch (e) {}
+          sessionStorage.setItem('ft_ad_attribution', JSON.stringify(captured));
+        } catch (_) {}
       }
 
-      // Synthesize _fbc cookie if fbclid is present in URL so Meta CAPI gets 100% click attribution
-      const fbclid = params.get('fbclid') || captured.fbclid;
-      if (fbclid) {
-        const fbcVal = 'fb.1.' + Date.now() + '.' + fbclid;
-        try {
-          if (!document.cookie.includes('_fbc=')) {
-            document.cookie = '_fbc=' + fbcVal + '; path=/; max-age=7776000; SameSite=Lax';
-          }
-          localStorage.setItem('ft_fbc_fallback', fbcVal);
-        } catch (e) {}
-      }
-
-      // Support query-param deep linking for Facebook/Instagram Dynamic Product Ads
-      // e.g., /?sku=FT-BA-001 or /?collection=bangles-accessories
       const skuParam = params.get('sku') || params.get('product');
       const colParam = params.get('collection');
       if (skuParam && (!window.location.hash || window.location.hash === '#' || window.location.hash === '#/')) {
@@ -171,7 +177,7 @@
       }
 
       return captured;
-    } catch (e) {
+    } catch (_) {
       return existing;
     }
   }
@@ -179,42 +185,85 @@
   const initialAttribution = captureAdAttribution();
 
   // --------------------------------------------------------------------------
-  // ANALYTICS & CONVERSION TRACKING HELPER (META PIXEL + CAPI + GA4 + LOG)
+  // CONSENT-GATED ANALYTICS & CAPI HELPER (NO CLIENT-SIDE PURCHASE SPOOFING)
   // --------------------------------------------------------------------------
+  let sessionUserData = {};
+
   window.FT_ANALYTICS = {
     eventsLog: [],
+    pixelInitialized: false,
+
+    getConsent: function () {
+      try {
+        return localStorage.getItem('ft_analytics_consent') || 'unset';
+      } catch (_) {
+        return 'unset';
+      }
+    },
+
+    hasConsent: function () {
+      return this.getConsent() === 'granted';
+    },
+
+    setConsent: function (choice) {
+      const val = choice === 'granted' ? 'granted' : 'denied';
+      try {
+        localStorage.setItem('ft_analytics_consent', val);
+      } catch (_) {}
+      if (val === 'granted') {
+        this.init();
+      }
+      return val;
+    },
 
     getAttribution: function () {
       try {
-        const raw = localStorage.getItem('ft_ad_attribution');
+        const raw = sessionStorage.getItem('ft_ad_attribution');
         return raw ? JSON.parse(raw) : (initialAttribution || {});
-      } catch (e) {
+      } catch (_) {
         return initialAttribution || {};
       }
     },
 
     init: function () {
+      if (!this.hasConsent()) return;
+      const attribution = this.getAttribution();
+      if (attribution && attribution.fbclid) {
+        try {
+          if (!document.cookie.includes('_fbc=')) {
+            const fbcVal = 'fb.1.' + Date.now() + '.' + attribution.fbclid;
+            document.cookie = '_fbc=' + fbcVal + '; path=/; max-age=7776000; SameSite=Lax';
+          }
+        } catch (_) {}
+      }
+
       const pixelId = window.FT_CONFIG.analytics.metaPixelId;
       const ga4Id = window.FT_CONFIG.analytics.ga4MeasurementId;
 
-      if (pixelId && !window.fbq) {
-        !function (f, b, e, v, n, t, s) {
-          if (f.fbq) return;
-          n = f.fbq = function () {
-            n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-          };
-          if (!f._fbq) f._fbq = n;
-          n.push = n;
-          n.loaded = !0;
-          n.version = '2.0';
-          n.queue = [];
-          t = b.createElement(e);
-          t.async = !0;
-          t.src = v;
-          s = b.getElementsByTagName(e)[0];
-          s.parentNode.insertBefore(t, s);
-        }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+      if (pixelId && !this.pixelInitialized) {
+        this.pixelInitialized = true;
+        if (!window.fbq) {
+          !function (f, b, e, v, n, t, s) {
+            if (f.fbq) return;
+            n = f.fbq = function () {
+              n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+            };
+            if (!f._fbq) f._fbq = n;
+            n.push = n;
+            n.loaded = !0;
+            n.version = '2.0';
+            n.queue = [];
+            t = b.createElement(e);
+            t.async = !0;
+            t.src = v;
+            s = b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t, s);
+          }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+        }
         window.fbq('init', pixelId);
+        const initEventId = window.__FT_INITIAL_PAGEVIEW_ID || ('pv_init_' + Date.now());
+        window.fbq('track', 'PageView', {}, { eventID: initEventId });
+        this.sendToCAPI('PageView', {}, initEventId);
       }
 
       if (ga4Id && !window.gtag) {
@@ -227,9 +276,6 @@
         window.gtag('js', new Date());
         window.gtag('config', ga4Id);
       }
-
-      const initEventId = window.__FT_INITIAL_PAGEVIEW_ID || ('pv_init_' + Date.now());
-      this.sendToCAPI('PageView', {}, initEventId);
     },
 
     getCookie: function (name) {
@@ -237,51 +283,31 @@
         const value = '; ' + document.cookie;
         const parts = value.split('; ' + name + '=');
         if (parts.length === 2) return parts.pop().split(';').shift();
-        if (name === '_fbc') {
-          return localStorage.getItem('ft_fbc_fallback') || null;
-        }
-      } catch (e) {}
+      } catch (_) {}
       return null;
     },
 
+    // Ephemeral session-only user data (never persisted as PII in localStorage)
     getSavedUserData: function () {
-      try {
-        const saved = localStorage.getItem('ft_customer_profile');
-        return saved ? JSON.parse(saved) : {};
-      } catch (e) {
-        return {};
-      }
+      return Object.assign({}, sessionUserData);
     },
 
     saveUserData: function (profile) {
-      try {
-        const current = this.getSavedUserData();
-        const merged = Object.assign({}, current, profile);
-        localStorage.setItem('ft_customer_profile', JSON.stringify(merged));
-        return merged;
-      } catch (e) {
-        return profile || {};
-      }
+      sessionUserData = Object.assign({}, sessionUserData, profile || {});
+      return sessionUserData;
     },
 
     sendToCAPI: function (eventName, payload, eventId, explicitUserData) {
+      if (!this.hasConsent()) return;
+      if (eventName === 'Purchase') return; // Purchase is server-authoritative on confirmation only
+
       const endpoint = (window.FT_CONFIG && window.FT_CONFIG.analytics && window.FT_CONFIG.analytics.capiEndpoint) || '/api/capi';
-      const savedUser = this.getSavedUserData();
-      const userObj = Object.assign({}, savedUser, explicitUserData || {});
+      const userObj = Object.assign({}, sessionUserData, explicitUserData || {});
       const attribution = this.getAttribution();
 
-      let testCode = undefined;
-      try {
-        testCode = localStorage.getItem('ft_meta_test_event_code') || undefined;
-      } catch (e) {}
-
       const customDataPayload = Object.assign({}, payload || {});
-      if (attribution && attribution.utm_source) {
-        customDataPayload.utm_source = attribution.utm_source;
-      }
-      if (attribution && attribution.utm_campaign) {
-        customDataPayload.utm_campaign = attribution.utm_campaign;
-      }
+      if (attribution && attribution.utm_source) customDataPayload.utm_source = attribution.utm_source;
+      if (attribution && attribution.utm_campaign) customDataPayload.utm_campaign = attribution.utm_campaign;
 
       const body = {
         eventName: eventName,
@@ -289,15 +315,12 @@
         eventTime: Math.floor(Date.now() / 1000),
         eventSourceUrl: window.location.href,
         actionSource: 'website',
-        pixelId: window.FT_CONFIG && window.FT_CONFIG.analytics ? window.FT_CONFIG.analytics.metaPixelId : '1657670575734647',
-        testEventCode: testCode,
         userData: {
           phone: userObj.phone || undefined,
           email: userObj.email || undefined,
           firstName: userObj.name || userObj.firstName || undefined,
-          city: userObj.district || userObj.city || 'Dhaka',
+          city: userObj.district || userObj.city || undefined,
           country: 'bd',
-          externalId: userObj.orderRef || userObj.phone || undefined,
           fbp: this.getCookie('_fbp') || undefined,
           fbc: this.getCookie('_fbc') || undefined
         },
@@ -309,38 +332,23 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
         keepalive: true
-      })
-        .then(function (r) { return r.json(); })
-        .then(function (res) {
-          if (res && res.success) {
-            try {
-              const logs = JSON.parse(localStorage.getItem('ft_capi_logs') || '[]');
-              logs.unshift({
-                time: new Date().toISOString(),
-                event: eventName,
-                eventId: eventId,
-                status: 'sent',
-                eventsReceived: res.metaResponse ? res.metaResponse.events_received : 1
-              });
-              localStorage.setItem('ft_capi_logs', JSON.stringify(logs.slice(0, 40)));
-            } catch (e) {}
-          }
-        })
-        .catch(function () {});
+      }).catch(function () {});
     },
 
     track: function (eventName, payload, explicitUserData) {
+      if (!this.hasConsent()) return;
+      if (eventName === 'Purchase') return; // Never fire unverified Purchase from client browser
+
       payload = payload || {};
       const eventId = 'ev_' + eventName.toLowerCase() + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 8);
       const attribution = this.getAttribution();
-      const entry = {
+      this.eventsLog.push({
         event: eventName,
         eventId: eventId,
         payload: payload,
         attribution: attribution,
         timestamp: new Date().toISOString()
-      };
-      this.eventsLog.push(entry);
+      });
 
       const standardMetaEvents = [
         'PageView',
@@ -349,17 +357,8 @@
         'AddToCart',
         'AddToWishlist',
         'InitiateCheckout',
-        'AddPaymentInfo',
-        'Purchase',
         'Lead',
-        'CompleteRegistration',
-        'Contact',
-        'CustomizeProduct',
-        'FindLocation',
-        'Schedule',
-        'StartTrial',
-        'SubmitApplication',
-        'Subscribe'
+        'Contact'
       ];
 
       if (typeof window.fbq === 'function') {
@@ -369,13 +368,13 @@
           } else {
             window.fbq('trackCustom', eventName, payload, { eventID: eventId });
           }
-        } catch (e) {}
+        } catch (_) {}
       }
 
       this.sendToCAPI(eventName, payload, eventId, explicitUserData);
 
       if (typeof window.gtag === 'function') {
-        try { window.gtag('event', eventName, payload); } catch (e) {}
+        try { window.gtag('event', eventName, payload); } catch (_) {}
       }
     },
 
@@ -432,6 +431,7 @@
       });
     },
 
+    // Web inquiries register a verified Lead; Purchase fires server-side on admin confirmation
     leadOrOrder: function (orderRef, items, totalValue, channel, customerInfo) {
       items = items || [];
       if (customerInfo) {
@@ -450,10 +450,8 @@
         currency: 'BDT'
       };
       this.track('Lead', eventPayload, customerInfo);
-      this.track('Purchase', eventPayload, customerInfo);
     },
 
-    // Direct aliases used across storefront & quick-conversion actions
     trackEvent: function (eventName, payload, explicitUserData) {
       return this.track(eventName, payload, explicitUserData);
     },
@@ -465,6 +463,9 @@
     },
     trackAddToCart: function (product, qty) {
       return this.addToCart(product, qty);
+    },
+    trackSearch: function (query) {
+      return this.track('Search', { search_string: String(query || '').slice(0, 100) });
     },
     trackInitiateCheckout: function (bagItems, subtotalVal) {
       const enriched = (bagItems || []).map(function (b) {
@@ -478,11 +479,12 @@
       return this.initiateCheckout(enriched, subtotalVal);
     },
     trackPurchase: function (orderRecord) {
+      // Redirected cleanly to Lead on storefront; Purchase fires exclusively from verified server order confirmation
       if (!orderRecord) return;
       const custInfo = {
         name: orderRecord.customer_name || orderRecord.name,
         phone: orderRecord.customer_phone || orderRecord.phone,
-        district: orderRecord.district || 'Dhaka',
+        district: orderRecord.district || orderRecord.customer_district || 'Dhaka',
         orderRef: orderRecord.order_ref || orderRecord.ref
       };
       return this.leadOrOrder(
@@ -497,4 +499,4 @@
       return this.track('Contact', { content_name: 'Concierge Inquiry', contact_channel: channel || 'Messenger' });
     }
   };
-})(window);
+})(window, document);

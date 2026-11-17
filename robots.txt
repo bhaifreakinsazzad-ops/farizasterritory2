@@ -3,5 +3,6 @@ Allow: /
 Disallow: /admin
 Disallow: /admin.html
 Disallow: /api/
+Disallow: /assets/aistudio/
 
-Sitemap: /sitemap.xml
+Sitemap: https://farizasterritory.com/sitemap.xml

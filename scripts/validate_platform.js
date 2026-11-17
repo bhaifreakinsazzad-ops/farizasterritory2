@@ -1,15 +1,16 @@
 /**
- * Full Platform Verification Script
+ * Full Platform Verification & Security Invariant Script
  */
+const assert = require('assert');
 const fs = require('fs');
-const path = require('path');
 
-// 1. Verify catalogData.js
+// 1. Verify catalogData.js & commerce.js
 require('../assets/js/catalogData.js');
 const catalog = globalThis.FT_CATALOG;
+const commerce = require('../assets/js/commerce.js');
 
 if (!catalog) {
-  console.error('FAIL: window.FT_CATALOG is not defined!');
+  console.error('FAIL: globalThis.FT_CATALOG is not defined!');
   process.exit(1);
 }
 
@@ -27,7 +28,6 @@ if (catalog.PRODUCTS.length !== 53) {
   process.exit(1);
 }
 
-// Check fashion vs accessories counts
 const fashionCount = catalog.PRODUCTS.filter(p => p.superCategory === 'Fashion').length;
 const accCount = catalog.PRODUCTS.filter(p => p.superCategory === 'Accessories').length;
 
@@ -38,6 +38,9 @@ if (fashionCount !== 18 || accCount !== 35) {
   console.error('FAIL: SKU counts do not match expected 18 fashion and 35 accessories!');
   process.exit(1);
 }
+
+assert.ok(commerce && typeof commerce.computeOrderTotals === 'function', 'commerce.js exports computeOrderTotals');
+assert.strictEqual(commerce.DEFAULT_FREE_SHIPPING_THRESHOLD, 3000, 'Canonical free shipping threshold is 3000 BDT');
 
 // 2. Check image assets on disk
 let missingAssets = 0;
@@ -50,14 +53,12 @@ catalog.PRODUCTS.forEach(p => {
     return;
   }
 
-  // Check main.webp
   checkedAssets++;
   if (!fs.existsSync(p.assets.main)) {
     console.error(`Missing main asset for ${p.sku}: ${p.assets.main}`);
     missingAssets++;
   }
 
-  // Check socialSquare
   if (p.assets.socialSquare) {
     checkedAssets++;
     if (!fs.existsSync(p.assets.socialSquare)) {
@@ -86,10 +87,13 @@ catalog.PRODUCTS.forEach(p => {
 const jsFiles = [
   'server.js',
   'api/capi.js',
+  'lib/supabaseServer.js',
+  'assets/js/commerce.js',
   'assets/js/config.js',
   'assets/js/supabaseClient.js',
   'assets/js/catalogData.js',
   'assets/js/threeHero.js',
+  'assets/js/threeCollectionParallax.js',
   'assets/js/animePolish.js',
   'assets/js/app.js'
 ];
@@ -142,6 +146,32 @@ console.log('--- HTML Pages Verification ---');
   }
   console.log(`PASS: ${f} (${(content.length / 1024).toFixed(1)} KB, ${inlineIdx} inline scripts OK)`);
 });
+
+// 5. Verify Static Security Invariants
+console.log('--- Static Security Invariant Checks ---');
+const adminHtml = fs.readFileSync('admin.html', 'utf8');
+assert.ok(!adminHtml.includes("'1430'") && !adminHtml.includes('"1430"'), 'admin.html must not contain hardcoded PIN 1430');
+assert.ok(!adminHtml.includes('ft_admin_unlocked'), 'admin.html must not use client-side unlock bypass');
+assert.ok(!adminHtml.includes('set-admin-pin'), 'admin.html must not expose client PIN settings');
+
+const serverJs = fs.readFileSync('server.js', 'utf8');
+assert.ok(!serverJs.includes('.data/orders.json'), 'server.js must not use ephemeral .data/orders.json');
+assert.ok(!/app\.get\s*\(\s*['"]\/api\/orders['"]/.test(serverJs), 'server.js must not expose unauthenticated GET /api/orders');
+assert.ok(!/app\.patch\s*\(\s*['"]\/api\/orders\//.test(serverJs), 'server.js must not expose unauthenticated PATCH /api/orders/:orderRef');
+
+const configJs = fs.readFileSync('assets/js/config.js', 'utf8');
+assert.ok(!/anonKey\s*:\s*['"]eyJ/.test(configJs), 'config.js must not hardcode a Supabase anonKey JWT');
+assert.ok(!/service_role/i.test(configJs), 'config.js must never reference service_role key');
+
+assert.ok(fs.existsSync('supabase/migrations/02_security_hardening.sql'), '02_security_hardening.sql must exist');
+const migration02 = fs.readFileSync('supabase/migrations/02_security_hardening.sql', 'utf8');
+assert.ok(!/FOR ALL\s+USING\s*\(\s*true\s*\)/i.test(migration02), '02_security_hardening.sql must not contain permissive FOR ALL USING (true)');
+assert.ok(fs.existsSync('supabase/migrations/02_security_hardening_rollback.sql'), '02_security_hardening_rollback.sql must exist');
+
+assert.ok(!fs.existsSync('netlify.toml'), 'Misleading static netlify.toml must be removed');
+assert.ok(!fs.existsSync('vercel.json'), 'Misleading static vercel.json must be removed');
+
+console.log('PASS: Static security invariants verified');
 
 console.log('\n=========================================');
 console.log('ALL VERIFICATION CHECKS PASSED PERFECTLY!');

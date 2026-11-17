@@ -36,19 +36,21 @@ const store = {
 };
 function getWhatsAppNumber(){
   const num = (typeof state !== "undefined" && state.cfg && state.cfg.whatsapp) ||
-              localStorage.getItem("ft_whatsapp") ||
               (window.FT_CONFIG && window.FT_CONFIG.whatsappNumber) ||
               (typeof CONFIG !== "undefined" && CONFIG.whatsappNumber) ||
-              "8801700000000";
+              "";
   return String(num).replace(/[^0-9]/g, "");
 }
 function isRealWhatsapp(){
   const digits = getWhatsAppNumber();
+  if (window.FT_COMMERCE && typeof window.FT_COMMERCE.isPlaceholderWhatsapp === 'function') {
+    return !window.FT_COMMERCE.isPlaceholderWhatsapp(digits);
+  }
   return !!digits && digits !== "8801700000000" && digits.length >= 11;
 }
 function getWhatsAppUrl(text){
   const num = getWhatsAppNumber();
-  if (!num || num === "8801700000000" || num.length < 11) {
+  if (!isRealWhatsapp()) {
     const mUser = (typeof state !== "undefined" && state.cfg && state.cfg.messenger) || CONFIG.messengerUsername || "farizasterritory143";
     return `https://m.me/${encodeURIComponent(mUser)}`;
   }
@@ -82,13 +84,14 @@ const state = {
   bag: store.load("ft_bag",[]),
   wish: store.load("ft_wish",[]),
   cfg: Object.assign({
-    messenger: CONFIG.messengerUsername,
-    whatsapp: localStorage.getItem("ft_whatsapp") || localStorage.getItem("ft_wa_number") || CONFIG.whatsappNumber || "8801700000000",
-    facebook: CONFIG.facebookUrl
+    messenger: CONFIG.messengerUsername || "farizasterritory143",
+    whatsapp: CONFIG.whatsappNumber || "",
+    facebook: CONFIG.facebookPageUrl || "https://www.facebook.com/farizasterritory143"
   }, store.load("ft_cfg",{})),
   appliedCoupon: store.load("ft_applied_coupon", null),
   deliveryZone: normalizeDeliveryZone(store.load("ft_delivery_zone", "dhaka")),
   promoOff: store.load("ft_promo_off",false),
+  draftIdempotencyKey: null,
   route:{page:"home",param:null,query:{}},
   stage:{pillar:"all",col:"all",idx:0,list:PRODUCTS.map(p=>p.sku)},
   shop:{pillar:"all",c:"all",q:"",sort:"featured"},
@@ -520,7 +523,7 @@ function pageHome(){
               <span class="tag tiny" style="background:color-mix(in srgb,${c.acc} 15%,transparent);color:var(--ink)">${esc(c.pillar)}</span>
             </div>
             <h3 class="cc-name">${esc(c.name)}</h3>
-            ${c.nameBn ? `<div class="tiny bn" style="color:var(--chestnut)">${esc(c.nameBn)}</div>` : ''}
+            ${c.nameBn ? `<div class="tiny bn col-card-bn" style="color:var(--chestnut)">${esc(c.nameBn)}</div>` : ''}
             <span class="cc-count">${c.count} piece${c.count>1?"s":""}${c.id==="01"?" · label unverified":""}</span>
             <div class="cc-thumbs">${items.slice(0,3).map(p=>ph(p,"main",{mini:true,w:200,dot:false})).join("")}</div>
             <a class="cc-go" href="#/shop?c=${c.id}">Explore collection ${IC.arrow}</a>
@@ -688,6 +691,9 @@ function layoutStage(instant){
   $("#stage-title").textContent=p.title;
   $("#stage-count").textContent=`${pad2(idx)} / ${String(n).padStart(2,"0")}`;
   $("#stage-prog").style.width=((idx+1)/n*100)+"%";
+  if(window.ftThreeHero && typeof window.ftThreeHero.setAccentColor === "function"){
+    window.ftThreeHero.setAccentColor(p.accent, !instant);
+  }
   renderTrio();
 }
 function focusStage(i){
@@ -832,6 +838,10 @@ function renderShopGrid(){
   wrap.innerHTML=list.length?`<div class="pgrid">${list.map((p,i)=>pcard(p,i)).join("")}</div>`:
     `<div class="empty">${IC.flower}<p>No pieces match your filters.</p><p class="small" style="margin:8px 0 18px">Clear the search or choose another collection.</p><button class="btn btn-ink btn-sm" data-act="shop-clear"><span>Clear filters</span></button></div>`;
   bindImages(wrap); revealBind(wrap);
+  if(window.FT_ANIME){
+    window.FT_ANIME.refresh();
+    window.FT_ANIME.animateGridCards(wrap);
+  }
   $$('[data-act="shop-pillar"]').forEach(ch=>ch.classList.toggle("on",ch.dataset.pillar===state.shop.pillar));
   $$('[data-act="shop-col"]').forEach(ch=>ch.classList.toggle("on",ch.dataset.col===state.shop.c));
 }
@@ -966,7 +976,11 @@ function renderGallery(){
     <button class="hot" style="display:flex;left:70%;top:62%" data-act="hot" data-sku="${p.sku}" data-key="detailB" data-x="70" data-y="62" aria-label="Border detail hotspot">${IC.plus}</button>`:"";
   wrap.innerHTML=`<div data-act="lb-open" data-sku="${p.sku}" data-key="${k}" role="button" tabindex="0" aria-label="Enlarge ${KEY_META[k].label}" style="cursor:zoom-in">
     ${ph(p,k,{w:1600,eager:true,contain:true,tag:true,tagText:KEY_META[k].label+(KEY_META[k].auth==="derived-source-crop"?" · source crop":"")})}</div>${hots}`;
-  fx(wrap,{opacity:[.3,1]},{duration:.4});
+  if(window.FT_ANIME && typeof window.FT_ANIME.animateImageSwap === "function"){
+    window.FT_ANIME.animateImageSwap(wrap);
+  } else {
+    fx(wrap,{opacity:[.3,1]},{duration:.4});
+  }
   $$("#gal-thumbs button").forEach(b=>{const on=b.dataset.key===k;b.classList.toggle("on",on);b.setAttribute("aria-selected",on);});
   bindImages(wrap);
 }
@@ -1015,6 +1029,10 @@ function renderLookGrid(){
       <div class="lb-cap"><span>${esc(t.p.title)}</span><span class="fmt">${t.k==="storyReel"?"9:16":"1:1"}</span></div>
     </div>`).join("")}</div>`;
   bindImages(wrap); revealBind(wrap);
+  if(window.FT_ANIME){
+    window.FT_ANIME.refresh();
+    window.FT_ANIME.animateGridCards(wrap);
+  }
 }
 /* ================= BAG PAGE ================= */
 function pageBag(){
@@ -1167,7 +1185,8 @@ function pageInquiry(){
           </div>
         </div>
         <label style="display:flex;gap:9px;align-items:center;font-size:13.5px;margin:6px 0 18px"><input type="checkbox" name="clearbag" style="accent-color:var(--chestnut)"> Clear my bag after preparing the inquiry</label>
-        <button type="submit" class="btn btn-ink btn-block"><span>Prepare inquiry &amp; register order</span>${IC.arrow}</button>
+        <div id="inq-submit-error" style="margin-bottom:12px"></div>
+        <button type="submit" id="inq-submit-btn" class="btn btn-ink btn-block"><span>Prepare inquiry &amp; register order</span>${IC.arrow}</button>
         <p class="tiny" style="margin-top:12px">Cash on Delivery applies. No payment is taken online.</p>
       </form>
       <div class="panel sticky" data-reveal style="--d:.1s" id="inq-summary"></div>
@@ -1258,8 +1277,8 @@ function renderInqDone(){
   const waUrl = getWhatsAppUrl(q.text);
   wrap.innerHTML=`<div class="two-col"><div class="panel" data-reveal>
     <div class="success-mark">${IC.check}</div>
-    <h2 class="h-sec kinetic-title">Inquiry Prepared &amp; Registered!</h2>
-    <p class="lede" style="margin:12px 0 20px">Reference <b style="color:var(--chestnut)">${esc(q.ref)}</b>. Your order inquiry has been recorded. To finalize your order, sizing, and delivery schedule, please send this summary to our concierge via WhatsApp or Messenger. <b>Cash on Delivery applies — no payment taken online.</b></p>
+    <h2 class="h-sec kinetic-title">Inquiry Registered!</h2>
+    <p class="lede" style="margin:12px 0 20px">Reference <b style="color:var(--chestnut)">${esc(q.ref)}</b>. Your order inquiry has been saved on our boutique server. To confirm sizing and delivery timing, please message our concierge team. <b>Cash on Delivery applies — no payment taken online.</b></p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
       ${isRealWhatsapp() ? `<a class="btn btn-caramel" href="${waUrl}" target="_blank" rel="noopener">${IC.wa}<span>Send via WhatsApp</span></a>` : ''}
       <button class="btn btn-ink" data-act="msg" data-send="1">${IC.chat}<span>Send via Messenger</span></button>
@@ -1267,7 +1286,7 @@ function renderInqDone(){
       <a class="btn btn-line" href="#/track/${encodeURIComponent(q.ref)}">${IC.pin}<span>Track This Order</span></a>
       <button class="btn btn-line" data-act="inq-dl">${IC.dl}<span>Download .txt</span></button>
     </div>
-    <div class="notice info">${IC.info}<span>Order saved locally and submitted to Supabase. You can check its live fulfillment status anytime on our <a href="#/track/${encodeURIComponent(q.ref)}" style="text-decoration:underline">Order Tracking</a> page.</span></div>
+    <div class="notice info">${IC.info}<span>Server Total: <b>৳${Number(q.total || 0).toLocaleString('en-US')}</b> (COD). You can track its status anytime on our <a href="#/track/${encodeURIComponent(q.ref)}" style="text-decoration:underline">Order Tracking</a> page using your Reference and Phone Number.</span></div>
     <button class="btn btn-line btn-sm" style="margin-top:18px" data-act="inq-new"><span>Start another inquiry</span></button>
   </div>
   <div class="panel sticky" data-reveal style="--d:.1s">
@@ -1288,7 +1307,7 @@ function pageAbout(){
     <div class="two-col">
       <div data-reveal>
         <div class="brand-crest-card" style="margin:0 0 22px">
-          <img src="assets/brand/brand_logo_1.webp" alt="Fariza's Territory Official Brand Crest — Pomelli Brand Book" loading="lazy">
+          <img src="/assets/brand/brand_logo_1.webp" alt="Fariza's Territory Official Brand Crest — Pomelli Brand Book" loading="lazy">
           <span class="tiny" style="color:var(--chestnut)">Official Brand Mark · Minimum 152px width &amp; 95px clear-space specification (Pomelli Brand Book)</span>
         </div>
         <p class="lede" style="margin-bottom:18px">Fariza's Territory is a boutique fashion and artisan accessories brand based in Mirpur, Dhaka, connecting with over 13,000 social media followers through curated lookbooks and studio reels. Browse all 53 verified pieces across 8 fashion &amp; accessory collections, inspect close-up details, and inquire directly piece by piece.</p>
@@ -1300,8 +1319,7 @@ function pageAbout(){
           ${["Folk-Art Ornamentation","Heritage Patternwork","Artisanal Tactility","Botanical Intricacy","Traditional Flourish","Tone: Casual · Modern · Trendy"].map(a=>`<li style="color:var(--ink2)">${IC.flower}${a}</li>`).join("")}
         </ul>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
-          <a class="btn btn-ink btn-sm" href="assets/aistudio/fariza_s_territory_brand_book_by_pomelli_1e38cd9b.pdf" target="_blank" rel="noopener">${IC.dl}<span>View Official Pomelli Brand Book (PDF)</span></a>
-          <a class="btn btn-line btn-sm" href="assets/aistudio/PRODUCTS_53_MASTER_DATABASE_d064c566.json" target="_blank" rel="noopener">${IC.ext}<span>53-SKU Master Database (.json)</span></a>
+          <a class="btn btn-ink btn-sm" href="/assets/aistudio/fariza_s_territory_brand_book_by_pomelli_1e38cd9b.pdf" target="_blank" rel="noopener">${IC.dl}<span>View Official Pomelli Brand Book (PDF)</span></a>
         </div>
         <div class="notice info" style="margin-top:20px">${IC.info}<span>The “Aarong” collection label comes from the seller's original catalog and is flagged <b>unverified</b> — no brand affiliation is claimed. The catalog contains provisional prices, but sizes and inventory remain unverified. Seller confirms final terms on inquiry.</span></div>
       </div>
@@ -1323,6 +1341,7 @@ function pageAbout(){
   </div></div>`;
 }
 function pageContact(){
+  const fbUrl = state.cfg.facebook || CONFIG.facebookPageUrl || CONFIG.fbSearch || "https://www.facebook.com/farizasterritory143";
   return `
   <div class="page-head"><div class="container">
     <span class="overline" data-reveal>We reply personally</span>
@@ -1333,7 +1352,7 @@ function pageContact(){
       <div data-reveal>
         <div class="c-card">${IC.chat}<div><b>Facebook Messenger — primary</b><p>The fastest way to order. Send your inquiry message and we confirm prices, sizing, offers and delivery.</p>${messengerBtn("Open Messenger")}</div></div>
         ${isRealWhatsapp()?`<div class="c-card">${IC.wa}<div><b>WhatsApp</b><p>WhatsApp order inquiries available.</p><button class="btn btn-line btn-sm" data-act="wa">${IC.wa}<span>WhatsApp inquiry</span></button></div></div>`:''}
-        <div class="c-card">${IC.pin}<div><b>Mirpur, Dhaka, Bangladesh</b><p>Boutique base as stated in the Brand Book. A precise street address and direct concierge line are confirmed via Messenger.</p><a class="btn btn-line btn-sm" href="${CONFIG.fbSearch}" target="_blank" rel="noopener">${IC.ext}<span>Find us on Facebook</span></a></div></div>
+        <div class="c-card">${IC.pin}<div><b>Mirpur, Dhaka, Bangladesh</b><p>Boutique base as stated in the Brand Book. A precise street address and direct concierge line are confirmed via Messenger.</p><a class="btn btn-line btn-sm" href="${esc(fbUrl)}" target="_blank" rel="noopener">${IC.ext}<span>Find us on Facebook</span></a></div></div>
         <div class="notice">${IC.alert}<span>Apply welcome voucher codes <b>FIRST25</b>, <b>FARIZA200</b>, or <b>FREESHIP</b> inside your Order Inquiry — Cash on Delivery eligibility is confirmed by the seller.</span></div>
       </div>
       <form class="panel" data-form="contact" data-reveal style="--d:.1s" novalidate>
@@ -1443,14 +1462,14 @@ function renderModal(){
     updateReportSummary();
   }else if(state.reportTab==="config"){
     body.innerHTML=`
-      <p class="small" style="margin-bottom:16px">Configure Messenger and WhatsApp concierge channels. Settings save locally in your browser and sync if Supabase is connected.</p>
+      <p class="small" style="margin-bottom:16px">Preview local Messenger concierge preferences in this browser. Storewide pricing, inventory, and official contact channels are managed exclusively in the authenticated <a href="/admin" style="text-decoration:underline">Admin Portal</a>.</p>
       <form data-form="config">
         <div class="field"><label for="cfg-m">Facebook page username (m.me/…)</label><input id="cfg-m" name="messenger" value="${esc(state.cfg.messenger)}" placeholder="e.g. farizasterritory143"></div>
-        <div class="field"><label for="cfg-w">WhatsApp number (international format)</label><input id="cfg-w" name="whatsapp" value="${esc(state.cfg.whatsapp)}" placeholder="e.g. 8801XXXXXXXXX"></div>
+        <div class="field"><label for="cfg-w">WhatsApp number (optional, international format)</label><input id="cfg-w" name="whatsapp" value="${esc(isRealWhatsapp()?state.cfg.whatsapp:'')}" placeholder="Leave blank until active BD WhatsApp line is set"></div>
         <div class="field"><label for="cfg-f">Official Facebook page URL</label><input id="cfg-f" name="facebook" value="${esc(state.cfg.facebook)}" placeholder="https://www.facebook.com/…"></div>
-        <button type="submit" class="btn btn-ink"><span>Save settings</span>${IC.check}</button>
+        <button type="submit" class="btn btn-ink"><span>Save preview preferences</span>${IC.check}</button>
       </form>
-      <div class="notice info" style="margin-top:18px">${IC.info}<span>For full order management, coupon creation, and Meta CAPI diagnostics, visit the Admin Portal (<code>/admin</code>).</span></div>`;
+      <div class="notice info" style="margin-top:18px">${IC.info}<span>For authoritative order fulfillment, coupon management, and Meta CAPI diagnostics, sign in via <a href="/admin" style="text-decoration:underline"><code>/admin</code></a>.</span></div>`;
   }else{
     const qa=selfTest();
     body.innerHTML=`
@@ -1460,9 +1479,9 @@ function renderModal(){
       <pre class="code">BRAND=Fariza's Territory
 CATALOG_SKUS=${PRODUCTS.length} (${COLLECTIONS.length} collections)
 MESSENGER=${state.cfg.messenger || 'farizasterritory143'}
-META_PIXEL_ID=${CONFIG.marketing && CONFIG.marketing.metaPixelId ? CONFIG.marketing.metaPixelId : '1657670575734647'}</pre>
+META_PIXEL_ID=${CONFIG.analytics && CONFIG.analytics.metaPixelId ? CONFIG.analytics.metaPixelId : '1657670575734647'}</pre>
       <span class="overline" style="margin:22px 0 10px">Deployment</span>
-      <p class="small" style="line-height:1.8">Node / Express server serves <code>/</code>, <code>/admin</code>, and <code>POST /api/capi</code> for Meta Conversions API deduplication alongside optional Supabase persistence.</p>`;
+      <p class="small" style="line-height:1.8">Node / Express server serves <code>/</code>, <code>/products/:sku</code>, <code>/collections/:slug</code>, <code>/admin</code>, authoritative <code>POST /api/orders</code>, challenged <code>GET /api/track</code>, and <code>POST /api/capi</code> alongside Supabase persistence.</p>`;
   }
 }
 function updateReportSummary(){
@@ -1514,7 +1533,8 @@ function fallbackCopy(text,done){
 function openMessenger(text){
   if(text)copyText(text,"Message copied — paste it in Messenger");
   if(window.FT_ANALYTICS && window.FT_ANALYTICS.trackContact) window.FT_ANALYTICS.trackContact("Messenger");
-  const url=state.cfg.messenger?`https://m.me/${encodeURIComponent(state.cfg.messenger)}`:(state.cfg.facebook||CONFIG.fbSearch);
+  const fbFallback = state.cfg.facebook || CONFIG.facebookPageUrl || CONFIG.fbSearch || "https://www.facebook.com/farizasterritory143";
+  const url=state.cfg.messenger?`https://m.me/${encodeURIComponent(state.cfg.messenger)}`:fbFallback;
   if(!state.cfg.messenger)toast("Opening the official Facebook business page",{icon:"info"});
   openExternalUrl(url);
 }
@@ -1539,14 +1559,15 @@ function pageTrack(paramRef){
   const defaultRef = paramRef || (state.lastInquiry && state.lastInquiry.ref) || "";
   return `
   <div class="page-head"><div class="container">
-    <span class="overline" data-reveal>Real-time order lookup</span>
+    <span class="overline" data-reveal>Verified order lookup</span>
     <h1 class="h-display" data-reveal style="--d:.06s;margin-top:12px">Track Your Order</h1>
-    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">Enter your Order Reference (e.g. <b>FT-261117-XXXX</b>) or your contact phone number to view live verification, tailoring and courier delivery updates.</p>
+    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">Enter both your Order Reference (e.g. <b>FT-261117-XXXX</b>) and the mobile phone number used at inquiry to view live confirmation and courier dispatch status.</p>
   </div></div>
   <div class="page-body"><div class="container" style="max-width:860px">
     <div class="panel" data-reveal style="margin-bottom:24px">
       <form id="track-form" data-form="track" style="display:flex;gap:10px;flex-wrap:wrap">
-        <input id="track-input" type="text" value="${esc(defaultRef)}" placeholder="Enter Order Ref (e.g. FT-261117-XXXX) or Phone" style="flex:1;min-width:260px;padding:12px 16px;border-radius:10px;border:1.5px solid var(--kantha);background:var(--surface);color:var(--ink);font-family:inherit;font-size:15px">
+        <input id="track-input" type="text" value="${esc(defaultRef)}" placeholder="Order Reference (e.g. FT-261117-XXXX)" style="flex:1;min-width:210px;padding:12px 16px;border-radius:10px;border:1.5px solid var(--kantha);background:var(--surface);color:var(--ink);font-family:inherit;font-size:15px">
+        <input id="track-phone-input" type="tel" placeholder="Order Phone (e.g. 017XXXXXXXX)" style="flex:1;min-width:200px;padding:12px 16px;border-radius:10px;border:1.5px solid var(--kantha);background:var(--surface);color:var(--ink);font-family:inherit;font-size:15px">
         <button type="submit" class="btn btn-ink" style="padding:12px 24px"><span>Check Status</span>${IC.arrow}</button>
       </form>
     </div>
@@ -1555,55 +1576,61 @@ function pageTrack(paramRef){
   </div></div>`;
 }
 
-async function handleTrackSearch(optRef){
+async function handleTrackSearch(optRef, optPhone){
   const inp = document.getElementById("track-input");
-  const q = (optRef || (inp ? inp.value : "")).trim();
-  if(inp && optRef) inp.value = optRef;
+  const phoneInp = document.getElementById("track-phone-input");
+  const ref = (optRef !== undefined ? optRef : (inp ? inp.value : "")).trim().toUpperCase();
+  const phone = (optPhone !== undefined ? optPhone : (phoneInp ? phoneInp.value : "")).trim();
+  if(inp && optRef) inp.value = ref;
   const wrap = document.getElementById("track-result-wrap");
   if(!wrap) return;
-  if(!q){
-    wrap.innerHTML = `<div class="notice alert">${IC.alert}<span>Please enter a valid order reference or phone number.</span></div>`;
+  if(!ref || !phone){
+    wrap.innerHTML = `<div class="notice alert">${IC.alert}<span>Please enter both your Order Reference and matching Bangladeshi phone number to verify and view order status.</span></div>`;
+    if(ref && !phone && phoneInp) phoneInp.focus();
     return;
   }
-  wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink2)">Searching boutique records...</div>';
-  
-  const order = await window.FT_SUPABASE.getOrderByRef(q);
-  if(!order){
+  wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink2)">Verifying order credentials...</div>';
+
+  const result = await window.FT_SUPABASE.trackOrder(ref, phone);
+  if(!result || !result.ok || !result.order){
+    const msg = (result && result.error) || 'We could not match that Order Reference and Phone Number.';
     wrap.innerHTML = `<div class="panel" style="text-align:center;padding:36px">
       <div style="font-size:32px;margin-bottom:12px">🔍</div>
       <h3 style="font-size:20px;margin:0 0 10px">Order Not Found</h3>
-      <p class="small" style="color:var(--ink2);max-width:440px;margin:0 auto 18px">We could not locate an inquiry matching "<b>${esc(q)}</b>". Please check the spelling or send a message directly to our concierge team on WhatsApp.</p>
-      <a href="${getWhatsAppUrl("Hello Fariza's Territory, I am checking the status of my order " + q)}" target="_blank" rel="noopener noreferrer" class="btn btn-line btn-sm">${IC.wa}<span>Inquire on WhatsApp</span></a>
+      <p class="small" style="color:var(--ink2);max-width:440px;margin:0 auto 18px">${esc(msg)}</p>
+      <button type="button" data-act="msg" class="btn btn-line btn-sm">${IC.chat}<span>Contact Concierge on Messenger</span></button>
     </div>`;
     return;
   }
-  
-  renderTrackCard(order, wrap);
+
+  renderTrackCard(result.order, wrap);
 }
 
 function renderRecentOrders(){
   const wrap = document.getElementById("recent-orders-wrap");
   if(!wrap) return;
-  const local = JSON.parse(localStorage.getItem('ft_my_orders') || '[]').filter(o => o && !o.is_demo);
-  if(!local.length){
+  let local = [];
+  try {
+    local = JSON.parse(localStorage.getItem('ft_recent_refs') || '[]');
+  } catch (_) {}
+  if(!Array.isArray(local) || !local.length){
     wrap.innerHTML = '';
     return;
   }
   const recent = local.slice(0, 5);
   wrap.innerHTML = `
     <div class="panel" style="border:1px solid var(--line);background:var(--cream2);border-radius:12px;padding:20px">
-      <span class="overline" style="color:var(--chestnut)">Your Inquiries in this Browser</span>
-      <h3 style="font-size:17px;margin:6px 0 14px">Recent Inquiries</h3>
+      <span class="overline" style="color:var(--chestnut)">Recent References (This Browser)</span>
+      <h3 style="font-size:17px;margin:6px 0 14px">Your Recent Inquiry References</h3>
       <div style="display:flex;flex-direction:column;gap:10px">
         ${recent.map(o => `
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 14px;background:var(--surface);border-radius:8px;border:1px solid var(--line)">
             <div>
-              <div style="font-weight:700;color:var(--chestnut);font-size:14.5px">${esc(o.order_ref || o.ref)}</div>
-              <div class="tiny" style="color:var(--ink2);margin-top:2px">${new Date(o.created_at || Date.now()).toLocaleDateString('en-GB')} · ${Array.isArray(o.items) ? o.items.length : 1} piece(s) · ৳${Number(o.total || 0).toLocaleString()}</div>
+              <div style="font-weight:700;color:var(--chestnut);font-size:14.5px">${esc(o.order_ref)}</div>
+              <div class="tiny" style="color:var(--ink2);margin-top:2px">${new Date(o.created_at || Date.now()).toLocaleDateString('en-GB')} · ${Number(o.item_count || 1)} piece(s) · ৳${Number(o.total || 0).toLocaleString()}</div>
             </div>
             <div style="display:flex;align-items:center;gap:10px">
-              <span class="order-tracking-status status-${o.status || 'pending'}" style="font-size:11.5px;padding:4px 10px">${o.status || 'pending'}</span>
-              <button type="button" class="btn btn-ink btn-sm" data-act="track-ref" data-ref="${esc(o.order_ref || o.ref)}"><span>Track</span></button>
+              <button type="button" class="btn btn-ink btn-sm" data-act="track-ref" data-ref="${esc(o.order_ref)}"><span>Select Ref</span></button>
             </div>
           </div>
         `).join('')}
@@ -1626,17 +1653,17 @@ function renderTrackCard(order, wrap){
     { key: 'shipped', label: 'Dispatched', desc: order.courier_name ? (order.courier_name + (order.tracking_number ? ' #' + order.tracking_number : '')) : 'Handed over to courier' },
     { key: 'delivered', label: 'Delivered', desc: 'Package delivered & cash collected' }
   ];
-  
+
   const stepIdx = { 'pending':0, 'confirmed':1, 'processing':2, 'shipped':3, 'delivered':4, 'cancelled':-1 }[st] || 0;
-  
+
   let itemsHtml = '';
   if(Array.isArray(order.items)){
     itemsHtml = order.items.map(it => `
       <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line)">
-        ${it.image ? `<img src="${it.image}" style="width:48px;height:60px;object-fit:cover;border-radius:6px;">` : ''}
+        ${it.image ? `<img src="${esc(it.image)}" style="width:48px;height:60px;object-fit:cover;border-radius:6px;">` : ''}
         <div style="flex:1">
           <div style="font-weight:600">${esc(it.title || it.sku)}</div>
-          <small style="color:var(--ink2)">SKU: ${esc(it.sku)} · Qty: ${it.qty || 1}</small>
+          <small style="color:var(--ink2)">SKU: ${esc(it.sku)} · Qty: ${Number(it.qty || 1)}</small>
         </div>
         <div style="font-weight:700">৳ ${Number(it.price || 0).toLocaleString()}</div>
       </div>
@@ -1652,12 +1679,11 @@ function renderTrackCard(order, wrap){
         <small style="color:var(--ink2)">Placed on ${new Date(order.created_at || Date.now()).toLocaleDateString('en-GB')}</small>
       </div>
       <div>
-        <span class="order-tracking-status status-${st}">${st}</span>
+        <span class="order-tracking-status status-${esc(st)}">${esc(st)}</span>
       </div>
     </div>
 
-    <!-- Stepper -->
-    ${st === 'cancelled' ? `<div class="notice alert" style="margin-bottom:20px">${IC.alert}<span>This order was cancelled. Please message us on WhatsApp if you wish to re-inquire.</span></div>` : `
+    ${st === 'cancelled' ? `<div class="notice alert" style="margin-bottom:20px">${IC.alert}<span>This order was cancelled. Please message us on Messenger if you wish to re-inquire.</span></div>` : `
       <div class="tracking-stepper" style="background:var(--cream2);padding:20px 16px;border-radius:14px;border:1px solid var(--line);margin:20px 0;">
         ${steps.map((sp, i) => `
           <div class="tracking-step ${i < stepIdx ? 'done' : (i === stepIdx ? 'active' : '')}">
@@ -1673,13 +1699,11 @@ function renderTrackCard(order, wrap){
       </div>
     `}
 
-    <!-- Items & Summary -->
     <div style="margin:20px 0">
       <span class="overline">Pieces in this order</span>
       <div style="margin-top:10px">${itemsHtml}</div>
     </div>
 
-    <!-- Financial Breakdown -->
     <div style="background:var(--cream2);padding:16px;border-radius:10px;margin-bottom:18px;font-size:14px">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
         <span>Items Subtotal:</span>
@@ -1701,19 +1725,20 @@ function renderTrackCard(order, wrap){
       </div>
     </div>
 
-    <!-- Customer & Delivery -->
     <div style="font-size:13.5px;color:var(--ink2);margin-bottom:18px">
-      <div><b>Recipient:</b> ${esc(order.customer_name)} (${esc(order.customer_phone)})</div>
-      <div style="margin-top:4px"><b>Delivery Address:</b> ${esc(order.customer_address)}</div>
-      ${order.customer_notes ? `<div style="margin-top:4px"><b>Notes:</b> ${esc(order.customer_notes)}</div>` : ''}
+      <div><b>Recipient:</b> ${esc(order.recipient_masked || 'Verified Customer')} (${esc(order.phone_masked || '****')})</div>
+      <div style="margin-top:4px"><b>Delivery District:</b> ${esc(order.district || (isOut ? 'Outside Dhaka' : 'Dhaka'))}</div>
+      ${order.courier_name ? `<div style="margin-top:4px"><b>Courier:</b> ${esc(order.courier_name)}${order.tracking_number ? ' · Tracking #' + esc(order.tracking_number) : ''}</div>` : ''}
     </div>
 
-    <!-- Actions -->
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button type="button" data-act="wa" class="btn btn-ink btn-sm">${IC.wa}<span>${isRealWhatsapp() ? 'Contact Seller on WhatsApp' : 'Contact Seller on Messenger'}</span></button>
       <button type="button" class="btn btn-line btn-sm" data-act="copy-text" data-text="${esc(order.order_ref)}">${IC.copy}<span>Copy Order Ref</span></button>
     </div>
   </div>`;
+  if(window.FT_ANIME && typeof window.FT_ANIME.animateTrackingStepper === "function"){
+    window.FT_ANIME.animateTrackingStepper(wrap);
+  }
 }
 
 /* ================= ROUTER ================= */
@@ -1838,7 +1863,7 @@ function initMotionInView() {
   if (RM) return;
   if (window.Motion && typeof window.Motion.inView === "function" && typeof window.Motion.animate === "function") {
     try {
-      const targets = ".pcard:not([data-inview-bound]), .col-card:not([data-inview-bound]), .pair-card:not([data-inview-bound]), .offer:not([data-inview-bound])";
+      const targets = ".pcard:not([data-inview-bound]), .pair-card:not([data-inview-bound]), .offer:not([data-inview-bound])";
       window.Motion.inView(targets, (element) => {
         if (element.dataset.inviewBound) return;
         element.dataset.inviewBound = "1";
@@ -1935,6 +1960,9 @@ function hydrate(){
     buildStage();
     initStageInput();
     if(window.initThreeHero) window.initThreeHero();
+    if(window.initThreeCollections) window.initThreeCollections();
+  } else {
+    if(window.destroyThreeCollections) window.destroyThreeCollections();
   }
   if(state.route.page==="shop"||state.route.page==="fashion"||state.route.page==="accessories"||state.route.page==="collection")renderShopGrid();
   if(state.route.page==="lookbook")renderLookGrid();
@@ -2070,6 +2098,9 @@ document.addEventListener("click",e=>{
         fig.innerHTML=ph(p,key,{w:800,dot:false});
         fig.dataset.key=key;
         bindImages(fig);
+        if(window.FT_ANIME && typeof window.FT_ANIME.animateImageSwap === "function"){
+          window.FT_ANIME.animateImageSwap(fig);
+        }
       }
       $$(".qv-thumbs button").forEach(b=>b.classList.toggle("on",b.dataset.key===key));
       break;
@@ -2101,7 +2132,7 @@ document.addEventListener("click",e=>{
       const fees=getDeliveryFees();
       const baseDelivery=isOutsideZone(state.deliveryZone)?fees.outside:fees.dhaka;
       if(window.FT_SUPABASE && window.FT_SUPABASE.validateCoupon){
-        window.FT_SUPABASE.validateCoupon(code,sub,baseDelivery).then(res=>{
+        window.FT_SUPABASE.validateCoupon(code,sub,baseDelivery,state.deliveryZone).then(res=>{
           if(res.valid){
             state.appliedCoupon={
               code:res.coupon.code,
@@ -2139,7 +2170,7 @@ document.addEventListener("click",e=>{
         const fees=getDeliveryFees();
         const baseDelivery=isOutsideZone(state.deliveryZone)?fees.outside:fees.dhaka;
         if(window.FT_SUPABASE && window.FT_SUPABASE.validateCoupon){
-          window.FT_SUPABASE.validateCoupon(code,sub,baseDelivery).then(res=>{
+          window.FT_SUPABASE.validateCoupon(code,sub,baseDelivery,state.deliveryZone).then(res=>{
             if(res.valid){
               state.appliedCoupon={
                 code:res.coupon.code,
@@ -2217,7 +2248,7 @@ document.addEventListener("change",e=>{
     renderInqSummary();
   }
 });
-document.addEventListener("submit",e=>{
+document.addEventListener("submit",async e=>{
   const f=e.target.closest("[data-form]");if(!f)return;
   e.preventDefault();
   const fd=new FormData(f);
@@ -2228,90 +2259,90 @@ document.addEventListener("submit",e=>{
   }
   if(f.dataset.form==="inquiry"){
     const name=(fd.get("name")||"").trim(),phone=(fd.get("phone")||"").trim(),district=(fd.get("district")||"").trim(),address=(fd.get("address")||"").trim();
+    const phoneValid = window.FT_COMMERCE ? window.FT_COMMERCE.normalizePhone(phone).isBdMobile : /^(\+?88)?01[3-9]\d{8}$/.test(phone.replace(/\D/g,""));
     let bad=false;
-    bad=err("name",!name)||bad;bad=err("phone",phone.replace(/\D/g,"").length<6)||bad;bad=err("district",!district)||bad;bad=err("address",!address)||bad;
-    if(bad){toast("Please complete the highlighted fields",{icon:"alert"});return;}
+    bad=err("name",name.length<2)||bad;
+    bad=err("phone",!phoneValid)||bad;
+    bad=err("district",district.length<2)||bad;
+    bad=err("address",address.length<5)||bad;
+    if(bad){toast("Please complete the highlighted fields (valid 11-digit BD mobile required)",{icon:"alert"});return;}
     if(!state.bag.length){toast("Your bag is empty",{icon:"alert"});return;}
-    const ref=makeRef();
-    const rawZone=fd.get("delivery_zone") || state.deliveryZone || (district.toLowerCase().includes('dhaka') ? 'dhaka' : 'outside_dhaka');
-    const zone=normalizeDeliveryZone(rawZone);
-    const cust={name,phone,district,address,notes:(fd.get("notes")||"").trim(),contact:fd.get("contact")||"WhatsApp",zone};
-    const text=inquiryText(state.bag,cust,ref);
-    state.lastInquiry={ref,text,at:Date.now()};
 
-    // Prepare complete structured order record
-    const fees = getDeliveryFees();
-    const subtotal = subtotalNum(state.bag);
-    const baseDelivery = isOutsideZone(zone) ? fees.outside : fees.dhaka;
-    const isFreeShip = state.appliedCoupon && state.appliedCoupon.coupon && state.appliedCoupon.coupon.discount_type === 'free_shipping';
-    const deliveryFee = baseDelivery;
-    const discountCode = state.appliedCoupon ? state.appliedCoupon.code : null;
-    const discountAmount = state.appliedCoupon ? (isFreeShip ? baseDelivery : (state.appliedCoupon.discountAmount || 0)) : 0;
-    const total = Math.max(0, subtotal + baseDelivery - discountAmount);
+    const errBox = document.getElementById("inq-submit-error");
+    if(errBox) errBox.innerHTML = "";
+    const submitBtn = document.getElementById("inq-submit-btn");
+    if(submitBtn){ submitBtn.disabled = true; submitBtn.dataset.origHtml = submitBtn.innerHTML; submitBtn.innerHTML = "<span>Submitting order...</span>"; }
 
-    const orderRecord = {
-      order_ref: ref,
-      ref: ref,
-      orderRef: ref,
-      name: cust.name,
-      customer_name: cust.name,
-      phone: cust.phone,
-      customer_phone: cust.phone,
-      district: cust.district,
-      address: cust.address,
-      customer_address: (cust.district ? cust.district + ', ' : '') + cust.address,
-      delivery_address: (cust.district ? cust.district + ', ' : '') + cust.address,
-      delivery_zone: zone,
-      deliveryZone: zone,
-      delivery_fee: deliveryFee,
-      deliveryFee: deliveryFee,
-      delivery_fee_bdt: deliveryFee,
-      discount_code: discountCode,
-      discountCode: discountCode,
-      discount_amount: discountAmount,
-      discountAmount: discountAmount,
-      subtotal: subtotal,
-      subtotal_bdt: subtotal,
-      total: total,
-      total_bdt: total,
-      notes: cust.notes,
-      customer_notes: cust.notes,
-      contact_channel: cust.contact,
-      items: state.bag.map(it => {
-        const p = bySku(it.sku);
-        return {
-          sku: p.sku,
-          title: p.title,
-          price: p.priceBDT || 0,
-          qty: it.qty,
-          unit: p.unitBn || p.unit || '',
-          image: assetSrc(p, 'main', 200)
-        };
-      }),
-      payment_method: 'Cash on Delivery (COD)',
-      status: 'pending',
-      courier_name: 'Steadfast Courier',
-      created_at: new Date().toISOString()
-    };
-
-    // 1. Save to local cache & Supabase database cleanly (deduplicated inside createOrder)
-    if (window.FT_SUPABASE && window.FT_SUPABASE.createOrder) {
-      window.FT_SUPABASE.createOrder(orderRecord).catch(err => console.warn('Supabase order sync:', err));
-    } else {
-      const localOrders = store.load('ft_local_orders', []).filter(o => o && o.order_ref !== ref);
-      localOrders.unshift(orderRecord);
-      store.save('ft_local_orders', localOrders);
+    if(!state.draftIdempotencyKey){
+      state.draftIdempotencyKey = "idem_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
     }
 
-    // 2. Conversion tracking: Meta Pixel + CAPI Purchase event
-    if (window.FT_ANALYTICS && window.FT_ANALYTICS.trackPurchase) {
-      window.FT_ANALYTICS.trackPurchase(orderRecord);
+    const rawZone=fd.get("delivery_zone") || state.deliveryZone || (district.toLowerCase().includes('dhaka') ? 'dhaka' : 'outside_dhaka');
+    const zone=normalizeDeliveryZone(rawZone);
+    const rawChannel = String(fd.get("contact")||"Messenger").toLowerCase();
+    const contactChannel = rawChannel.includes("whatsapp") && isRealWhatsapp() ? "whatsapp" : (rawChannel.includes("messenger") ? "messenger" : "web_form");
+    const cust={name,phone,district,address,notes:(fd.get("notes")||"").trim(),contact:fd.get("contact")||"Messenger",zone};
+
+    const orderPayload = {
+      customer_name: cust.name,
+      customer_phone: cust.phone,
+      customer_district: cust.district,
+      customer_address: (cust.district ? cust.district + ', ' : '') + cust.address,
+      delivery_zone: zone,
+      discount_code: state.appliedCoupon ? state.appliedCoupon.code : null,
+      customer_notes: cust.notes,
+      contact_channel: contactChannel,
+      payment_method: 'Cash on Delivery (COD)',
+      idempotency_key: state.draftIdempotencyKey,
+      attribution: (window.FT_ANALYTICS && typeof window.FT_ANALYTICS.getAttribution === 'function') ? window.FT_ANALYTICS.getAttribution() : null,
+      items: state.bag.map(it => ({ sku: it.sku, qty: Number(it.qty || 1) }))
+    };
+
+    const res = await window.FT_SUPABASE.createOrder(orderPayload);
+
+    if(submitBtn && submitBtn.dataset.origHtml){ submitBtn.disabled = false; submitBtn.innerHTML = submitBtn.dataset.origHtml; }
+
+    if(!res || !res.success){
+      const msg = (res && res.error) || "Unable to register inquiry right now. Please try again or reach us on Messenger.";
+      if(errBox){
+        errBox.innerHTML = `<div class="notice alert">${IC.alert}<span>${esc(msg)}</span></div>`;
+      }
+      toast(msg,{icon:"alert"});
+      return;
+    }
+
+    const serverRef = res.order_ref || (res.data && res.data.order_ref) || makeRef();
+    const serverTotal = (res.data && res.data.total) || subtotalNum(state.bag);
+    const text = inquiryText(state.bag, cust, serverRef);
+    state.lastInquiry = { ref: serverRef, text, total: serverTotal, at: Date.now() };
+    state.draftIdempotencyKey = null;
+
+    // Persist minimal non-PII reference only (no customer name/phone/address stored)
+    try {
+      const recent = JSON.parse(localStorage.getItem('ft_recent_refs') || '[]').filter(r => r && r.order_ref !== serverRef);
+      recent.unshift({
+        order_ref: serverRef,
+        created_at: new Date().toISOString(),
+        item_count: state.bag.reduce((s, it) => s + Number(it.qty || 1), 0),
+        total: serverTotal
+      });
+      localStorage.setItem('ft_recent_refs', JSON.stringify(recent.slice(0, 8)));
+    } catch (_) {}
+
+    // Track Lead ONLY (server triggers Purchase strictly upon admin confirmation)
+    if (window.FT_ANALYTICS && window.FT_ANALYTICS.leadOrOrder) {
+      window.FT_ANALYTICS.leadOrOrder(serverRef, orderPayload.items, serverTotal, contactChannel, {
+        name: cust.name,
+        phone: cust.phone,
+        district: cust.district
+      });
     }
 
     if(fd.get("clearbag")){state.bag=[];state.appliedCoupon=null;store.save("ft_applied_coupon",null);syncCommerce();}
     state.inqDone=true;renderInqDone();
     window.scrollTo({top:0,behavior:RM?"auto":"smooth"});
-    toast("Inquiry recorded & prepared!",{icon:"check"});
+    toast("Inquiry registered on server!",{icon:"check"});
+    return;
   }
   if(f.dataset.form==="contact"){
     const name=(fd.get("cname")||"").trim(),contact=(fd.get("ccontact")||"").trim(),msg=(fd.get("cmsg")||"").trim();
@@ -2331,18 +2362,10 @@ document.addEventListener("submit",e=>{
     const cleanWa = (fd.get("whatsapp")||"").trim().replace(/[^0-9]/g,"");
     const cleanFb = (fd.get("facebook")||"").trim();
     state.cfg={messenger:cleanMsg,whatsapp:cleanWa,facebook:cleanFb};
-    if(window.FT_SUPABASE && window.FT_SUPABASE.saveStoreSettings){
-      window.FT_SUPABASE.saveStoreSettings({
-        messenger_username: cleanMsg,
-        whatsapp_number: cleanWa,
-        facebook_url: cleanFb
-      });
-    } else {
-      store.save("ft_cfg",state.cfg);
-    }
+    store.save("ft_cfg",state.cfg);
     document.body.classList.toggle("no-whatsapp",!isRealWhatsapp());
     syncFloatingWa();
-    toast("Seller settings saved in this browser",{icon:"check"});
+    toast("Browser preview preferences saved",{icon:"check"});
     renderModal();
   }
 });
@@ -2447,38 +2470,70 @@ function promoLoop(){
   },5600);
 }
 document.addEventListener("keydown",e=>{if(e.ctrlKey&&e.altKey&&e.shiftKey&&e.key.toLowerCase()==="f"){e.preventDefault();openModal("assets");}});
+function initConsentBanner(){
+  const bar = document.getElementById("ft-consent-bar");
+  const acceptBtn = document.getElementById("ft-consent-accept");
+  const declineBtn = document.getElementById("ft-consent-decline");
+  if(!bar || !window.FT_ANALYTICS) return;
+  const current = window.FT_ANALYTICS.getConsent();
+  if(current === 'granted'){
+    bar.style.display = 'none';
+    window.FT_ANALYTICS.init();
+  } else if(current === 'denied'){
+    bar.style.display = 'none';
+  } else {
+    bar.style.display = 'block';
+  }
+  if(acceptBtn){
+    acceptBtn.addEventListener("click", ()=>{
+      window.FT_ANALYTICS.setConsent('granted');
+      bar.style.display = 'none';
+    });
+  }
+  if(declineBtn){
+    declineBtn.addEventListener("click", ()=>{
+      window.FT_ANALYTICS.setConsent('denied');
+      bar.style.display = 'none';
+    });
+  }
+}
+
 /* ================= INIT ================= */
 function init(){
-  if(window.FT_SUPABASE && window.FT_SUPABASE.getProductOverrides){
-    applyProductOverrides(window.FT_SUPABASE.getProductOverrides());
-  }
-  if(!state.cfg.whatsapp) state.cfg.whatsapp = localStorage.getItem("ft_whatsapp") || localStorage.getItem("ft_wa_number") || (window.FT_CONFIG && window.FT_CONFIG.whatsappNumber) || CONFIG.whatsappNumber || "8801700000000";
   document.body.classList.toggle("no-whatsapp",!isRealWhatsapp());
   syncFloatingWa();
   if(state.promoOff)$("#site-top").classList.add("no-promo");
-  if(!state.cfg.messenger)state.cfg.messenger=CONFIG.messengerUsername;
-  if(!state.cfg.facebook)state.cfg.facebook=CONFIG.facebookUrl;
+  if(!state.cfg.messenger)state.cfg.messenger=CONFIG.messengerUsername || "farizasterritory143";
+  if(!state.cfg.facebook)state.cfg.facebook=CONFIG.facebookPageUrl || "https://www.facebook.com/farizasterritory143";
   measureTop();
   if(window.ResizeObserver)new ResizeObserver(measureTop).observe($("#site-top"));
-  if(!location.hash)history.replaceState(null,"","#/home");
+  if(!location.hash){
+    const initialTarget = (window.__FT_INITIAL_ROUTE__ && String(window.__FT_INITIAL_ROUTE__).startsWith('#/'))
+      ? window.__FT_INITIAL_ROUTE__
+      : "#/home";
+    history.replaceState(null,"",initialTarget);
+  }
   window.addEventListener("hashchange",render);
   syncLangUI();
   render();
   promoLoop();
-  /* Cloud overrides & store settings sync if Supabase is configured */
+  initConsentBanner();
+
+  /* Hydrate live catalog prices, stock status & settings from hardened server endpoints */
   if(window.FT_SUPABASE){
     if(window.FT_SUPABASE.getProducts){
       window.FT_SUPABASE.getProducts().then(prods=>{
         if(prods && prods.length){
           applyProductOverrides(prods);
-          if(state.route.page==="shop"||state.route.page==="fashion"||state.route.page==="accessories"||state.route.page==="collection") renderShopGrid();
+          if(state.route.page==="shop"||state.route.page==="fashion"||state.route.page==="accessories"||state.route.page==="collection"||state.route.page==="product") render();
         }
       });
     }
     if(window.FT_SUPABASE.getStoreSettings){
       window.FT_SUPABASE.getStoreSettings().then(s=>{
         if(!s) return;
-        if(s.whatsapp_number) state.cfg.whatsapp=String(s.whatsapp_number).replace(/[^0-9]/g,"");
+        if(s.whatsapp_active && s.whatsapp_number) state.cfg.whatsapp=String(s.whatsapp_number).replace(/[^0-9]/g,"");
+        else state.cfg.whatsapp = "";
         if(s.messenger_username) state.cfg.messenger=s.messenger_username;
         if(s.facebook_url) state.cfg.facebook=s.facebook_url;
         if(s.delivery_fee_dhaka!==undefined) CONFIG.deliveryFeeDhaka=Number(s.delivery_fee_dhaka);

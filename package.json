@@ -8,7 +8,7 @@
     "dev": "node server.js",
     "build": "node scripts/validate_platform.js",
     "lint": "node scripts/validate_platform.js",
-    "test": "node scripts/validate_platform.js && node scripts/test_capi_locally.js"
+    "test": "node scripts/validate_platform.js && node scripts/test_capi_locally.js && node --test tests/*.test.js"
   },
   "keywords": [
     "farizas-territory",
@@ -26,6 +26,7 @@
     "url": "https://github.com/notrealenginellc/Fariza-s-Territory"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
     "express": "^5.3.0"
   }
 }

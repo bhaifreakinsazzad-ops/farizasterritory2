@@ -1,16 +1,16 @@
 /**
- * Fariza's Territory — Master-Level Kinetic Choreography & Micro-Interactions
+ * Fariza's Territory — Kinetic Choreography & Micro-Interactions
  * Library: Anime.js (v3.2.2)
  * Features:
- *   1. Kinetic Split Typography (3D character & word staggered reveals)
+ *   1. Kinetic Split Typography (hero immediate + scroll-revealed section headings)
  *   2. Dynamic Mouse Radial Glow Spotlight (Bento & card glass highlights)
- *   3. True 3D Perspective Card Tilt with Specular Glare Reflection
+ *   3. Smooth 3D Perspective Card Tilt with Specular Glare (no CSS transition fight)
  *   4. Magnetic Button Attraction with Parallax Label Physics
  *   5. Fly-to-Cart Quadratic Bezier Curve with Elastic Pop & Zari Gold Confetti
  *   6. Dynamic Metric Number Counter Rollups (Stats & pricing)
  *   7. SVG Kantha Stitch & Zari Line Tracing
  *   8. Tactile Golden Click Wave Ripples
- *   9. Interactive Floating Quick-View 3D Modal Controller
+ *   9. Staggered Grid Entrances, Image Crossfades & Tracking Stepper Choreography
  */
 
 (function (window, document) {
@@ -20,9 +20,11 @@
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
 
   const AnimePolish = {
+    _rippleBound: false,
+    _titleObserver: null,
+
     init() {
       if (typeof anime === 'undefined') {
-        console.warn('Anime.js library is not loaded.');
         return;
       }
 
@@ -37,6 +39,7 @@
     },
 
     refresh() {
+      if (typeof anime === 'undefined') return;
       this.initKineticTypography();
       this.initCardTilt();
       this.initRadialGlow();
@@ -47,16 +50,13 @@
 
     /**
      * 1. Kinetic Split Typography
-     * Splits target text into characters/words and executes staggered 3D perspective reveals
+     * Splits text into chars; hero headlines animate immediately, lower headings trigger on viewport entry
      */
     initKineticTypography() {
       if (RM) return;
 
-      const kineticTargets = document.querySelectorAll('.kinetic-title:not([data-split-done])');
-      kineticTargets.forEach(el => {
+      const splitAndPrep = (el) => {
         el.setAttribute('data-split-done', 'true');
-
-        // Traverse child nodes to preserve HTML tags like <br> and <span class="accent">
         const processNode = (node) => {
           if (node.nodeType === Node.TEXT_NODE) {
             const text = node.textContent;
@@ -73,7 +73,7 @@
                 const span = document.createElement('span');
                 span.className = 'kt-char';
                 span.textContent = char;
-                span.style.cssText = 'display:inline-block;opacity:0;transform:translateY(28px) rotateX(-20deg);will-change:transform,opacity;';
+                span.style.cssText = 'display:inline-block;opacity:0;transform:translateY(22px) rotateX(-16deg);will-change:transform,opacity;';
                 fragment.appendChild(span);
               }
             });
@@ -95,28 +95,53 @@
           const res = processNode(child);
           if (res) fragment.appendChild(res);
         });
-
         el.innerHTML = '';
         el.appendChild(fragment);
+      };
 
+      const playTitle = (el) => {
+        if (el.getAttribute('data-title-played') === 'true') return;
+        el.setAttribute('data-title-played', 'true');
         const chars = el.querySelectorAll('.kt-char');
         if (chars.length > 0) {
           anime({
             targets: chars,
             opacity: [0, 1],
-            translateY: [28, 0],
-            rotateX: [-20, 0],
-            delay: anime.stagger(22, { start: 120 }),
-            duration: 850,
+            translateY: [22, 0],
+            rotateX: [-16, 0],
+            delay: anime.stagger(18, { start: 80 }),
+            duration: 720,
             easing: 'easeOutExpo'
           });
+        }
+      };
+
+      if (!this._titleObserver && 'IntersectionObserver' in window) {
+        this._titleObserver = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              playTitle(entry.target);
+              this._titleObserver.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.15, rootMargin: '0px 0px -20px 0px' });
+      }
+
+      const kineticTargets = document.querySelectorAll('.kinetic-title:not([data-split-done])');
+      kineticTargets.forEach(el => {
+        splitAndPrep(el);
+        const rect = el.getBoundingClientRect();
+        const inTopFold = rect.top < window.innerHeight * 0.9;
+        if (inTopFold || !this._titleObserver) {
+          playTitle(el);
+        } else {
+          this._titleObserver.observe(el);
         }
       });
     },
 
     /**
      * 2. Dynamic Mouse Radial Glow Spotlight
-     * Tracks cursor coordinates across cards and panels, illuminating glass borders
      */
     initRadialGlow() {
       if (RM || isTouch) return;
@@ -141,10 +166,11 @@
     initCardTilt() {
       if (RM || isTouch) return;
 
-      const cards = document.querySelectorAll('.pcard:not([data-tilt-bound]), .col-card:not([data-tilt-bound]), .pair-card:not([data-tilt-bound])');
+      const cards = document.querySelectorAll('.pcard:not([data-tilt-bound]), .pair-card:not([data-tilt-bound])');
 
       cards.forEach(card => {
         card.setAttribute('data-tilt-bound', 'true');
+        card.classList.add('has-3d-tilt');
         card.style.transformStyle = 'preserve-3d';
         card.style.perspective = '1000px';
 
@@ -162,30 +188,32 @@
           const centerX = rect.width / 2;
           const centerY = rect.height / 2;
 
-          const rotateX = ((y - centerY) / centerY) * -8;
-          const rotateY = ((x - centerX) / centerX) * 8;
+          const rotateX = ((y - centerY) / centerY) * -6.5;
+          const rotateY = ((x - centerX) / centerX) * 6.5;
 
+          anime.remove(card);
           anime({
             targets: card,
-            rotateX: rotateX,
-            rotateY: rotateY,
-            scale: 1.022,
-            duration: 160,
+            rotateX,
+            rotateY,
+            scale: 1.018,
+            duration: 140,
             easing: 'easeOutQuad'
           });
 
-          glare.style.opacity = '0.75';
-          glare.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255,255,255,0.45) 0%, rgba(209,128,58,0.15) 35%, transparent 70%)`;
+          glare.style.opacity = '0.7';
+          glare.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(255,255,255,0.42) 0%, rgba(209,128,58,0.14) 36%, transparent 70%)`;
         };
 
         const onMouseLeave = () => {
+          anime.remove(card);
           anime({
             targets: card,
             rotateX: 0,
             rotateY: 0,
             scale: 1,
-            duration: 700,
-            easing: 'easeOutElastic(1, .55)'
+            duration: 620,
+            easing: 'easeOutElastic(1, .58)'
           });
           glare.style.opacity = '0';
         };
@@ -197,7 +225,6 @@
 
     /**
      * 4. Magnetic Cursor Attraction Button
-     * Pulls button and inner label toward the cursor on hover
      */
     initMagneticButtons() {
       if (RM || isTouch) return;
@@ -213,41 +240,45 @@
           const x = e.clientX - (rect.left + rect.width / 2);
           const y = e.clientY - (rect.top + rect.height / 2);
 
+          anime.remove(btn);
           anime({
             targets: btn,
-            translateX: x * 0.28,
-            translateY: y * 0.28,
-            duration: 180,
+            translateX: x * 0.24,
+            translateY: y * 0.24,
+            duration: 160,
             easing: 'easeOutQuad'
           });
 
           if (textSpan) {
+            anime.remove(textSpan);
             anime({
               targets: textSpan,
-              translateX: x * 0.14,
-              translateY: y * 0.14,
-              duration: 180,
+              translateX: x * 0.12,
+              translateY: y * 0.12,
+              duration: 160,
               easing: 'easeOutQuad'
             });
           }
         }, { passive: true });
 
         btn.addEventListener('mouseleave', () => {
+          anime.remove(btn);
           anime({
             targets: btn,
             translateX: 0,
             translateY: 0,
-            duration: 650,
-            easing: 'easeOutElastic(1, .5)'
+            duration: 580,
+            easing: 'easeOutElastic(1, .52)'
           });
 
           if (textSpan) {
+            anime.remove(textSpan);
             anime({
               targets: textSpan,
               translateX: 0,
               translateY: 0,
-              duration: 650,
-              easing: 'easeOutElastic(1, .5)'
+              duration: 580,
+              easing: 'easeOutElastic(1, .52)'
             });
           }
         }, { passive: true });
@@ -258,7 +289,7 @@
      * 5. Fly-to-Cart Bezier Curve with Elastic Pop & Zari Gold Confetti Burst
      */
     flyToBag(sourceEl) {
-      if (RM || !sourceEl) return;
+      if (RM || !sourceEl || typeof anime === 'undefined') return;
 
       const bagBadge = document.getElementById('bag-count') || document.querySelector('[data-act="drawer"][data-kind="bag"]');
       if (!bagBadge) return;
@@ -300,11 +331,10 @@
       anime({
         targets: animObj,
         progress: 1,
-        duration: 750,
+        duration: 720,
         easing: 'easeInOutCubic',
         update: () => {
           const t = animObj.progress;
-          // Quadratic bezier trajectory
           const currX = dx * t;
           const currY = dy * t + arcHeight * (4 * t * (1 - t));
           const scale = 1 - t * 0.65;
@@ -320,11 +350,8 @@
       });
     },
 
-    /**
-     * Elastic Spring Pop on Badge Reaction
-     */
     popElement(el) {
-      if (!el || RM) return;
+      if (!el || RM || typeof anime === 'undefined') return;
       anime.remove(el);
       anime({
         targets: el,
@@ -335,12 +362,8 @@
       });
     },
 
-    /**
-     * Zari Golden Spark Confetti Burst
-     * Spawns 12 radiant golden spark embers exploding radially from target element
-     */
     confettiBurst(targetEl) {
-      if (RM || !targetEl) return;
+      if (RM || !targetEl || typeof anime === 'undefined') return;
 
       const rect = targetEl.getBoundingClientRect();
       const originX = rect.left + rect.width / 2;
@@ -387,7 +410,7 @@
      * 6. Kinetic Number Counter Rollups
      */
     initCounterRollups() {
-      if (RM) return;
+      if (RM || typeof anime === 'undefined') return;
 
       const counters = document.querySelectorAll('.stat b:not([data-counted]), [data-counter]:not([data-counted])');
 
@@ -411,7 +434,7 @@
               anime({
                 targets: counterObj,
                 count: cleanNum,
-                duration: 1600,
+                duration: 1400,
                 easing: 'easeOutExpo',
                 update: () => {
                   el.textContent = `${prefix}${Math.floor(counterObj.count).toLocaleString()}${suffix}`;
@@ -429,7 +452,7 @@
      * 7. SVG Kantha / Zari Stitch Path Tracing
      */
     initStitchTracing() {
-      if (RM) return;
+      if (RM || typeof anime === 'undefined') return;
 
       const stitchPaths = document.querySelectorAll('.kantha-stitch-path:not([data-traced]), .hero-orn path:not([data-traced])');
       stitchPaths.forEach(path => {
@@ -441,8 +464,8 @@
         anime({
           targets: path,
           strokeDashoffset: [length, 0],
-          duration: 2000,
-          delay: 200,
+          duration: 1800,
+          delay: 150,
           easing: 'easeInOutQuad'
         });
       });
@@ -452,6 +475,9 @@
      * 8. Tactile Click Wave Ripples
      */
     initClickRipples() {
+      if (RM || this._rippleBound || typeof anime === 'undefined') return;
+      this._rippleBound = true;
+
       document.addEventListener('pointerdown', (e) => {
         const target = e.target.closest('.btn, .chip, .pcard, .col-card, .pair-card');
         if (!target) return;
@@ -484,7 +510,7 @@
           targets: ripple,
           scale: [1, 28],
           opacity: [0.65, 0],
-          duration: 650,
+          duration: 620,
           easing: 'easeOutCubic',
           complete: () => ripple.remove()
         });
@@ -492,21 +518,61 @@
     },
 
     /**
-     * Bind Fly-to-Cart on Bag/Buy Buttons
+     * 9. Staggered Grid Entrance, Image Swap Crossfade & Tracking Stepper
      */
+    animateGridCards(container) {
+      if (RM || !container || typeof anime === 'undefined') return;
+      const cards = container.querySelectorAll('.pcard, .col-card, .lb-item');
+      if (!cards.length) return;
+      anime.remove(cards);
+      anime({
+        targets: cards,
+        opacity: [0, 1],
+        translateY: [22, 0],
+        delay: anime.stagger(30, { start: 20, from: 'first' }),
+        duration: 520,
+        easing: 'easeOutExpo'
+      });
+    },
+
+    animateImageSwap(el) {
+      if (RM || !el || typeof anime === 'undefined') return;
+      anime.remove(el);
+      anime({
+        targets: el,
+        opacity: [0.35, 1],
+        scale: [0.975, 1],
+        duration: 380,
+        easing: 'easeOutCubic'
+      });
+    },
+
+    animateTrackingStepper(container) {
+      if (RM || !container || typeof anime === 'undefined') return;
+      const steps = container.querySelectorAll('.tracking-step');
+      if (!steps.length) return;
+      anime.remove(steps);
+      anime({
+        targets: steps,
+        opacity: [0, 1],
+        translateY: [14, 0],
+        scale: [0.92, 1],
+        delay: anime.stagger(75, { start: 40 }),
+        duration: 540,
+        easing: 'easeOutBack(1.3)'
+      });
+    },
+
     bindFlyToCartHooks() {
       // Handled directly in app.js addToBag() and trio action to avoid duplicate particle animations.
     }
   };
 
-  // Expose globally
   window.FT_ANIME = AnimePolish;
 
-  // Auto-init on DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => AnimePolish.init());
   } else {
     AnimePolish.init();
   }
-
 })(typeof window !== 'undefined' ? window : globalThis, typeof document !== 'undefined' ? document : {});

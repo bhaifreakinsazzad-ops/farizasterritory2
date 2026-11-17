@@ -1,109 +1,37 @@
-# Supabase Database Setup Guide — Fariza's Territory (v2.0 Production)
+# Supabase Database & Auth Setup Guide — Fariza's Territory
 
-**Supabase Project URL:** `https://vjbhrdclcnxevunskodm.supabase.co`  
-**Brand:** Fariza's Territory (Fashion & Accessories Brand by Faria & Saiful Islam Shuvo)
-
----
-
-## 🌟 Overview
-
-The Fariza's Territory e-commerce platform uses Supabase PostgreSQL to power:
-1. **Collections**: 8 curated boutique collections across Fashion (5 lines) and Artisan Accessories & Decor (3 lines), with custom color palettes and descriptions.
-2. **Products**: 53 verified catalog SKUs (18 boutique fashion three-piece dresses + 35 artisan accessories) with bilingual (English/Bengali) titles, descriptions, craft/fabric specifications, and verified BDT pricing.
-3. **Product Assets**: High-resolution studio photography records (multi-angle crops for fashion dresses + `.webp` & catalog photos for accessories).
-4. **Orders & Inquiries**: Real-time customer orders, customer details, delivery location (Inside/Outside Dhaka), delivery fees, line items, coupon discounts, courier dispatch numbers, and fulfillment statuses.
-5. **Coupons & Promotions**: Active promotional discount vouchers (`FIRST25`, `FREESHIP`, `FARIZA200`).
-6. **Store Settings**: WhatsApp number, Facebook Page/Messenger, Meta Pixel ID, delivery fees, and promo announcements.
+**Supabase Project URL:** `https://vjbhrdclcnxevunskodm.supabase.co`
 
 ---
 
-## 🛠️ Step 1: Open Supabase SQL Editor
+## 1. Required SQL Execution Order
 
-1. Navigate to your Supabase project: [https://supabase.com/dashboard/project/vjbhrdclcnxevunskodm](https://supabase.com/dashboard/project/vjbhrdclcnxevunskodm)
-2. In the left navigation sidebar, click on **SQL Editor**.
-3. Click **+ New Query**.
-
----
-
-## 📋 Step 2: Run Database Migration (Schema)
-
-1. Open the file `supabase/migrations/01_initial_schema.sql` from this repository.
-2. Copy the entire contents and paste it into the Supabase SQL Editor.
-3. Click **Run** (or press `Ctrl + Enter`).
-4. You should see a success message: `Success. No rows returned`.
-
-This creates the following tables with Row Level Security (RLS) policies and performance indexes:
-- `public.collections`
-- `public.products`
-- `public.product_assets`
-- `public.coupons`
-- `public.orders`
-- `public.store_settings`
+1. Open [Supabase SQL Editor](https://supabase.com/dashboard/project/vjbhrdclcnxevunskodm/sql).
+2. Run **`supabase/migrations/01_initial_schema.sql`** (only if starting from an empty database).
+3. Run **`supabase/migrations/02_security_hardening.sql`**:
+   - Creates `public.staff_users` (`user_id`, `email`, `role`, `is_active`) for verified admin/staff RBAC.
+   - Adds `orders.idempotency_key` (with unique partial index `idx_orders_idempotency_key`), `orders.attribution`, `orders.purchase_capi_sent_at`, `orders.purchase_capi_event_id`.
+   - Adds `products.stock_count` and `products.price_review` (default `true` until seller-approved).
+   - Drops legacy plaintext `store_settings.admin_pin`.
+   - Removes insecure public `orders` reads and `FOR ALL USING (true)` policies; enforces least-privilege grants where `service_role` performs server-trusted order writes and staff RBAC gates admin mutations.
+   - Reconciles `store_settings.free_delivery_threshold` to `3000`.
+4. Run **`supabase/seed.sql`** to upsert collections, baseline SKUs (without overwriting existing live `price_bdt` or `stock_verified`), and coupons (`FIRST25`, `FARIZA200`, `FREESHIP`).
+5. Run **`supabase/tests/rls_security.test.sql`** to verify anonymous callers cannot read customer PII or mutate admin tables.
 
 ---
 
-## 📦 Step 3: Run Database Seed (Catalog & Coupons)
+## 2. Provision Staff Admin Users
 
-1. In the Supabase SQL Editor, click **+ New Query**.
-2. Open the file `supabase/seed.sql` from this repository.
-3. Copy the entire contents and paste it into the editor.
-4. Click **Run**.
-5. Collections, boutique three-piece sets, and active discount vouchers (`FIRST25`, `FREESHIP`, `FARIZA200`) will be populated immediately.
-
----
-
-## 🔑 Step 4: Retrieve Your Supabase Anon Key
-
-1. In your Supabase Dashboard, click on the **Project Settings** (gear icon) in the bottom-left corner.
-2. Under **Configuration**, click **API**.
-3. Under **Project API keys**, locate the `anon` / `public` key (a long string starting with `eyJhbGciOi...`).
-4. Copy this key.
+1. In Supabase Dashboard ➔ **Authentication ➔ Users**, invite or create each staff/owner email and strong password (enable MFA/2FA for owners).
+2. Register the user in `public.staff_users`:
+   ```sql
+   INSERT INTO public.staff_users (user_id, email, full_name, role, is_active)
+   VALUES ('<USER_UUID_FROM_AUTH_USERS>', 'faria@farizasterritory.com', 'Faria', 'admin', true);
+   ```
 
 ---
 
-## 🚀 Step 5: Connect Your Storefront & Admin Portal
+## 3. Server & Browser Keys
 
-### Method A: Via Admin Portal (Fastest — 10 seconds)
-1. Open `admin.html` in your browser and unlock with the Admin PIN (`1430` by default; change in Store Settings).
-2. Click **Store Settings** in the sidebar.
-3. Paste your copied `anon` key into the **Supabase Anon Key** field.
-4. Enter your official business **WhatsApp Number** (e.g., `88017XXXXXXXX`) and optionally update your Admin Portal PIN.
-5. Enter your **Meta Pixel ID** and optional **GA4 Measurement ID**.
-6. Click **Save Changes**.
-7. The status indicator at the top will turn green: **Supabase Cloud: Connected & Synced**!
-
----
-
-## 📊 Database Schema Reference
-
-### Orders Table (`public.orders`)
-| Column | Type | Description |
-|---|---|---|
-| `id` | UUID (PK) | Unique auto-generated identifier |
-| `order_ref` | TEXT (Unique) | Formatted reference (e.g. `FT-261115-8821`) |
-| `customer_name` | TEXT | Customer full name |
-| `customer_phone` | TEXT | Customer phone / Messenger contact |
-| `customer_address` | TEXT | Delivery street address and district |
-| `delivery_zone` | TEXT | `'dhaka'` (৳80) or `'outside_dhaka'` (৳150) |
-| `delivery_fee` | NUMERIC | Calculated delivery charge in BDT |
-| `subtotal` | NUMERIC | Catalog item subtotal in BDT |
-| `discount_code` | TEXT | Applied coupon voucher code (e.g. `FIRST25`) |
-| `discount_amount` | NUMERIC | Deducted voucher discount amount in BDT |
-| `total` | NUMERIC | Total cash on delivery amount in BDT |
-| `items` | JSONB | Array of ordered items `[{sku, title, price, qty, image}]` |
-| `status` | TEXT | `'pending'`, `'confirmed'`, `'processing'`, `'shipped'`, `'delivered'`, `'cancelled'` |
-| `courier_name` | TEXT | Courier partner (e.g. Steadfast Courier, Pathao Courier) |
-| `tracking_number` | TEXT | Courier tracking / consignment note ID |
-| `status_history` | JSONB | Array of timestamps & status notes `[{status, note, time}]` |
-| `customer_notes` | TEXT | Sizing notes, delivery time requests |
-| `created_at` | TIMESTAMPTZ | Order submission timestamp |
-
-### Coupons Table (`public.coupons`)
-| Column | Type | Description |
-|---|---|---|
-| `code` | TEXT (PK) | Coupon voucher code (e.g. `FIRST25`, `FREESHIP`) |
-| `discount_type` | TEXT | `'percentage'`, `'fixed'`, or `'free_shipping'` |
-| `discount_value` | NUMERIC | Percentage (e.g. 25) or fixed BDT (e.g. 200) |
-| `min_spend` | NUMERIC | Minimum cart subtotal in BDT |
-| `max_discount` | NUMERIC | Maximum discount cap in BDT |
-| `is_active` | BOOLEAN | Active flag |
+- **`SUPABASE_ANON_KEY`**: Safe public key used only by `/api/public-config` and Supabase Auth login on `/admin`.
+- **`SUPABASE_SERVICE_ROLE_KEY`**: Strictly server-only environment variable used by `lib/supabaseServer.js`. Never place it in client JS, HTML, or `localStorage`.
