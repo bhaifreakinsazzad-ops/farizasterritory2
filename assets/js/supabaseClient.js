@@ -187,25 +187,25 @@
       const sb = this.getClient();
 
       const record = {
-        order_ref: orderPayload.orderRef || orderPayload.ref,
-        customer_name: orderPayload.name,
-        customer_phone: orderPayload.phone,
-        customer_address: (orderPayload.district ? orderPayload.district + ', ' : '') + (orderPayload.address || ''),
-        delivery_zone: (orderPayload.district && orderPayload.district.toLowerCase().includes('dhaka')) ? 'dhaka' : 'outside_dhaka',
-        delivery_fee: orderPayload.deliveryFee !== undefined ? orderPayload.deliveryFee : ((orderPayload.district && orderPayload.district.toLowerCase().includes('dhaka')) ? 80 : 150),
+        order_ref: orderPayload.order_ref || orderPayload.orderRef || orderPayload.ref,
+        customer_name: orderPayload.customer_name || orderPayload.name,
+        customer_phone: orderPayload.customer_phone || orderPayload.phone,
+        customer_address: orderPayload.customer_address || ((orderPayload.district ? orderPayload.district + ', ' : '') + (orderPayload.address || '')),
+        delivery_zone: orderPayload.delivery_zone || orderPayload.deliveryZone || ((orderPayload.district && orderPayload.district.toLowerCase().includes('dhaka')) ? 'dhaka' : 'outside'),
+        delivery_fee: orderPayload.delivery_fee !== undefined ? orderPayload.delivery_fee : (orderPayload.deliveryFee !== undefined ? orderPayload.deliveryFee : ((orderPayload.district && orderPayload.district.toLowerCase().includes('dhaka')) ? 80 : 150)),
         subtotal: orderPayload.subtotal || 0,
-        discount_code: orderPayload.discountCode || null,
-        discount_amount: orderPayload.discountAmount || 0,
-        total: orderPayload.total || orderPayload.subtotal || 0,
-        payment_method: orderPayload.paymentMethod || 'Cash on Delivery (COD)',
+        discount_code: orderPayload.discount_code || orderPayload.discountCode || null,
+        discount_amount: orderPayload.discount_amount !== undefined ? orderPayload.discount_amount : (orderPayload.discountAmount || 0),
+        total: orderPayload.total !== undefined ? orderPayload.total : (orderPayload.subtotal || 0),
+        payment_method: orderPayload.payment_method || orderPayload.paymentMethod || 'Cash on Delivery (COD)',
         items: orderPayload.items || [],
-        status: 'pending',
-        courier_name: 'Steadfast Courier',
-        tracking_number: '',
-        customer_notes: orderPayload.notes || '',
-        status_history: [{ status: 'pending', note: 'Order inquiry placed via web store', time: new Date().toISOString() }],
+        status: orderPayload.status || 'pending',
+        courier_name: orderPayload.courier_name || 'Steadfast Courier',
+        tracking_number: orderPayload.tracking_number || '',
+        customer_notes: orderPayload.customer_notes || orderPayload.notes || '',
+        status_history: orderPayload.status_history || [{ status: 'pending', note: 'Order inquiry placed via web store', time: new Date().toISOString() }],
         source: 'web_store',
-        created_at: new Date().toISOString()
+        created_at: orderPayload.created_at || new Date().toISOString()
       };
 
       // Save to local cache
@@ -270,15 +270,19 @@
     async getOrderByRef(orderRef) {
       if (!orderRef) return null;
       const cleanRef = orderRef.trim().toUpperCase();
+      const numOnly = cleanRef.replace(/\D/g, '');
 
       // Check Supabase first
       const sb = this.getClient();
       if (sb) {
         try {
+          const filter = numOnly.length >= 6
+            ? `order_ref.eq.${cleanRef},customer_phone.eq.${cleanRef},customer_phone.ilike.%${numOnly.slice(-10)}%`
+            : `order_ref.eq.${cleanRef},customer_phone.eq.${cleanRef}`;
           const { data, error } = await sb
             .from('orders')
             .select('*')
-            .or('order_ref.eq.' + cleanRef + ',customer_phone.eq.' + cleanRef)
+            .or(filter)
             .order('created_at', { ascending: false })
             .limit(1);
           if (!error && data && data.length > 0) {
@@ -291,7 +295,15 @@
 
       // Check local cache
       const local = JSON.parse(localStorage.getItem('ft_local_orders') || '[]');
-      const match = local.find(o => o.order_ref === cleanRef || o.customer_phone === cleanRef);
+      const match = local.find(o => {
+        if (!o) return false;
+        if (o.order_ref === cleanRef || o.ref === cleanRef || o.orderRef === cleanRef) return true;
+        const phone = (o.customer_phone || o.phone || '').toString();
+        if (phone === cleanRef) return true;
+        const pNum = phone.replace(/\D/g, '');
+        if (numOnly.length >= 6 && pNum.length >= 6 && (pNum.endsWith(numOnly.slice(-10)) || numOnly.endsWith(pNum.slice(-10)))) return true;
+        return false;
+      });
       return match || null;
     },
 

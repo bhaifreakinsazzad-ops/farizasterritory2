@@ -35,10 +35,28 @@ const store = {
   load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}},
   save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 };
+function getWhatsAppNumber(){
+  const num = (typeof state !== "undefined" && state.cfg && state.cfg.whatsapp) ||
+              localStorage.getItem("ft_whatsapp") ||
+              (window.FT_CONFIG && window.FT_CONFIG.whatsappNumber) ||
+              (typeof CONFIG !== "undefined" && CONFIG.whatsappNumber) ||
+              "8801700000000";
+  return String(num).replace(/[^0-9]/g, "");
+}
+function getWhatsAppUrl(text){
+  const num = getWhatsAppNumber();
+  return `https://wa.me/${num}${text ? '?text=' + encodeURIComponent(text) : ''}`;
+}
 const state = {
   bag: store.load("ft_bag",[]),
   wish: store.load("ft_wish",[]),
-  cfg: Object.assign({messenger:CONFIG.messengerUsername,whatsapp:CONFIG.whatsappNumber,facebook:CONFIG.facebookUrl},store.load("ft_cfg",{})),
+  cfg: Object.assign({
+    messenger: CONFIG.messengerUsername,
+    whatsapp: localStorage.getItem("ft_whatsapp") || CONFIG.whatsappNumber || "8801700000000",
+    facebook: CONFIG.facebookUrl
+  }, store.load("ft_cfg",{})),
+  appliedCoupon: store.load("ft_applied_coupon", null),
+  deliveryZone: store.load("ft_delivery_zone", "dhaka"),
   promoOff: store.load("ft_promo_off",false),
   route:{page:"home",param:null,query:{}},
   stage:{col:"all",idx:0,list:PRODUCTS.map(p=>p.sku)},
@@ -262,6 +280,7 @@ function lineItem(it,withQty){
     <div>
       <div class="li-t"><a href="#/product/${p.sku}" data-act="drawer-close">${esc(p.title)}</a></div>
       <div class="li-s">${p.sku} · ${esc(p.collection.short)}</div>
+      <div class="li-p" style="font-weight:600;color:var(--chestnut);font-size:13px;margin:2px 0 4px">${priceText(p)}${it.qty > 1 ? ` · Total: ৳${((p.priceBDT||0)*it.qty).toLocaleString()}` : ''}</div>
       ${withQty?`<span class="li-qty"><button data-act="bag-dec" data-sku="${p.sku}" aria-label="Decrease quantity">${IC.minus}</button><output>${it.qty}</output><button data-act="bag-inc" data-sku="${p.sku}" aria-label="Increase quantity">${IC.plus}</button></span>`:`<button class="btn btn-line btn-sm" data-act="bag-add" data-sku="${p.sku}">${IC.bag}<span>Add to bag</span></button>`}
     </div>
     <button class="li-x" data-act="${withQty?"bag-del":"wish"}" data-sku="${p.sku}" aria-label="Remove ${esc(p.title)}">${withQty?IC.trash:IC.x}</button>
@@ -785,7 +804,7 @@ function pageProduct(sku){
         </div>
         <div class="pi-buy" style="flex-wrap:wrap">
           ${messengerBtn("Ask on Messenger",p.sku)}
-          <a href="https://wa.me/8801700000000?text=${encodeURIComponent("Hello Fariza's Territory, I would like to inquire about " + p.sku + " — " + p.title + " (" + priceText(p) + ")")}" target="_blank" rel="noopener" class="btn btn-line" style="display:inline-flex;align-items:center;gap:8px">${IC.wa}<span>WhatsApp Inquiry</span></a>
+          <a href="${getWhatsAppUrl("Hello Fariza's Territory, I would like to inquire about " + p.sku + " — " + p.title + " (" + priceText(p) + ")")}" target="_blank" rel="noopener" class="btn btn-line" style="display:inline-flex;align-items:center;gap:8px">${IC.wa}<span>WhatsApp Inquiry</span></a>
           <button class="btn btn-line wish-line${inWish(p.sku)?" on":""}" style="justify-content:center" data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" aria-pressed="${inWish(p.sku)}">${IC.heart}<span>Wishlist</span></button>
         </div>
         <details class="acc" open><summary>Piece details &amp; Craft Specifications ${IC.chev}</summary><div class="acc-body">
@@ -918,11 +937,61 @@ function renderBagPageList(){
 /* ================= INQUIRY / CHECKOUT ================= */
 function inquiryText(items,cust,ref){
   const d=new Date();
-  const lines=["FARIZA'S TERRITORY — ORDER INQUIRY","Ref: "+ref,"Date: "+d.toLocaleDateString("en-GB"),"", "— Items —"];
-  items.forEach((it,i)=>{const p=bySku(it.sku);lines.push(`${i+1}. ${p.sku} — ${p.title} × ${it.qty} | catalog reference ${priceText(p)} each`);});
-  lines.push("Catalog reference subtotal: "+subtotalText(items)+" (not a final invoice)","","— Customer —");
-  if(cust){lines.push("Name: "+cust.name,"Phone: "+cust.phone,"District: "+cust.district,"Address: "+cust.address);if(cust.notes)lines.push("Notes: "+cust.notes);lines.push("Preferred contact: "+cust.contact);}
-  lines.push("","Offers noted: first-order up to 25% & free delivery (as advertised — please confirm eligibility).","Please confirm prices, availability, sizing and delivery. Thank you!");
+  const subtotal = subtotalNum(items);
+  const zone = cust && cust.zone === 'outside' ? 'Outside Dhaka (৳150)' : 'Inside Dhaka (৳80)';
+  const baseDelivery = cust && cust.zone === 'outside' ? 150 : 80;
+  const isFreeShip = state.appliedCoupon && state.appliedCoupon.coupon && state.appliedCoupon.coupon.discount_type === 'free_shipping';
+  const deliveryFee = isFreeShip ? 0 : baseDelivery;
+  let discount = 0;
+  if (state.appliedCoupon) {
+    discount = isFreeShip ? baseDelivery : (state.appliedCoupon.discountAmount || 0);
+  }
+  const total = Math.max(0, subtotal + baseDelivery - discount);
+
+  const lines = [
+    "FARIZA'S TERRITORY — ORDER INQUIRY",
+    "Ref: " + ref,
+    "Date: " + d.toLocaleDateString("en-GB"),
+    "",
+    "— Items Ordered —"
+  ];
+  items.forEach((it,i)=>{
+    const p=bySku(it.sku);
+    const lineTotal = (p.priceBDT || 0) * it.qty;
+    lines.push(`${i+1}. ${p.sku} — ${p.title} × ${it.qty} (৳${(p.priceBDT || 0).toLocaleString()} each = ৳${lineTotal.toLocaleString()})`);
+  });
+
+  lines.push(
+    "",
+    "— Payment & Delivery Breakdown (Cash on Delivery) —",
+    "Items Subtotal: ৳" + subtotal.toLocaleString(),
+    "Delivery Zone: " + zone,
+    "Delivery Fee: " + (isFreeShip ? "৳0 (Free Delivery Applied)" : "৳" + baseDelivery)
+  );
+
+  if (state.appliedCoupon) {
+    lines.push(`Applied Voucher (${state.appliedCoupon.code}): - ৳${discount.toLocaleString()}`);
+  }
+
+  lines.push(
+    "Net Total Payable: ৳" + total.toLocaleString() + " (Cash on Delivery)",
+    "",
+    "— Customer Details —"
+  );
+  if(cust){
+    lines.push(
+      "Name: " + cust.name,
+      "Phone: " + cust.phone,
+      "District: " + cust.district,
+      "Delivery Address: " + cust.address
+    );
+    if(cust.notes) lines.push("Notes: " + cust.notes);
+    lines.push("Preferred Contact: " + cust.contact);
+  }
+  lines.push(
+    "",
+    "Please confirm order sizing, availability, and courier dispatch. Thank you for shopping with Fariza's Territory!"
+  );
   return lines.join("\n");
 }
 function makeRef(){
@@ -939,27 +1008,49 @@ function pageInquiry(){
   <div class="page-head"><div class="container">
     <span class="overline" data-reveal>Checkout · inquiry-based</span>
     <h1 class="h-display" data-reveal style="--d:.06s;margin-top:12px">Order Inquiry</h1>
-    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">No payment is taken here. Prepare your inquiry, copy it, and send it on Messenger — the seller confirms everything personally.</p>
+    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">No payment is taken online. Prepare your inquiry with delivery details & voucher codes, then send it via WhatsApp or Messenger — we confirm sizing and courier dispatch personally.</p>
   </div></div>
   <div class="page-body"><div class="container"><div id="inq-wrap">
     <div class="two-col">
       <form class="panel" data-form="inquiry" data-reveal novalidate>
-        <span class="overline" style="margin-bottom:18px">Your details</span>
+        <span class="overline" style="margin-bottom:18px">Customer & Delivery Details</span>
         <div class="field" data-f="name"><label for="f-name">Full name *</label><input id="f-name" name="name" autocomplete="name" placeholder="e.g. Fariza Rahman"><span class="f-err">Please enter your name.</span></div>
-        <div class="field" data-f="phone"><label for="f-phone">Phone / Messenger contact *</label><input id="f-phone" name="phone" inputmode="tel" autocomplete="tel" placeholder="e.g. 01XXXXXXXXX"><span class="f-err">Please enter a valid contact number (at least 6 digits).</span></div>
-        <div class="field" data-f="district"><label for="f-district">District / City *</label><input id="f-district" name="district" autocomplete="address-level2" placeholder="e.g. Dhaka"><span class="f-err">Please enter your district.</span></div>
-        <div class="field" data-f="address"><label for="f-address">Delivery address *</label><textarea id="f-address" name="address" rows="3" autocomplete="street-address" placeholder="House, road, area…"></textarea><span class="f-err">Please enter your delivery address.</span></div>
+        <div class="field" data-f="phone"><label for="f-phone">Phone / WhatsApp contact *</label><input id="f-phone" name="phone" inputmode="tel" autocomplete="tel" placeholder="e.g. 01XXXXXXXXX"><span class="f-err">Please enter a valid contact number (at least 6 digits).</span></div>
+        
+        <!-- Delivery Zone Selector -->
+        <div class="field" data-f="zone">
+          <label style="font-weight:600;margin-bottom:8px;display:block">Delivery Zone &amp; Courier Rate *</label>
+          <div class="zone-selector" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+            <label class="zone-card ${state.deliveryZone==='dhaka'?'active':''}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid ${state.deliveryZone==='dhaka'?'var(--chestnut)':'var(--line)'};background:${state.deliveryZone==='dhaka'?'var(--cream2)':'var(--surface)'};border-radius:10px;cursor:pointer;transition:all .2s ease">
+              <input type="radio" name="delivery_zone" value="dhaka" ${state.deliveryZone==='dhaka'?'checked':''} style="accent-color:var(--chestnut)">
+              <div>
+                <div style="font-weight:600;font-size:13.5px">Inside Dhaka</div>
+                <div style="font-size:11.5px;color:var(--ink2)">Fast Courier · ৳80</div>
+              </div>
+            </label>
+            <label class="zone-card ${state.deliveryZone==='outside'?'active':''}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid ${state.deliveryZone==='outside'?'var(--chestnut)':'var(--line)'};background:${state.deliveryZone==='outside'?'var(--cream2)':'var(--surface)'};border-radius:10px;cursor:pointer;transition:all .2s ease">
+              <input type="radio" name="delivery_zone" value="outside" ${state.deliveryZone==='outside'?'checked':''} style="accent-color:var(--chestnut)">
+              <div>
+                <div style="font-weight:600;font-size:13.5px">Outside Dhaka</div>
+                <div style="font-size:11.5px;color:var(--ink2)">Nationwide COD · ৳150</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="field" data-f="district"><label for="f-district">District / City *</label><input id="f-district" name="district" autocomplete="address-level2" placeholder="e.g. Dhaka, Chittagong, Sylhet..."><span class="f-err">Please enter your district.</span></div>
+        <div class="field" data-f="address"><label for="f-address">Delivery address *</label><textarea id="f-address" name="address" rows="3" autocomplete="street-address" placeholder="House, road, area/thana…"></textarea><span class="f-err">Please enter your delivery address.</span></div>
         <div class="field"><label for="f-notes">Notes (optional)</label><textarea id="f-notes" name="notes" rows="2" placeholder="Sizing questions, colour preferences, gift wrap…"></textarea></div>
         <div class="field"><label>Preferred reply via</label>
           <div class="radio-row">
-            <label><input type="radio" name="contact" value="Messenger" checked> Messenger</label>
-            <label><input type="radio" name="contact" value="WhatsApp"> WhatsApp</label>
+            <label><input type="radio" name="contact" value="WhatsApp" checked> WhatsApp</label>
+            <label><input type="radio" name="contact" value="Messenger"> Messenger</label>
             <label><input type="radio" name="contact" value="Phone call"> Phone call</label>
           </div>
         </div>
         <label style="display:flex;gap:9px;align-items:center;font-size:13.5px;margin:6px 0 18px"><input type="checkbox" name="clearbag" style="accent-color:var(--chestnut)"> Clear my bag after preparing the inquiry</label>
-        <button type="submit" class="btn btn-ink btn-block"><span>Prepare inquiry message</span>${IC.arrow}</button>
-        <p class="tiny" style="margin-top:12px">This prepares a message — it does not place or confirm an order.</p>
+        <button type="submit" class="btn btn-ink btn-block"><span>Prepare inquiry &amp; register order</span>${IC.arrow}</button>
+        <p class="tiny" style="margin-top:12px">Cash on Delivery applies. No payment is taken online.</p>
       </form>
       <div class="panel sticky" data-reveal style="--d:.1s" id="inq-summary"></div>
     </div>
@@ -967,15 +1058,89 @@ function pageInquiry(){
 }
 function renderInqSummary(){
   const el=$("#inq-summary"); if(!el)return;
-  el.innerHTML=`<span class="overline">Your inquiry</span>
-    <div style="margin-top:14px">${state.bag.map(it=>{const p=bySku(it.sku);return `<div class="prov-row"><span>${p.sku} · ${esc(p.title)}</span><span>× ${it.qty}</span></div>`;}).join("")||'<p class="small">Bag is empty.</p>'}</div>
-    <div class="dr-total" style="margin-top:16px"><span>${bagCount()} item${bagCount()===1?"":"s"}</span><b>${subtotalText(state.bag)} · indicative</b></div>
-    <div class="notice" style="margin-top:12px">${IC.alert}<span>Offers up to 25% first-order &amp; free delivery are advertised — the seller confirms eligibility. No automatic discount, no online payment.</span></div>`;
+  const subtotal = subtotalNum(state.bag);
+  const isFreeShip = state.appliedCoupon && state.appliedCoupon.coupon && state.appliedCoupon.coupon.discount_type === 'free_shipping';
+  const baseDelivery = state.deliveryZone === 'outside' ? 150 : 80;
+  const deliveryFee = isFreeShip ? 0 : baseDelivery;
+  let discountAmount = 0;
+  if (state.appliedCoupon) {
+    if (isFreeShip) {
+      discountAmount = baseDelivery;
+    } else {
+      discountAmount = state.appliedCoupon.discountAmount || 0;
+    }
+  }
+  const totalPayable = Math.max(0, subtotal + baseDelivery - discountAmount);
+
+  el.innerHTML=`<span class="overline">Order Summary</span>
+    <div style="margin-top:14px;max-height:240px;overflow-y:auto;padding-right:4px">
+      ${state.bag.map(it=>{
+        const p=bySku(it.sku);
+        const lineTotal = (p.priceBDT || 0) * it.qty;
+        return `<div class="prov-row" style="align-items:center;padding:6px 0;border-bottom:1px dashed var(--line)">
+          <div style="flex:1;min-width:0;padding-right:8px">
+            <div style="font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.title)}</div>
+            <div class="tiny" style="color:var(--ink2)">${p.sku} · ৳${(p.priceBDT || 0).toLocaleString()} × ${it.qty}</div>
+          </div>
+          <div style="font-weight:600;font-size:13.5px">৳${lineTotal.toLocaleString()}</div>
+        </div>`;
+      }).join("")||'<p class="small">Bag is empty.</p>'}
+    </div>
+
+    <!-- Voucher / Promo Code Section -->
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--line)">
+      <div style="font-size:12.5px;font-weight:600;margin-bottom:8px;color:var(--ink);display:flex;align-items:center;gap:6px">
+        ${IC.tag}<span>Have a Voucher or Promo Code?</span>
+      </div>
+      ${state.appliedCoupon ? `
+        <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(46,125,50,0.1);border:1px solid rgba(46,125,50,0.3);padding:8px 12px;border-radius:8px">
+          <div>
+            <div style="font-weight:700;color:#2e7d32;font-size:13.5px">${esc(state.appliedCoupon.code)}</div>
+            <div style="font-size:11.5px;color:#2e7d32">${esc(state.appliedCoupon.message || 'Discount applied')}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <b style="color:#2e7d32">- ৳${discountAmount.toLocaleString()}</b>
+            <button class="iconbtn" data-act="remove-coupon" aria-label="Remove coupon" style="width:24px;height:24px">${IC.x}</button>
+          </div>
+        </div>
+      ` : `
+        <div style="display:flex;gap:8px">
+          <input id="inq-coupon-input" type="text" placeholder="FIRST25, FARIZA200..." style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--kantha);background:var(--surface);font-size:13px;text-transform:uppercase">
+          <button class="btn btn-ink btn-sm" data-act="apply-coupon" style="padding:8px 16px"><span>Apply</span></button>
+        </div>
+        <div id="coupon-feedback" style="margin-top:6px;font-size:11.5px;color:var(--ink2)">Available codes: <button class="link-btn" data-act="fill-coupon" data-code="FIRST25" style="text-decoration:underline;background:none;border:none;cursor:pointer;color:var(--chestnut);font-weight:600">FIRST25</button>, <button class="link-btn" data-act="fill-coupon" data-code="FARIZA200" style="text-decoration:underline;background:none;border:none;cursor:pointer;color:var(--chestnut);font-weight:600">FARIZA200</button></div>
+      `}
+    </div>
+
+    <!-- Financial Breakdown Table -->
+    <div style="margin-top:16px;padding-top:14px;border-top:1.5px dashed var(--line);font-size:13.5px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="color:var(--ink2)">Subtotal (${bagCount()} item${bagCount()===1?'':'s'}):</span>
+        <b>৳ ${subtotal.toLocaleString()}</b>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="color:var(--ink2)">Delivery (${state.deliveryZone==='outside'?'Outside Dhaka':'Inside Dhaka'}):</span>
+        <b>${isFreeShip ? '<span style="text-decoration:line-through;color:var(--ink2)">৳ '+baseDelivery+'</span> <span style="color:#2e7d32">FREE</span>' : '৳ ' + baseDelivery}</b>
+      </div>
+      ${state.appliedCoupon && !isFreeShip && discountAmount > 0 ? `
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;color:#2e7d32">
+          <span>Discount Voucher (${esc(state.appliedCoupon.code)}):</span>
+          <b>- ৳ ${discountAmount.toLocaleString()}</b>
+        </div>
+      ` : ''}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;margin-top:8px;border-top:1px solid var(--line);font-size:16px;font-weight:700;color:var(--ink)">
+        <span>Total Payable (COD):</span>
+        <span style="color:var(--chestnut);font-size:18px">৳ ${totalPayable.toLocaleString()}</span>
+      </div>
+      <div style="font-size:11.5px;color:var(--ink2);margin-top:6px;display:flex;align-items:center;gap:4px">
+        ${IC.info} <span>Cash on Delivery — Pay to courier upon delivery</span>
+      </div>
+    </div>`;
 }
 function renderInqDone(){
   const wrap=$("#inq-wrap"); if(!wrap||!state.lastInquiry)return;
   const q=state.lastInquiry;
-  const waUrl = "https://wa.me/8801700000000?text=" + encodeURIComponent(q.text);
+  const waUrl = getWhatsAppUrl(q.text);
   wrap.innerHTML=`<div class="two-col"><div class="panel" data-reveal>
     <div class="success-mark">${IC.check}</div>
     <h2 class="h-sec kinetic-title">Inquiry Prepared &amp; Registered!</h2>
@@ -1082,9 +1247,9 @@ function pagePolicies(){
   <div class="page-head"><div class="container"><span class="overline" data-reveal>Plain words, no fine-print tricks</span><h1 class="h-display" data-reveal style="--d:.06s;margin-top:12px">Policies &amp; Offer Terms</h1></div></div>
   <div class="page-body"><div class="container">
     <div class="pol-sec" data-reveal><h3>${IC.tag} Ordering &amp; pricing</h3><p>This boutique operates an inquiry-based checkout. Adding items to the bag and preparing an inquiry does not create a binding order. All prices (BDT), sizing, availability and delivery costs are confirmed by the seller on Messenger before any order is agreed. No payment is processed on this website.</p></div>
-    <div class="pol-sec" data-reveal><h3>${IC.truck} Advertised offers &amp; delivery</h3><p>The brand's Facebook page advertises a first-order discount of up to 25% and free delivery. These are advertised offers, not guaranteed terms:</p><ul><li>Eligibility, minimum spend, coverage and expiry are confirmed by the seller per order.</li><li>No discount is automatically applied anywhere in this boutique.</li><li>Delivery timelines are provided by the seller when confirming your inquiry.</li></ul></div>
-    <div class="pol-sec" data-reveal><h3>${IC.eye} Imagery &amp; authenticity</h3><p>Real product photography is always primary. Assets are mapped exactly per SKU from the source CSV: main, original and alternate photographs; derived 1:1 and 9:16 crops; two detail close-ups; and an optional AI styling preview. AI previews are labelled “ai-illustration” and never presented as product photographs. Drive file references are retained for source traceability; the delivered image variants work independently through embedded or local website media. Any missing asset retains a clearly labeled fallback.</p></div>
-    <div class="pol-sec" data-reveal><h3>${IC.info} Privacy &amp; data</h3><p>Your bag, wishlist and seller settings are stored only in your browser's localStorage. Inquiry details you type are used solely to compose the message you copy and send — they are not transmitted to any server by this site. No analytics, no trackers, no cookies beyond your own storage.</p></div>
+    <div class="pol-sec" data-reveal><h3>${IC.truck} Advertised offers &amp; delivery</h3><p>The brand advertises first-order discounts of up to 25% (code FIRST25), flat welcome vouchers (FARIZA200), and free delivery promotions with nationwide Cash on Delivery. When entered in your order inquiry, active voucher discounts are applied directly to your order summary before submission.</p></div>
+    <div class="pol-sec" data-reveal><h3>${IC.eye} Imagery &amp; authenticity</h3><p>Real product photography is always primary. Assets are mapped exactly per SKU from the source catalog: main, original and alternate photographs; derived 1:1 and 9:16 crops; two detail close-ups; and an optional AI styling preview. AI previews are labelled “ai-illustration” and never presented as product photographs. Drive file references are retained for source traceability; the delivered image variants work independently through embedded or local website media. Any missing asset retains a clearly labeled fallback.</p></div>
+    <div class="pol-sec" data-reveal><h3>${IC.info} Privacy &amp; secure data</h3><p>Your bag and wishlist are securely stored in your browser's local cache. When you submit an order inquiry, your reference and contact details are securely registered so that you can track fulfillment status live in real-time. We never store payment card credentials, and your personal contact information is kept strictly private.</p></div>
     <div class="pol-sec" data-reveal><h3>${IC.flower} Returns &amp; exchanges</h3><p>Return and exchange policies were not included in the source materials and are therefore not invented here. Please confirm current terms with the seller on Messenger before completing an order.</p></div>
     <div class="pol-sec" data-reveal><h3>${IC.alert} Label disclaimer</h3><p>The collection “01_Aarong_Label_Unverified” reflects the seller's own CSV label. Fariza's Territory's affiliation with Aarong is unverified in the provided sources and is not claimed by this site.</p></div>
   </div></div>`;
@@ -1249,13 +1414,14 @@ function pageTrack(paramRef){
   </div></div>`;
 }
 
-async function handleTrackSearch(){
+async function handleTrackSearch(optRef){
   const inp = document.getElementById("track-input");
-  const q = inp ? inp.value.trim() : "";
+  const q = (optRef || (inp ? inp.value : "")).trim();
+  if(inp && optRef) inp.value = optRef;
   const wrap = document.getElementById("track-result-wrap");
   if(!wrap) return;
   if(!q){
-    wrap.innerHTML = '<div class="notice alert">${IC.alert}<span>Please enter a valid order reference or phone number.</span></div>';
+    wrap.innerHTML = `<div class="notice alert">${IC.alert}<span>Please enter a valid order reference or phone number.</span></div>`;
     return;
   }
   wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink2)">Searching boutique records...</div>';
@@ -1265,13 +1431,44 @@ async function handleTrackSearch(){
     wrap.innerHTML = `<div class="panel" style="text-align:center;padding:36px">
       <div style="font-size:32px;margin-bottom:12px">🔍</div>
       <h3 style="font-size:20px;margin:0 0 10px">Order Not Found</h3>
-      <p class="small" style="color:var(--ink2);max-width:440px;margin:0 auto 18px">We could not locate an inquiry matching "<b>${esc(q)}</b>". Please check the spelling or send a message directly to our seller team on WhatsApp.</p>
-      <a href="https://wa.me/8801700000000?text=Hello%20Fariza%27s%20Territory%2C%20I%20am%20checking%20the%20status%20of%20my%20order%20${encodeURIComponent(q)}" target="_blank" rel="noopener" class="btn btn-line btn-sm">${IC.wa}<span>Inquire on WhatsApp</span></a>
+      <p class="small" style="color:var(--ink2);max-width:440px;margin:0 auto 18px">We could not locate an inquiry matching "<b>${esc(q)}</b>". Please check the spelling or send a message directly to our concierge team on WhatsApp.</p>
+      <a href="${getWhatsAppUrl("Hello Fariza's Territory, I am checking the status of my order " + q)}" target="_blank" rel="noopener" class="btn btn-line btn-sm">${IC.wa}<span>Inquire on WhatsApp</span></a>
     </div>`;
     return;
   }
   
   renderTrackCard(order, wrap);
+}
+
+function renderRecentOrders(){
+  const wrap = document.getElementById("recent-orders-wrap");
+  if(!wrap) return;
+  const local = JSON.parse(localStorage.getItem('ft_local_orders') || '[]');
+  if(!local.length){
+    wrap.innerHTML = '';
+    return;
+  }
+  const recent = local.slice(0, 5);
+  wrap.innerHTML = `
+    <div class="panel" style="border:1px solid var(--line);background:var(--cream2);border-radius:12px;padding:20px">
+      <span class="overline" style="color:var(--chestnut)">Your Inquiries in this Browser</span>
+      <h3 style="font-size:17px;margin:6px 0 14px">Recent Inquiries</h3>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${recent.map(o => `
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 14px;background:var(--surface);border-radius:8px;border:1px solid var(--line)">
+            <div>
+              <div style="font-weight:700;color:var(--chestnut);font-size:14.5px">${esc(o.order_ref || o.ref)}</div>
+              <div class="tiny" style="color:var(--ink2);margin-top:2px">${new Date(o.created_at || Date.now()).toLocaleDateString('en-GB')} · ${Array.isArray(o.items) ? o.items.length : 1} piece(s) · ৳${Number(o.total || 0).toLocaleString()}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="order-tracking-status status-${o.status || 'pending'}" style="font-size:11.5px;padding:4px 10px">${o.status || 'pending'}</span>
+              <button class="btn btn-ink btn-sm" onclick="handleTrackSearch('${esc(o.order_ref || o.ref)}');window.scrollTo({top:0,behavior:'smooth'});"><span>Track</span></button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
 }
 
 function renderTrackCard(order, wrap){
@@ -1367,7 +1564,7 @@ function renderTrackCard(order, wrap){
 
     <!-- Actions -->
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <a href="https://wa.me/8801700000000?text=Hello%20Fariza%27s%20Territory%2C%20I%20have%20a%20question%20regarding%20my%20order%20${encodeURIComponent(order.order_ref)}" target="_blank" rel="noopener" class="btn btn-ink btn-sm">${IC.wa}<span>Contact Seller on WhatsApp</span></a>
+      <a href="${getWhatsAppUrl("Hello Fariza's Territory, I have a question regarding my order " + order.order_ref)}" target="_blank" rel="noopener" class="btn btn-ink btn-sm">${IC.wa}<span>Contact Seller on WhatsApp</span></a>
       <button class="btn btn-line btn-sm" onclick="navigator.clipboard.writeText('${esc(order.order_ref)}');toast('Order ref copied!',{icon:'check'});">${IC.copy}<span>Copy Order Ref</span></button>
     </div>
   </div>`;
@@ -1558,6 +1755,12 @@ function hydrate(){
   if(state.route.page==="lookbook")renderLookGrid();
   if(state.route.page==="product"&&bySku(state.route.param))renderGallery();
   if(state.route.page==="bag")renderBagPageList();
+  if(state.route.page==="track"){
+    renderRecentOrders();
+    if(state.route.param){
+      handleTrackSearch(state.route.param);
+    }
+  }
   if(state.route.page==="inquiry"&&!state.inqDone){
     renderInqSummary();
     if(window.FT_ANALYTICS && state.bag.length > 0){
@@ -1677,6 +1880,68 @@ document.addEventListener("click",e=>{
     case "pal-copy":copyText(t.dataset.hex,t.dataset.hex+" copied");break;
     case "inq-dl":{if(!state.lastInquiry)break;const blob=new Blob([state.lastInquiry.text],{type:"text/plain"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=state.lastInquiry.ref+".txt";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast("Inquiry downloaded",{icon:"dl"});break;}
     case "inq-new":state.inqDone=false;render();break;
+    case "apply-coupon":{
+      const inp=$("#inq-coupon-input");
+      const code=inp?inp.value.trim().toUpperCase():"";
+      if(!code){toast("Please enter a voucher code",{icon:"alert"});break;}
+      const sub=subtotalNum(state.bag);
+      if(window.FT_SUPABASE && window.FT_SUPABASE.validateCoupon){
+        window.FT_SUPABASE.validateCoupon(code,sub).then(res=>{
+          if(res.valid){
+            state.appliedCoupon={
+              code:res.coupon.code,
+              discountAmount:res.discountAmount,
+              discountType:res.coupon.discount_type,
+              message:res.message,
+              coupon:res.coupon
+            };
+            store.save("ft_applied_coupon",state.appliedCoupon);
+            renderInqSummary();
+            toast(res.message,{icon:"check"});
+            if(window.FT_ANALYTICS && window.FT_ANALYTICS.trackEvent){
+              window.FT_ANALYTICS.trackEvent("ApplyPromotion",{promo_code:code,discount:res.discountAmount});
+            }
+          }else{
+            toast(res.message,{icon:"alert"});
+          }
+        });
+      }
+      break;
+    }
+    case "remove-coupon":{
+      state.appliedCoupon=null;
+      store.save("ft_applied_coupon",null);
+      renderInqSummary();
+      toast("Coupon removed",{icon:"info"});
+      break;
+    }
+    case "fill-coupon":{
+      const code=t.dataset.code;
+      const inp=$("#inq-coupon-input");
+      if(inp && code){
+        inp.value=code;
+        const sub=subtotalNum(state.bag);
+        if(window.FT_SUPABASE && window.FT_SUPABASE.validateCoupon){
+          window.FT_SUPABASE.validateCoupon(code,sub).then(res=>{
+            if(res.valid){
+              state.appliedCoupon={
+                code:res.coupon.code,
+                discountAmount:res.discountAmount,
+                discountType:res.coupon.discount_type,
+                message:res.message,
+                coupon:res.coupon
+              };
+              store.save("ft_applied_coupon",state.appliedCoupon);
+              renderInqSummary();
+              toast(res.message,{icon:"check"});
+            }else{
+              toast(res.message,{icon:"alert"});
+            }
+          });
+        }
+      }
+      break;
+    }
     case "modal":openModal(t.dataset.tab);break;
     case "modal-close":closeModal();break;
     case "modal-tab":state.reportTab=t.dataset.tab;renderModal();if(state.reportTab==="assets"&&!state.reportRan)runReport();break;
@@ -1689,13 +1954,42 @@ document.addEventListener("click",e=>{
   }
 });
 document.addEventListener("input",e=>{
-  const t=e.target.closest("[data-input]");if(!t)return;
-  if(t.dataset.input==="search"){state.searchSel=0;renderSearch(t.value);}
-  if(t.dataset.input==="shop-q"){state.shop.q=t.value;renderShopGrid();}
+  const t=e.target.closest("[data-input]");
+  if(t){
+    if(t.dataset.input==="search"){state.searchSel=0;renderSearch(t.value);}
+    if(t.dataset.input==="shop-q"){state.shop.q=t.value;renderShopGrid();}
+  }
+  if(e.target.id==="f-district"){
+    const val=e.target.value.toLowerCase();
+    if(val.includes("dhaka") && state.deliveryZone!=="dhaka"){
+      state.deliveryZone="dhaka";
+      store.save("ft_delivery_zone","dhaka");
+      const r=document.querySelector('input[name="delivery_zone"][value="dhaka"]');
+      if(r)r.checked=true;
+      $$(".zone-card").forEach(zc=>{
+        const isSel=zc.querySelector("input").value==="dhaka";
+        zc.classList.toggle("active",isSel);
+        zc.style.borderColor=isSel?'var(--chestnut)':'var(--line)';
+        zc.style.background=isSel?'var(--cream2)':'var(--surface)';
+      });
+      renderInqSummary();
+    }
+  }
 });
 document.addEventListener("change",e=>{
-  const t=e.target.closest("[data-input]");if(!t)return;
-  if(t.dataset.input==="shop-sort"){state.shop.sort=t.value;renderShopGrid();}
+  const t=e.target.closest("[data-input]");
+  if(t && t.dataset.input==="shop-sort"){state.shop.sort=t.value;renderShopGrid();}
+  if(e.target.name==="delivery_zone"){
+    state.deliveryZone=e.target.value;
+    store.save("ft_delivery_zone",state.deliveryZone);
+    $$(".zone-card").forEach(zc=>{
+      const isSel=zc.querySelector("input").value===state.deliveryZone;
+      zc.classList.toggle("active",isSel);
+      zc.style.borderColor=isSel?'var(--chestnut)':'var(--line)';
+      zc.style.background=isSel?'var(--cream2)':'var(--surface)';
+    });
+    renderInqSummary();
+  }
 });
 document.addEventListener("submit",e=>{
   const f=e.target.closest("[data-form]");if(!f)return;
@@ -1709,14 +2003,20 @@ document.addEventListener("submit",e=>{
     if(bad){toast("Please complete the highlighted fields",{icon:"alert"});return;}
     if(!state.bag.length){toast("Your bag is empty",{icon:"alert"});return;}
     const ref=makeRef();
-    const cust={name,phone,district,address,notes:(fd.get("notes")||"").trim(),contact:fd.get("contact")||"Messenger"};
+    const zone=fd.get("delivery_zone") || state.deliveryZone || (district.toLowerCase().includes('dhaka') ? 'dhaka' : 'outside');
+    const cust={name,phone,district,address,notes:(fd.get("notes")||"").trim(),contact:fd.get("contact")||"WhatsApp",zone};
     const text=inquiryText(state.bag,cust,ref);
     state.lastInquiry={ref,text,at:Date.now()};
 
     // Prepare complete structured order record
     const subtotal = subtotalNum(state.bag);
-    const isDhaka = cust.district.toLowerCase().includes('dhaka');
-    const deliveryFee = isDhaka ? 80 : 150;
+    const baseDelivery = zone === 'outside' ? 150 : 80;
+    const isFreeShip = state.appliedCoupon && state.appliedCoupon.coupon && state.appliedCoupon.coupon.discount_type === 'free_shipping';
+    const deliveryFee = isFreeShip ? 0 : baseDelivery;
+    const discountCode = state.appliedCoupon ? state.appliedCoupon.code : null;
+    const discountAmount = state.appliedCoupon ? (isFreeShip ? baseDelivery : (state.appliedCoupon.discountAmount || 0)) : 0;
+    const total = Math.max(0, subtotal + baseDelivery - discountAmount);
+
     const orderRecord = {
       order_ref: ref,
       ref: ref,
@@ -1727,8 +2027,23 @@ document.addEventListener("submit",e=>{
       customer_phone: cust.phone,
       district: cust.district,
       address: cust.address,
-      delivery_address: cust.address,
+      customer_address: (cust.district ? cust.district + ', ' : '') + cust.address,
+      delivery_address: (cust.district ? cust.district + ', ' : '') + cust.address,
+      delivery_zone: zone,
+      deliveryZone: zone,
+      delivery_fee: deliveryFee,
+      deliveryFee: deliveryFee,
+      delivery_fee_bdt: deliveryFee,
+      discount_code: discountCode,
+      discountCode: discountCode,
+      discount_amount: discountAmount,
+      discountAmount: discountAmount,
+      subtotal: subtotal,
+      subtotal_bdt: subtotal,
+      total: total,
+      total_bdt: total,
       notes: cust.notes,
+      customer_notes: cust.notes,
       contact_channel: cust.contact,
       items: state.bag.map(it => {
         const p = bySku(it.sku);
@@ -1737,16 +2052,13 @@ document.addEventListener("submit",e=>{
           title: p.title,
           price: p.priceBDT || 0,
           qty: it.qty,
-          unit: p.unitBn || p.unit || ''
+          unit: p.unitBn || p.unit || '',
+          image: assetSrc(p, 'main', 200)
         };
       }),
-      subtotal: subtotal,
-      subtotal_bdt: subtotal,
-      deliveryFee: deliveryFee,
-      delivery_fee_bdt: deliveryFee,
-      total: subtotal + deliveryFee,
-      total_bdt: subtotal + deliveryFee,
+      payment_method: 'Cash on Delivery (COD)',
       status: 'pending',
+      courier_name: 'Steadfast Courier',
       created_at: new Date().toISOString()
     };
 
@@ -1765,7 +2077,7 @@ document.addEventListener("submit",e=>{
       window.FT_ANALYTICS.trackPurchase(orderRecord);
     }
 
-    if(fd.get("clearbag")){state.bag=[];syncCommerce();}
+    if(fd.get("clearbag")){state.bag=[];state.appliedCoupon=null;store.save("ft_applied_coupon",null);syncCommerce();}
     state.inqDone=true;renderInqDone();
     window.scrollTo({top:0,behavior:RM?"auto":"smooth"});
     toast("Inquiry recorded & prepared!",{icon:"check"});
@@ -1847,9 +2159,9 @@ window.addEventListener("scroll",()=>{
 },{passive:true});
 window.addEventListener("resize",()=>{measureTop();if(state.route.page==="home")layoutStage(true);});
 const PROMO_MSGS=[
-  `First-order offer up to 25%* &nbsp;·&nbsp; Free delivery* &nbsp;·&nbsp; Order via Messenger — <a href="#/policies">*terms confirmed by seller</a>`,
-  `<span class="bn">মেসেঞ্জারে অর্ডার করুন</span> &nbsp;·&nbsp; 18 pieces · 5 collections · real boutique photography`,
-  `Elegance in Every Detail &nbsp;·&nbsp; Mirpur, Dhaka &nbsp;·&nbsp; 13,000+ community — <a href="#/lookbook">see the lookbook</a>`
+  `First-order 25% OFF with code <b style="color:var(--chestnut)">FIRST25</b> &nbsp;·&nbsp; Nationwide Cash on Delivery &nbsp;·&nbsp; <a href="#/shop">Shop the Boutique</a>`,
+  `<span class="bn">সারাদেশে ক্যাশ অন ডেলিভারি</span> &nbsp;·&nbsp; 53 pieces · 8 collections · 100% authentic photography`,
+  `৳200 Welcome Voucher with code <b style="color:var(--chestnut)">FARIZA200</b> &nbsp;·&nbsp; Real-time tracking — <a href="#/track">Track Orders</a>`
 ];
 let promoIdx=0;
 function promoLoop(){
@@ -1864,7 +2176,12 @@ function promoLoop(){
 document.addEventListener("keydown",e=>{if(e.ctrlKey&&e.altKey&&e.shiftKey&&e.key.toLowerCase()==="f"){e.preventDefault();openModal("assets");}});
 /* ================= INIT ================= */
 function init(){
+  if(!state.cfg.whatsapp) state.cfg.whatsapp = localStorage.getItem("ft_whatsapp") || (window.FT_CONFIG && window.FT_CONFIG.whatsappNumber) || CONFIG.whatsappNumber || "8801700000000";
   document.body.classList.toggle("no-whatsapp",!state.cfg.whatsapp);
+  const waBtn = document.getElementById("floating-wa-btn");
+  if(waBtn){
+    waBtn.href = getWhatsAppUrl("Hello Fariza's Territory, I would like to inquire about your boutique collection.");
+  }
   if(state.promoOff)$("#site-top").classList.add("no-promo");
   if(!state.cfg.messenger)state.cfg.messenger=CONFIG.messengerUsername;
   if(!state.cfg.facebook)state.cfg.facebook=CONFIG.facebookUrl;
@@ -1878,7 +2195,7 @@ function init(){
   try{
     const ld={"@context":"https://schema.org","@graph":[
       {"@type":"Organization","name":"Fariza's Territory","slogan":"Elegance in Every Detail.","address":{"@type":"PostalAddress","addressLocality":"Mirpur, Dhaka","addressCountry":"BD"}},
-      {"@type":"ItemList","name":"Fariza's Territory — Live Catalog","numberOfItems":18,"itemListElement":PRODUCTS.map((p,i)=>({"@type":"ListItem","position":i+1,"item":{"@type":"Product","name":p.title,"sku":p.sku,"category":p.collection.name}}))}
+      {"@type":"ItemList","name":"Fariza's Territory — Live Catalog","numberOfItems":PRODUCTS.length,"itemListElement":PRODUCTS.map((p,i)=>({"@type":"ListItem","position":i+1,"item":{"@type":"Product","name":p.title,"sku":p.sku,"category":p.collection.name}}))}
     ]};
     const s=document.createElement("script");s.type="application/ld+json";s.textContent=JSON.stringify(ld);document.head.appendChild(s);
   }catch(e){}
