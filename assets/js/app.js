@@ -512,21 +512,25 @@ function pageHome(){
     <div class="container">
       <div class="sec-head">
         <div><span class="overline" data-reveal>Eight houses of craft</span><h2 class="h-sec kinetic-title" data-reveal style="--d:.08s">The Collections</h2></div>
-        <a class="btn btn-line" href="#/collections" data-reveal style="--d:.14s"><span>View all 8 collections</span>${IC.arrow}</a>
+        <div style="display:flex;gap:10px;flex-wrap:wrap" data-reveal style="--d:.14s">
+          <a class="btn btn-line" href="#/collections"><span>View all 8 collections</span>${IC.arrow}</a>
+          <a class="btn btn-ink" href="#/shop" data-shop-all-cta><span>Shop all ${PRODUCTS.length} pieces</span>${IC.arrow}</a>
+        </div>
       </div>
       <div class="col-grid-8">
         ${COLLECTIONS.map((c,i)=>{
           const items=PRODUCTS.filter(p=>p.colId===c.id || p.col===c.id);
-          return `<article class="col-card" data-reveal style="--d:${(i%4)*.08}s;--acc:${c.acc}">
+          const colCount=items.length;
+          return `<article class="col-card" data-col-id="${c.id}" data-reveal style="--d:${(i%4)*.08}s;--acc:${c.acc}">
             <div class="cc-num">
               <span>N° ${c.id}</span>
               <span class="tag tiny" style="background:color-mix(in srgb,${c.acc} 15%,transparent);color:var(--ink)">${esc(c.pillar)}</span>
             </div>
             <h3 class="cc-name">${esc(c.name)}</h3>
             ${c.nameBn ? `<div class="tiny bn col-card-bn" style="color:var(--chestnut)">${esc(c.nameBn)}</div>` : ''}
-            <span class="cc-count">${c.count} piece${c.count>1?"s":""}${c.id==="01"?" · label unverified":""}</span>
+            <span class="cc-count" data-col-count="${c.id}">${colCount} piece${colCount===1?"":"s"}${c.id==="01"?" · label unverified":""}</span>
             <div class="cc-thumbs">${items.slice(0,3).map(p=>ph(p,"main",{mini:true,w:200,dot:false})).join("")}</div>
-            <a class="cc-go" href="#/shop?c=${c.id}">Explore collection ${IC.arrow}</a>
+            <a class="cc-go" href="#/shop?c=${c.id}" data-col-explore="${c.id}"><span data-col-explore-label="${c.id}">Explore ${colCount} piece${colCount===1?"":"s"}</span> ${IC.arrow}</a>
           </article>`;
         }).join("")}
       </div>
@@ -845,32 +849,119 @@ function renderShopGrid(){
   $$('[data-act="shop-pillar"]').forEach(ch=>ch.classList.toggle("on",ch.dataset.pillar===state.shop.pillar));
   $$('[data-act="shop-col"]').forEach(ch=>ch.classList.toggle("on",ch.dataset.col===state.shop.c));
 }
-/* ================= COLLECTIONS PAGE ================= */
+/* ================= COLLECTIONS PAGE & DYNAMIC COUNTS ================= */
+function computeDynamicCollectionStats(productsSource){
+  const list = Array.isArray(productsSource) ? productsSource : PRODUCTS;
+  const byColId = {};
+  COLLECTIONS.forEach(c => {
+    const items = list.filter(p => (p.colId === c.id || p.col === c.id));
+    const availableCount = items.filter(p => p.is_available !== false).length;
+    c.count = items.length;
+    byColId[c.id] = {
+      id: c.id,
+      items,
+      count: items.length,
+      availableCount
+    };
+  });
+  return {
+    allCount: list.length,
+    fashionCount: list.filter(p => p.superCategory === "Fashion").length,
+    accessoriesCount: list.filter(p => p.superCategory === "Accessories").length,
+    collectionsCount: COLLECTIONS.length,
+    byColId
+  };
+}
+
+function updateCollectionCountDomNodes(stats){
+  const st = stats || computeDynamicCollectionStats(PRODUCTS);
+  $$("[data-collections-total]").forEach(el => { el.textContent = String(st.allCount); });
+  $$("[data-collections-fashion]").forEach(el => { el.textContent = String(st.fashionCount); });
+  $$("[data-collections-accessories]").forEach(el => { el.textContent = String(st.accessoriesCount); });
+  $$("[data-shop-all-cta]").forEach(el => {
+    const span = el.querySelector("span");
+    if (span) span.textContent = `Shop all ${st.allCount} pieces`;
+  });
+  COLLECTIONS.forEach(c => {
+    const info = st.byColId[c.id] || { count: 0, availableCount: 0 };
+    const colCount = info.count;
+    $$(`[data-col-count="${c.id}"]`).forEach(el => {
+      const suffix = c.id === "01" ? " · label unverified" : "";
+      if (el.dataset.detailed === "1") {
+        el.textContent = `${colCount} piece${colCount===1?"":"s"} (${info.availableCount} available)${suffix}`;
+      } else {
+        el.textContent = `${colCount} piece${colCount===1?"":"s"}${suffix}`;
+      }
+    });
+    $$(`[data-col-explore-label="${c.id}"]`).forEach(el => {
+      el.textContent = `Explore ${colCount} piece${colCount===1?"":"s"}`;
+    });
+  });
+}
+
+function fetchAndSyncCollectionCounts(){
+  const stats = computeDynamicCollectionStats(PRODUCTS);
+  updateCollectionCountDomNodes(stats);
+
+  const fetcher = (window.FT_SUPABASE && typeof window.FT_SUPABASE.getProducts === "function")
+    ? window.FT_SUPABASE.getProducts()
+    : fetch("/api/catalog", { credentials: "same-origin" })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => (d && Array.isArray(d.products)) ? d.products : null)
+        .catch(() => null);
+
+  return Promise.resolve(fetcher).then(liveRows => {
+    if (Array.isArray(liveRows) && liveRows.length) {
+      applyProductOverrides(liveRows);
+    }
+    const updatedStats = computeDynamicCollectionStats(PRODUCTS);
+    updateCollectionCountDomNodes(updatedStats);
+    return updatedStats;
+  }).catch(() => stats);
+}
+
 function pageCollections(){
+  const stats = computeDynamicCollectionStats(PRODUCTS);
   return `
   <div class="page-head"><div class="container">
-    <span class="overline" data-reveal>Eight houses of craft</span>
-    <h1 class="h-display kinetic-title" data-reveal style="--d:.06s;margin-top:12px">The Collections</h1>
-    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">53 verified pieces across 8 collections — 5 boutique fashion houses and 3 artisan accessory workshops based in Mirpur, Dhaka.</p>
+    <span class="overline" data-reveal>Eight houses of craft · <span data-collections-total>${stats.allCount}</span> pieces live</span>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-top:12px">
+      <h1 class="h-display kinetic-title" data-reveal style="--d:.06s">The Collections</h1>
+      <div class="collections-summary-bar" data-reveal style="--d:.1s">
+        <a class="chip on" href="#/shop">All <span class="n" data-collections-total>${stats.allCount}</span></a>
+        <a class="chip" href="#/fashion">Fashion <span class="n" data-collections-fashion>${stats.fashionCount}</span></a>
+        <a class="chip" href="#/accessories">Accessories <span class="n" data-collections-accessories>${stats.accessoriesCount}</span></a>
+        <a class="btn btn-ink btn-sm" href="#/shop" data-shop-all-cta><span>Shop all ${stats.allCount} pieces</span>${IC.arrow}</a>
+      </div>
+    </div>
+    <p class="lede" data-reveal style="--d:.12s;margin-top:12px"><span data-collections-total>${stats.allCount}</span> verified pieces across ${stats.collectionsCount} collections — <span data-collections-fashion>${stats.fashionCount}</span> boutique fashion three-piece garments and <span data-collections-accessories>${stats.accessoriesCount}</span> artisan accessories handcrafted in Mirpur, Dhaka.</p>
   </div></div>
   <div class="page-body"><div class="container">
-    ${COLLECTIONS.map((c,i)=>{
-      const items=PRODUCTS.filter(p=>p.col===c.id || p.colId===c.id);
-      return `<div class="crow" data-reveal style="--d:${i*.06}s;--acc:${c.acc}">
-        <div class="crow-num">${c.id}</div>
-        <div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <h2 class="crow-name">${esc(c.name)}</h2>
+    <div class="col-grid-8 collections-page-grid" id="collections-page-grid">
+      ${COLLECTIONS.map((c)=>{
+        const info = stats.byColId[c.id] || { items: [], count: 0, availableCount: 0 };
+        const items = info.items;
+        const colCount = info.count;
+        const availCount = info.availableCount;
+        return `<article class="col-card crow-card" data-col-id="${c.id}" data-anime-stagger="1" style="--acc:${c.acc}">
+          <div class="cc-num">
+            <span>N° ${c.id}</span>
             <span class="tag tiny" style="background:color-mix(in srgb,${c.acc} 15%,transparent);color:var(--ink)">${esc(c.pillar)}</span>
           </div>
-          ${c.nameBn ? `<div class="tiny bn" style="color:var(--chestnut);margin:2px 0 6px">${esc(c.nameBn)}</div>` : ''}
-          <p class="crow-note">${esc(c.note)}</p>
-          <span class="tiny" style="display:block;margin-top:6px">${c.count} verified piece${c.count>1?"s":""}</span>
-        </div>
-        <div class="crow-thumbs">${items.slice(0,3).map(p=>ph(p,"main",{mini:true,w:240,dot:false})).join("")}</div>
-        <a class="btn btn-ink" href="#/shop?c=${c.id}"><span>Explore ${c.count}</span>${IC.arrow}</a>
-      </div>`;}).join("")}
+          <h2 class="cc-name crow-name">${esc(c.name)}</h2>
+          ${c.nameBn ? `<div class="tiny bn col-card-bn" style="color:var(--chestnut)">${esc(c.nameBn)}</div>` : ''}
+          <p class="crow-note cc-note">${esc(c.note)}</p>
+          <span class="cc-count" data-col-count="${c.id}" data-detailed="1">${colCount} piece${colCount===1?"":"s"} (${availCount} available)${c.id==="01"?" · label unverified":""}</span>
+          <div class="cc-thumbs">${items.slice(0,3).map(p=>ph(p,"main",{mini:true,w:240,dot:false})).join("")}</div>
+          <a class="cc-go" href="#/shop?c=${c.id}" data-col-explore="${c.id}"><span data-col-explore-label="${c.id}">Explore ${colCount} piece${colCount===1?"":"s"}</span> ${IC.arrow}</a>
+        </article>`;
+      }).join("")}
+    </div>
     <div style="margin-top:36px">${offerNote()}</div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px" data-reveal>
+      <a class="btn btn-ink" href="#/shop" data-shop-all-cta><span>Shop all ${stats.allCount} pieces</span>${IC.arrow}</a>
+      ${messengerBtn("Inquire about a collection")}
+    </div>
   </div></div>`;
 }
 /* ================= PRODUCT PAGE ================= */
@@ -1961,6 +2052,13 @@ function hydrate(){
     initStageInput();
     if(window.initThreeHero) window.initThreeHero();
     if(window.initThreeCollections) window.initThreeCollections();
+    fetchAndSyncCollectionCounts();
+  } else if(state.route.page==="collections"){
+    if(window.initThreeCollections) window.initThreeCollections();
+    fetchAndSyncCollectionCounts();
+    if(window.FT_ANIME && typeof window.FT_ANIME.animateCollectionsEntrance === "function"){
+      window.FT_ANIME.animateCollectionsEntrance(document.getElementById("collections-page-grid") || document.getElementById("app"));
+    }
   } else {
     if(window.destroyThreeCollections) window.destroyThreeCollections();
   }

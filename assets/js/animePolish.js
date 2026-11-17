@@ -22,6 +22,7 @@
   const AnimePolish = {
     _rippleBound: false,
     _titleObserver: null,
+    _collectionsObserver: null,
 
     init() {
       if (typeof anime === 'undefined') {
@@ -34,6 +35,7 @@
       this.initMagneticButtons();
       this.initStitchTracing();
       this.initCounterRollups();
+      this.initCollectionsScrollEntrance();
       this.initClickRipples();
       this.bindFlyToCartHooks();
     },
@@ -46,6 +48,7 @@
       this.initMagneticButtons();
       this.initStitchTracing();
       this.initCounterRollups();
+      this.initCollectionsScrollEntrance();
     },
 
     /**
@@ -518,8 +521,110 @@
     },
 
     /**
-     * 9. Staggered Grid Entrance, Image Swap Crossfade & Tracking Stepper
+     * 9. Staggered Grid Entrance, Collections Page Entrance, Image Swap Crossfade & Tracking Stepper
      */
+    initCollectionsScrollEntrance() {
+      if (RM || typeof anime === 'undefined') return;
+      const homeGrid = document.querySelector('#collections .col-grid-8:not([data-col-entrance-bound])');
+      if (!homeGrid) return;
+      homeGrid.setAttribute('data-col-entrance-bound', 'true');
+
+      if ('IntersectionObserver' in window) {
+        if (!this._collectionsObserver) {
+          this._collectionsObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                this._collectionsObserver.unobserve(entry.target);
+                this.animateCollectionsEntrance(entry.target);
+              }
+            });
+          }, { threshold: 0.12 });
+        }
+        this._collectionsObserver.observe(homeGrid);
+      } else {
+        this.animateCollectionsEntrance(homeGrid);
+      }
+    },
+
+    animateCollectionsEntrance(container) {
+      const root = container || document.getElementById('collections-page-grid') || document.querySelector('.col-grid-8') || document;
+      const cards = Array.from(root.querySelectorAll('.col-card, .crow'));
+      if (!cards.length) return;
+
+      if (RM || typeof anime === 'undefined') {
+        cards.forEach(c => {
+          c.classList.add('in');
+          c.style.opacity = '1';
+          c.style.transform = '';
+        });
+        return;
+      }
+
+      // Prepare cards so CSS [data-reveal] transition does not fight Anime.js
+      cards.forEach(c => {
+        c.classList.add('in');
+        c.removeAttribute('data-reveal');
+        c.setAttribute('data-entrance-animating', '1');
+        c.style.opacity = '0';
+      });
+
+      anime.remove(cards);
+
+      const colsCount = window.innerWidth <= 600 ? 1 : window.innerWidth <= 1080 ? 2 : 4;
+      const rowsCount = Math.ceil(cards.length / colsCount);
+
+      anime({
+        targets: cards,
+        opacity: [0, 1],
+        translateY: [38, 0],
+        scale: [0.94, 1],
+        rotateX: [7, 0],
+        delay: anime.stagger(75, { grid: [colsCount, rowsCount], from: 'first', start: 65 }),
+        duration: 780,
+        easing: 'easeOutExpo',
+        complete: () => {
+          cards.forEach(c => {
+            c.removeAttribute('data-entrance-animating');
+            c.style.opacity = '1';
+            if (c.getAttribute('data-parallax-active') !== '1') {
+              c.style.transform = '';
+            }
+          });
+          if (window.ftThreeCollections && typeof window.ftThreeCollections.measureCards === 'function') {
+            window.ftThreeCollections.measureCards();
+            window.ftThreeCollections.requestRender(true);
+          }
+        }
+      });
+
+      const thumbs = root.querySelectorAll('.col-card .cc-thumbs .ph, .crow .crow-thumbs .ph');
+      if (thumbs.length) {
+        anime.remove(thumbs);
+        anime({
+          targets: thumbs,
+          opacity: [0, 1],
+          translateY: [14, 0],
+          scale: [0.85, 1],
+          delay: anime.stagger(28, { start: 180 }),
+          duration: 560,
+          easing: 'easeOutBack(1.3)'
+        });
+      }
+
+      const badges = root.querySelectorAll('.col-card .cc-count, .col-card .cc-num .tag');
+      if (badges.length) {
+        anime.remove(badges);
+        anime({
+          targets: badges,
+          opacity: [0, 1],
+          translateX: [-8, 0],
+          delay: anime.stagger(40, { start: 140 }),
+          duration: 520,
+          easing: 'easeOutQuad'
+        });
+      }
+    },
+
     animateGridCards(container) {
       if (RM || !container || typeof anime === 'undefined') return;
       const cards = container.querySelectorAll('.pcard, .col-card, .lb-item');
