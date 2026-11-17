@@ -1215,6 +1215,29 @@ header.nav {
 .col-card.has-three-parallax::before {
   background: radial-gradient(360px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(209, 128, 58, 0.14), transparent 48%);
 }
+.col-card[data-entrance-animating="1"] {
+  transition: box-shadow .35s var(--ease), border-color .25s ease !important;
+  will-change: transform, opacity;
+}
+.collections-summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.collections-page-grid .col-card {
+  min-height: 295px;
+}
+.cc-note {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink2);
+  margin: 2px 0 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 @media (prefers-reduced-motion: reduce) {
   .hero-orn, .marquee-in, .ph-dot.pending, .hot::after, .st.pending i, .tracking-step.active .step-circle {
     animation: none !important;
