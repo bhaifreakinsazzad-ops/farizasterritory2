@@ -201,6 +201,12 @@ function addToBag(sku,qty,quiet){
   if(it) it.qty=Math.min(99,it.qty+qty); else state.bag.push({sku,qty});
   syncCommerce();
   if(!quiet) toast(`${bySku(sku).title} added to inquiry bag`,{icon:"bag",action:"View bag",onAction:()=>openDrawer("bag")});
+
+  // Master UI Motion: Fly-to-Cart Bezier Curve with Elastic Pop & Confetti Burst
+  if(window.FT_ANIME && typeof window.FT_ANIME.flyToBag === 'function'){
+    const srcEl = document.querySelector(`[data-sku="${sku}"] img`) || document.querySelector(`[data-sku="${sku}"]`) || document.getElementById('qv-main-fig');
+    if(srcEl) window.FT_ANIME.flyToBag(srcEl);
+  }
 }
 function removeFromBag(sku){
   const i=state.bag.findIndex(b=>b.sku===sku); if(i<0)return;
@@ -313,7 +319,7 @@ function pcard(p,i){
     <div class="pc-actions">
       <button data-act="bag-add" data-sku="${p.sku}" aria-label="Add ${esc(p.title)} to inquiry bag" title="Add to bag">${IC.bag}</button>
       <button data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" class="${inWish(p.sku)?"on":""}" aria-pressed="${inWish(p.sku)}" aria-label="Save ${esc(p.title)} to wishlist" title="Wishlist">${IC.heart}</button>
-      <button data-act="lb-open" data-sku="${p.sku}" data-key="main" aria-label="Enlarge photo of ${esc(p.title)}" title="Quick view">${IC.zoom}</button>
+      <button data-act="quick-view" data-sku="${p.sku}" aria-label="Quick view of ${esc(p.title)}" title="Quick view">${IC.zoom}</button>
     </div>
     <a href="#/product/${p.sku}" aria-hidden="true" tabindex="-1">${ph(p,"main",{w:600,tag:true,tagText:(p.colId==="01"||p.col==="01")?"Label unverified":(p.collection ? p.collection.short : '')})}</a>
     <div class="pcard-body">
@@ -1308,15 +1314,17 @@ function renderTrackCard(order, wrap){
     </div>
 
     <!-- Stepper -->
-    ${st === 'cancelled' ? '<div class="notice alert" style="margin-bottom:20px">${IC.alert}<span>This order was cancelled. Please message us on WhatsApp if you wish to re-inquire.</span></div>' : `
-      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:10px;margin:20px 0;background:var(--cream2);padding:16px;border-radius:12px;">
+    ${st === 'cancelled' ? `<div class="notice alert" style="margin-bottom:20px">${IC.alert}<span>This order was cancelled. Please message us on WhatsApp if you wish to re-inquire.</span></div>` : `
+      <div class="tracking-stepper" style="background:var(--cream2);padding:20px 16px;border-radius:14px;border:1px solid var(--line);margin:20px 0;">
         ${steps.map((sp, i) => `
-          <div style="text-align:center;opacity:${i <= stepIdx ? 1 : 0.4}">
-            <div style="width:28px;height:28px;border-radius:50%;background:${i <= stepIdx ? 'var(--chestnut)' : 'var(--cream3)'};color:${i <= stepIdx ? '#FFF' : 'var(--ink)'};display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-bottom:6px">
+          <div class="tracking-step ${i < stepIdx ? 'done' : (i === stepIdx ? 'active' : '')}">
+            <div class="step-circle">
               ${i < stepIdx ? '✓' : (i + 1)}
             </div>
-            <div style="font-size:13px;font-weight:600">${sp.label}</div>
-            <div style="font-size:11px;color:var(--ink2);margin-top:2px">${sp.desc}</div>
+            <div>
+              <div class="step-title">${sp.label}</div>
+              <div class="step-sub">${sp.desc}</div>
+            </div>
           </div>
         `).join('')}
       </div>
@@ -1436,6 +1444,108 @@ function render(){
   if(RM||!app.innerHTML){swap();}
   else{const a=app.animate([{opacity:1},{opacity:0}],{duration:140,fill:"forwards"});a.onfinish=swap;setTimeout(()=>{if(token===renderToken&&!app.dataset.swapped){}},200);}
 }
+/* ================= MOTION.DEV & QUICK VIEW CORE ================= */
+function initScrollProgressBar() {
+  const bar = document.getElementById("scroll-progress");
+  if (!bar) return;
+  if (window.Motion && typeof window.Motion.scroll === "function" && typeof window.Motion.animate === "function") {
+    try {
+      window.Motion.scroll(
+        window.Motion.animate(bar, { scaleX: [0, 1] }, { ease: "linear" })
+      );
+      return;
+    } catch (e) {}
+  }
+  window.addEventListener("scroll", () => {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+    const progress = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
+    bar.style.transform = `scaleX(${progress})`;
+  }, { passive: true });
+}
+
+function initMotionInView() {
+  if (RM) return;
+  if (window.Motion && typeof window.Motion.inView === "function" && typeof window.Motion.animate === "function") {
+    try {
+      window.Motion.inView(".pcard, .col-card, .pair-card, .offer", (element) => {
+        window.Motion.animate(
+          element,
+          { opacity: [0, 1], transform: ["translateY(28px) scale(0.97)", "translateY(0px) scale(1)"] },
+          { type: "spring", stiffness: 280, damping: 24 }
+        );
+      }, { amount: 0.12 });
+    } catch (e) {}
+  }
+}
+
+function openQuickView(sku) {
+  const p = bySku(sku);
+  if (!p) return;
+  const ov = $("#quick-view-ov");
+  const card = $("#quick-view-card");
+  if (!ov || !card) return;
+
+  const unitBadge = p.unitBn ? `<span class="unit-badge">${esc(p.unitBn)}</span>` : '';
+  const keys = ["main", "detailA", "detailB", "original"].filter(k => p.assets && p.assets[k]);
+
+  card.innerHTML = `
+    <button class="iconbtn" data-act="quick-view-close" aria-label="Close quick view" style="position:absolute;right:18px;top:18px;z-index:10">${IC.x}</button>
+    <div class="qv-gallery">
+      <div class="qv-main-ph ph r45" id="qv-main-fig" data-act="lb-open" data-sku="${p.sku}" data-key="main" title="Click to enlarge">
+        ${ph(p, "main", { w: 800, dot: false })}
+      </div>
+      <div class="qv-thumbs" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        ${keys.map((k, idx) => `
+          <button class="chip ${idx===0?'on':''}" data-act="qv-switch" data-sku="${p.sku}" data-key="${k}" style="padding:6px 12px;font-size:12px;">
+            ${k.toUpperCase()}
+          </button>
+        `).join("")}
+      </div>
+    </div>
+    <div class="qv-info" style="display:flex;flex-direction:column;justify-content:center;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span class="overline" style="font-size:10px">${esc(p.collection ? p.collection.short : '')}</span>
+        ${unitBadge}
+      </div>
+      <h2 style="font-size:clamp(1.5rem, 2.5vw, 2.1rem);line-height:1.2;margin:4px 0 8px;">${esc(p.title)}</h2>
+      ${p.titleBn ? `<div class="bn" style="color:var(--chestnut);font-size:14.5px;margin-bottom:8px;">${esc(p.titleBn)}</div>` : ''}
+      <div style="font-size:20px;font-weight:600;color:var(--caramel);margin:12px 0;padding:10px 0;border-top:1.5px dashed var(--line);border-bottom:1.5px dashed var(--line);">
+        ${priceText(p)}
+      </div>
+      <p style="font-size:13.5px;color:var(--ink2);line-height:1.6;margin-bottom:14px;">
+        ${esc(p.desc || p.descEn || '')}
+      </p>
+      ${p.fabricBn ? `<div class="tiny bn" style="background:var(--cream2);padding:10px 14px;border-radius:9px;margin-bottom:14px;line-height:1.6"><b>ফেব্রিক বিবরণ:</b> ${esc(p.fabricBn)}</div>` : ''}
+      <div style="display:flex;gap:10px;margin-top:auto;">
+        <button class="btn btn-ink btn-block" data-act="bag-add" data-sku="${p.sku}">
+          ${IC.bag}<span>Add to Inquiry Bag</span>
+        </button>
+        <button class="btn btn-line" data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" class="${inWish(p.sku)?'on':''}" aria-label="Save to wishlist">
+          ${IC.heart}
+        </button>
+      </div>
+      <a href="#/product/${p.sku}" data-act="quick-view-close" style="font-size:12.5px;color:var(--chestnut);text-decoration:underline;text-align:center;margin-top:14px;">View full product specifications & styling &rarr;</a>
+    </div>
+  `;
+
+  ov.classList.add("open");
+  ov.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  bindImages(card);
+  if (window.FT_ANIME) window.FT_ANIME.refresh();
+}
+
+function closeQuickView() {
+  const ov = $("#quick-view-ov");
+  if (!ov) return;
+  ov.classList.remove("open");
+  ov.setAttribute("aria-hidden", "true");
+  if (!state.drawer && !$("#modal").classList.contains("open")) {
+    document.body.style.overflow = "";
+  }
+}
+
 function hydrate(){
   bindImages(document);
   revealBind(document);
@@ -1460,12 +1570,12 @@ function hydrate(){
   }
   syncCommerce();
 
-  // Anime.js UI/UX Polish
+  // Master UI/UX Polish: Anime.js & Motion.dev
   if(window.FT_ANIME){
-    window.FT_ANIME.initKineticTypography();
-    window.FT_ANIME.initCardTilt();
-    window.FT_ANIME.initStitchTracing();
+    window.FT_ANIME.refresh();
   }
+  initMotionInView();
+  initScrollProgressBar();
 }
 /* ================= REVEAL / SCROLL ================= */
 let IO=null;
@@ -1494,6 +1604,7 @@ function initStageInput(){
 }
 /* ================= EVENTS ================= */
 document.addEventListener("click",e=>{
+  if(e.target.id === "quick-view-ov") { closeQuickView(); return; }
   const t=e.target.closest("[data-act]");
   if(!e.target.closest(".hot-pop")&&!e.target.closest(".hot"))closeHotPop();
   if(!t)return;
@@ -1535,6 +1646,20 @@ document.addEventListener("click",e=>{
     case "clear-bag":{if(!state.bag.length)break;const old=state.bag.slice();state.bag=[];syncCommerce();toast("Bag cleared",{icon:"trash",action:"Undo",onAction:()=>{state.bag=old;syncCommerce();}});break;}
     case "wish":toggleWish(sku);break;
     case "gal":{closeHotPop();state.gal={sku:sku||state.gal.sku,key};renderGallery();break;}
+    case "quick-view":openQuickView(sku);break;
+    case "quick-view-close":closeQuickView();break;
+    case "qv-switch":{
+      const p=bySku(sku);
+      if(!p)break;
+      const fig=$("#qv-main-fig");
+      if(fig){
+        fig.innerHTML=ph(p,key,{w:800,dot:false});
+        fig.dataset.key=key;
+        bindImages(fig);
+      }
+      $$(".qv-thumbs button").forEach(b=>b.classList.toggle("on",b.dataset.key===key));
+      break;
+    }
     case "lb-open":openLB(sku,key);break;
     case "lb-close":closeLB();break;
     case "lb-prev":lbStep(-1);break;

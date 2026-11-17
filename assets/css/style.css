@@ -862,3 +862,247 @@ body.no-whatsapp [data-act="wa"]{display:none!important}
   width: 12px;
   height: 12px;
 }
+
+/* ==============================================================================
+   FARIZA'S TERRITORY — MASTER-LEVEL MODERN UI/UX MOTION & GLASSMORPHIC STYLING
+   ============================================================================== */
+
+/* 1. Global Viewport Scroll Progress Bar */
+#scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--caramel) 0%, var(--gold) 50%, var(--fuchsia) 100%);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 0 10px rgba(209, 128, 58, 0.6);
+  will-change: transform;
+}
+
+/* 2. Triple-Layer Glassmorphism Surface Enhancements */
+header.nav {
+  background: rgba(253, 240, 221, 0.86);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1.5px dashed rgba(121, 71, 34, 0.2);
+  transition: border-color .3s, box-shadow .3s, background .3s;
+}
+.site-top.scrolled header.nav {
+  background: rgba(253, 240, 221, 0.94);
+  border-bottom-color: var(--kantha);
+  box-shadow: 0 16px 36px -20px rgba(30, 29, 28, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.65);
+}
+
+.drawer {
+  background: rgba(253, 240, 221, 0.95);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border-left: 1px solid rgba(121, 71, 34, 0.15);
+  box-shadow: -25px 0 60px -20px rgba(30, 29, 28, 0.45);
+}
+
+.modal-card {
+  background: rgba(253, 240, 221, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid var(--kantha);
+  box-shadow: 0 35px 80px -25px rgba(30, 29, 28, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.6);
+}
+
+/* 3. Dynamic Mouse Radial Glow Spotlight on Cards & Panels */
+.pcard, .col-card, .pair-card, .offer, .stat, .panel {
+  position: relative;
+  background: rgba(255, 247, 232, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid var(--line);
+  overflow: hidden;
+  will-change: transform;
+}
+.pcard::before, .col-card::before, .pair-card::before, .offer::before, .stat::before, .panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(420px circle at var(--mouse-x, -500px) var(--mouse-y, -500px), rgba(209, 128, 58, 0.25), transparent 45%);
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 0.25s ease;
+}
+.pcard > *, .col-card > *, .pair-card > *, .offer > *, .stat > *, .panel > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* 4. Specular Card Glare for 3D Perspective Tilt */
+.card-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  mix-blend-mode: overlay;
+  transition: opacity 0.25s ease;
+  z-index: 10;
+}
+
+/* 5. Zari Golden Sparks & Tactile Click Ripples */
+.zari-spark {
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.ft-click-ripple {
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* 6. Kinetic Split Typography */
+.kt-char {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+.char-space {
+  display: inline-block;
+  width: 0.28em;
+}
+
+/* 7. Interactive Floating Quick-View 3D Modal */
+.quick-view-ov {
+  position: fixed;
+  inset: 0;
+  z-index: 350;
+  background: rgba(20, 19, 18, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s var(--ease);
+}
+.quick-view-ov.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.quick-view-card {
+  background: var(--surface);
+  border-radius: 22px;
+  border: 1.5px solid var(--kantha);
+  box-shadow: 0 40px 90px -25px rgba(30, 29, 28, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
+  width: min(940px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 32px;
+  padding: 32px;
+  position: relative;
+  transform: scale(0.92) translateY(28px);
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.quick-view-ov.open .quick-view-card {
+  transform: scale(1) translateY(0);
+}
+.qv-gallery {
+  position: relative;
+}
+.qv-main-ph {
+  border-radius: 14px;
+  border: 1.5px solid var(--line);
+  cursor: zoom-in;
+  overflow: hidden;
+}
+.qv-thumbs button {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+.qv-thumbs button.on {
+  background: var(--ink);
+  color: var(--cream);
+  border-color: var(--ink);
+}
+@media (max-width: 800px) {
+  .quick-view-card {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 22px;
+    max-height: 85vh;
+  }
+}
+
+/* 8. Interactive Live Order Tracking Pulse & Timeline Graphics */
+.tracking-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 28px 0 20px;
+  position: relative;
+}
+.tracking-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  gap: 8px;
+}
+.step-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--cream2);
+  border: 2px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--chestnut);
+  font-weight: 700;
+  font-size: 14px;
+  transition: all 0.35s var(--ease);
+}
+.tracking-step.done .step-circle {
+  background: var(--ok);
+  color: #FFFFFF;
+  border-color: var(--ok);
+}
+.tracking-step.active .step-circle {
+  background: var(--ink);
+  color: var(--caramel);
+  border-color: var(--caramel);
+  box-shadow: 0 0 0 6px rgba(209, 128, 58, 0.25);
+  animation: stepPulse 2.2s infinite;
+}
+.tracking-step .step-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.tracking-step .step-sub {
+  font-size: 10.5px;
+  color: var(--ink3);
+}
+@keyframes stepPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(209, 128, 58, 0.2); }
+  50% { box-shadow: 0 0 0 11px rgba(209, 128, 58, 0.45); }
+}
+@media (max-width: 600px) {
+  .tracking-stepper {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .tracking-step {
+    flex-direction: row;
+    text-align: left;
+  }
+}
+

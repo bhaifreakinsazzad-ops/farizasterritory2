@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="assets/css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
 
   <style>
     :root {
@@ -960,20 +961,35 @@
       }
     }
 
+    function animateCounter(el, targetVal, prefix = '', suffix = '') {
+      if (!el) return;
+      if (!window.anime || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        el.textContent = prefix + Number(targetVal).toLocaleString('en-US') + suffix;
+        return;
+      }
+      const obj = { val: 0 };
+      window.anime({
+        targets: obj,
+        val: targetVal,
+        duration: 1200,
+        easing: 'easeOutExpo',
+        update: () => {
+          el.textContent = prefix + Math.floor(obj.val).toLocaleString('en-US') + suffix;
+        }
+      });
+    }
+
     function renderKPIs(orders) {
-      document.getElementById('kpi-total-orders').textContent = orders.length;
-      
       const pendingCount = orders.filter(o => o.status === 'pending').length;
-      document.getElementById('kpi-pending-orders').textContent = pendingCount;
-
       const shippedCount = orders.filter(o => o.status === 'shipped').length;
-      document.getElementById('kpi-shipped-orders').textContent = shippedCount;
-
       const totalRev = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-      document.getElementById('kpi-total-revenue').textContent = '৳ ' + totalRev.toLocaleString('en-US');
-
       const todayStr = new Date().toISOString().slice(0, 10);
       const todayCount = orders.filter(o => (o.created_at || '').startsWith(todayStr)).length;
+
+      animateCounter(document.getElementById('kpi-total-orders'), orders.length);
+      animateCounter(document.getElementById('kpi-pending-orders'), pendingCount);
+      animateCounter(document.getElementById('kpi-shipped-orders'), shippedCount);
+      animateCounter(document.getElementById('kpi-total-revenue'), totalRev, '৳ ');
       document.getElementById('kpi-today-orders').textContent = todayCount + ' inquiries placed today';
     }
 
