@@ -94,6 +94,8 @@ const jsFiles = [
   'assets/js/catalogData.js',
   'assets/js/threeHero.js',
   'assets/js/threeCollectionParallax.js',
+  'assets/js/threeui.js',
+  'assets/js/threeAdminCockpit.js',
   'assets/js/animePolish.js',
   'assets/js/app.js'
 ];
