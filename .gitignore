@@ -19,8 +19,8 @@ full_farizas_territory_block.html
 inspect_*.py
 inspect_*.js
 extract_*.py
-build_*.js
-patch_*.js
+/build_*.js
+/patch_*.js
 find_*.py
 check_*.py
 parse_*.py
