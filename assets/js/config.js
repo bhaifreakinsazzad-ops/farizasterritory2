@@ -35,7 +35,6 @@
     promoText: "",
 
     // Supabase Integration (hydrated from /api/public-config)
-    canonicalSiteUrl: "https://farizasterritory.com",
     supabase: {
       url: "https://vjbhrdclcnxevunskodm.supabase.co",
       anonKey: ""
@@ -43,7 +42,6 @@
 
     // Analytics & Ad Pixels
     analytics: {
-      metaDatasetId: "1657670575734647",
       metaPixelId: "1657670575734647",
       ga4MeasurementId: "",
       capiEndpoint: "/api/capi"
@@ -89,10 +87,8 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
         if (!data || !data.ok) return window.FT_CONFIG;
-        if (data.canonicalSiteUrl) window.FT_CONFIG.canonicalSiteUrl = data.canonicalSiteUrl;
         if (data.supabaseUrl) window.FT_CONFIG.supabase.url = data.supabaseUrl;
         if (data.supabaseAnonKey) window.FT_CONFIG.supabase.anonKey = data.supabaseAnonKey;
-        if (data.metaDatasetId) window.FT_CONFIG.analytics.metaDatasetId = data.metaDatasetId;
         if (data.metaPixelId) window.FT_CONFIG.analytics.metaPixelId = data.metaPixelId;
         if (data.ga4MeasurementId !== undefined) window.FT_CONFIG.analytics.ga4MeasurementId = data.ga4MeasurementId || '';
         if (data.deliveryFees) {

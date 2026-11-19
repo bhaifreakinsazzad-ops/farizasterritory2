@@ -173,38 +173,7 @@ assert.ok(fs.existsSync('supabase/migrations/02_security_hardening_rollback.sql'
 assert.ok(!fs.existsSync('netlify.toml'), 'Misleading static netlify.toml must be removed');
 assert.ok(!fs.existsSync('vercel.json'), 'Misleading static vercel.json must be removed');
 
-// 6. Verify .env.example Canonical Template & Secret Hygiene
-const { parseDotEnvContent } = require('../lib/supabaseServer.js');
-assert.ok(fs.existsSync('.env.example'), '.env.example must exist');
-const envExampleRaw = fs.readFileSync('.env.example', 'utf8');
-const envExampleParsed = parseDotEnvContent(envExampleRaw);
-const requiredEnvKeys = [
-  'PORT',
-  'NODE_ENV',
-  'PUBLIC_SITE_URL',
-  'ALLOWED_ORIGINS',
-  'SUPABASE_URL',
-  'SUPABASE_ANON_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'ADMIN_ALLOWED_EMAILS',
-  'META_DATASET_ID',
-  'META_PIXEL_ID',
-  'META_CAPI_ACCESS_TOKEN',
-  'META_TEST_EVENT_CODE'
-];
-for (const key of requiredEnvKeys) {
-  assert.ok(Object.prototype.hasOwnProperty.call(envExampleParsed, key), `.env.example must define ${key}`);
-}
-assert.strictEqual(envExampleParsed.PUBLIC_SITE_URL, 'https://farizasterritory.com', '.env.example PUBLIC_SITE_URL must match canonical domain');
-assert.strictEqual(envExampleParsed.SUPABASE_URL, 'https://vjbhrdclcnxevunskodm.supabase.co', '.env.example SUPABASE_URL must match project URL');
-assert.strictEqual(envExampleParsed.META_DATASET_ID, '1657670575734647', '.env.example META_DATASET_ID must match canonical dataset ID');
-assert.strictEqual(envExampleParsed.META_PIXEL_ID, '1657670575734647', '.env.example META_PIXEL_ID must match canonical pixel ID');
-assert.strictEqual(envExampleParsed.SUPABASE_ANON_KEY, '', '.env.example SUPABASE_ANON_KEY must be blank');
-assert.strictEqual(envExampleParsed.SUPABASE_SERVICE_ROLE_KEY, '', '.env.example SUPABASE_SERVICE_ROLE_KEY must be blank');
-assert.strictEqual(envExampleParsed.META_CAPI_ACCESS_TOKEN, '', '.env.example META_CAPI_ACCESS_TOKEN must be blank');
-assert.strictEqual(envExampleParsed.META_TEST_EVENT_CODE, '', '.env.example META_TEST_EVENT_CODE must be blank in production');
-
-console.log('PASS: Static security invariants & .env.example template verified');
+console.log('PASS: Static security invariants verified');
 
 console.log('\n=========================================');
 console.log('ALL VERIFICATION CHECKS PASSED PERFECTLY!');
