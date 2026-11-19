@@ -642,3 +642,35 @@ test('Environment parser, service_role leak guard, and production META_TEST_EVEN
     else process.env.META_TEST_EVENT_CODE = prevTestCode;
   }
 });
+
+// ===========================================================================
+// 10. 3D Admin Cockpit, Three.js, ThreeUI.js, Anime.js & Motion.dev Verification
+// ===========================================================================
+test('Admin Cockpit integrates Three.js, ThreeUI.js, Anime.js, Motion.dev, and complete store operations', () => {
+  const rootDir = path.join(__dirname, '..');
+  const adminHtml = fs.readFileSync(path.join(rootDir, 'admin.html'), 'utf8');
+
+  // Verify required libraries are loaded in admin.html
+  assert.ok(adminHtml.includes('three.min.js'), 'admin.html must load Three.js');
+  assert.ok(adminHtml.includes('/assets/js/threeui.js'), 'admin.html must load ThreeUI.js');
+  assert.ok(adminHtml.includes('/assets/js/threeAdminCockpit.js'), 'admin.html must load threeAdminCockpit.js');
+  assert.ok(adminHtml.includes('anime.min.js'), 'admin.html must load Anime.js');
+  assert.ok(adminHtml.includes('motion@'), 'admin.html must load Motion.dev');
+
+  // Verify key cockpit operational canvases and modules exist
+  assert.ok(adminHtml.includes('id="cockpit-3d-canvas"'), 'admin.html must include the 3D spatial cockpit canvas');
+  assert.ok(adminHtml.includes('id="sku-3d-inspector-canvas"'), 'admin.html must include the 3D SKU inspector turntable canvas');
+  assert.ok(adminHtml.includes('id="cmd-palette-modal"'), 'admin.html must include the Command Palette');
+  assert.ok(adminHtml.includes('bulkApproveAllCatalogForFeed'), 'admin.html must support 1-click bulk approval for all 53 SKUs');
+  assert.ok(adminHtml.includes('exportCourierManifestCSV'), 'admin.html must support Courier Manifest CSV export');
+
+  // Verify ThreeUI and FT_COCKPIT_3D modules load cleanly in Node
+  const threeUiMod = require('../assets/js/threeui.js');
+  const cockpit3dMod = require('../assets/js/threeAdminCockpit.js');
+  assert.equal(typeof threeUiMod.SpatialCanvasPanel, 'function');
+  assert.equal(typeof threeUiMod.SpatialDialGauge, 'function');
+  assert.equal(typeof threeUiMod.createCompositePillar, 'function');
+  assert.equal(typeof cockpit3dMod.AdminCockpit3D, 'function');
+  assert.equal(typeof cockpit3dMod.SkuInspector3D, 'function');
+});
+
