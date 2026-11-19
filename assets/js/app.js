@@ -410,10 +410,32 @@ function lineItem(it,withQty){
     <button class="li-x" data-act="${withQty?"bag-del":"wish"}" data-sku="${p.sku}" aria-label="Remove ${esc(p.title)}">${withQty?IC.trash:IC.x}</button>
   </div>`;
 }
+function freeShippingProgressHtml(subtotal){
+  const threshold = (CONFIG && CONFIG.freeShippingThreshold) ? Number(CONFIG.freeShippingThreshold) : 3000;
+  const remaining = Math.max(0, threshold - subtotal);
+  const percent = Math.min(100, Math.round((subtotal / threshold) * 100));
+  const isFree = remaining === 0;
+
+  return `
+    <div class="free-shipping-bar" data-free="${isFree}">
+      <div class="fsb-text">
+        ${isFree 
+          ? `<span class="fsb-highlight">🎉 ${isBn() ? 'অভিনন্দন!' : 'Congratulations!'}</span> ${isBn() ? 'আপনি সারাদেশে <b>ফ্রি ডেলিভারি</b> আনলক করেছেন!' : 'You have unlocked <b>FREE Nationwide Delivery</b>!'}`
+          : `${isBn() ? 'আর মাত্র' : 'Add'} <b>৳${remaining.toLocaleString()}</b> ${isBn() ? 'যোগ করলেই পাচ্ছেন <span class="fsb-highlight">ফ্রি ডেলিভারি</span>!' : 'more to unlock <span class="fsb-highlight">FREE Delivery</span>!'}`}
+      </div>
+      <div class="fsb-track">
+        <div class="fsb-fill" style="width:${percent}%"></div>
+      </div>
+    </div>
+  `;
+}
 function renderBagDrawer(){
-  $("#bag-dr-count").textContent=state.bag.length?`· ${bagCount()} item${bagCount()>1?"s":""}`:"";
-  $("#bag-body").innerHTML=state.bag.length?state.bag.map(it=>lineItem(it,true)).join(""):
-    `<div class="empty" style="margin-top:20px">${IC.bag}<p>Your inquiry bag is empty.</p><p class="small" style="margin:8px 0 18px">Prices are confirmed by the seller — add pieces and send one inquiry.</p><a class="btn btn-ink btn-sm" href="#/shop" data-act="drawer-close"><span>Browse the boutique</span></a></div>`;
+  const count = bagCount();
+  const subtotal = subtotalNum(state.bag);
+  $("#bag-dr-count").textContent=state.bag.length?`· ${count} item${count>1?"s":""}`:"";
+  const progress = state.bag.length ? freeShippingProgressHtml(subtotal) : "";
+  $("#bag-body").innerHTML=progress + (state.bag.length?state.bag.map(it=>lineItem(it,true)).join(""):
+    `<div class="empty" style="margin-top:20px">${IC.bag}<p>Your inquiry bag is empty.</p><p class="small" style="margin:8px 0 18px">Prices are confirmed by the seller — add pieces and send one inquiry.</p><a class="btn btn-ink btn-sm" href="#/shop" data-act="drawer-close"><span>Browse the boutique</span></a></div>`);
   $("#bag-foot").innerHTML=state.bag.length?`
     <div class="dr-total"><span>Catalog reference subtotal</span><b>${subtotalText(state.bag)}</b></div>
     <p class="tiny" style="margin-bottom:12px">Apply codes like <b>FIRST25</b>, <b>FARIZA200</b>, or <b>FREESHIP</b> at Order Inquiry · Seller confirms sizing &amp; dispatch.</p>
@@ -1111,6 +1133,36 @@ function pageProduct(sku){
           ${isRealWhatsapp() ? `<button type="button" data-act="wa" data-sku="${p.sku}" class="btn btn-line" style="display:inline-flex;align-items:center;gap:8px">${IC.wa}<span>WhatsApp Inquiry</span></button>` : ''}
           <button class="btn btn-line wish-line${inWish(p.sku)?" on":""}" style="justify-content:center" data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" aria-pressed="${inWish(p.sku)}">${IC.heart}<span>Wishlist</span></button>
         </div>
+        <div class="pdp-trust-strip">
+          <div class="pts-card">
+            <span class="pts-icon">🚚</span>
+            <div class="pts-body">
+              <strong>${isBn() ? 'ক্যাশ অন ডেলিভারি' : 'Cash on Delivery'}</strong>
+              <span>${isBn() ? 'পণ্য দেখে মূল্য পরিশোধ' : 'Pay after inspecting parcel'}</span>
+            </div>
+          </div>
+          <div class="pts-card">
+            <span class="pts-icon">⚡</span>
+            <div class="pts-body">
+              <strong>${isBn() ? 'দ্রুত ডেলিভারি' : 'Express Delivery'}</strong>
+              <span>${isBn() ? '২৪–৪৮ ঘণ্টায় ঢাকা · ৭২ ঘণ্টা দেশজুড়ে' : '24–48h Dhaka · 72h Nationwide'}</span>
+            </div>
+          </div>
+          <div class="pts-card">
+            <span class="pts-icon">💎</span>
+            <div class="pts-body">
+              <strong>${isBn() ? '১০০% খাঁটি পণ্য' : '100% Authentic'}</strong>
+              <span>${isBn() ? 'আর্টিসান ও তাঁতিদের খাঁটি কাজ' : 'Handloom & artisan crafted'}</span>
+            </div>
+          </div>
+          <div class="pts-card">
+            <span class="pts-icon">🔄</span>
+            <div class="pts-body">
+              <strong>${isBn() ? '৭ দিনের সহজ এক্সচেঞ্জ' : '7-Day Easy Exchange'}</strong>
+              <span>${isBn() ? 'হোম ডেলিভারিতে সাইজ পরিবর্তন' : 'Doorstep size replacement'}</span>
+            </div>
+          </div>
+        </div>
         <details class="acc" open><summary>Piece details &amp; Craft Specifications ${IC.chev}</summary><div class="acc-body">
           <div class="prov-row"><span>Category</span><span>${esc(p.superCategory)} · ${esc(p.collection ? p.collection.name : '')}</span></div>
           <div class="prov-row"><span>SKU</span><span>${p.sku}</span></div>
@@ -1246,8 +1298,10 @@ function pageBag(){
 }
 function renderBagPageList(){
   const wrap=$("#bag-page-list"); if(!wrap)return;
-  wrap.innerHTML=state.bag.length?state.bag.map(it=>lineItem(it,true)).join(""):
-    `<div class="empty">${IC.bag}<p>Your inquiry bag is empty.</p><p class="small" style="margin:8px 0 18px">Browse the floor and add pieces you love.</p><a class="btn btn-ink btn-sm" href="#/shop"><span>Shop the boutique</span></a></div>`;
+  const subtotal = subtotalNum(state.bag);
+  const progress = state.bag.length ? freeShippingProgressHtml(subtotal) : "";
+  wrap.innerHTML=progress + (state.bag.length?state.bag.map(it=>lineItem(it,true)).join(""):
+    `<div class="empty">${IC.bag}<p>Your inquiry bag is empty.</p><p class="small" style="margin:8px 0 18px">Browse the floor and add pieces you love.</p><a class="btn btn-ink btn-sm" href="#/shop"><span>Shop the boutique</span></a></div>`);
   const n=$("#bag-page-n"); if(n)n.textContent=`${bagCount()} item${bagCount()===1?"":"s"}`;
   const cta=$("#bag-to-inq"); if(cta)cta.toggleAttribute("disabled",!state.bag.length);
   bindImages(wrap);

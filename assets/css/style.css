@@ -1289,3 +1289,86 @@ dialog.quick-view-ov[open] .quick-view-card {
 @media (pointer:coarse){
   .iconbtn,.pc-actions button,.qv-close,.lb-tools button,.li-qty button{min-width:44px;min-height:44px}
 }
+
+/* High-Conversion E-Commerce Polish: Free Shipping Bar & PDP Trust Reassurance */
+.free-shipping-bar {
+  background: var(--cream2);
+  border: 1px solid var(--kantha);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+.free-shipping-bar[data-free="true"] {
+  background: rgba(62,124,79,.08);
+  border-color: rgba(62,124,79,.3);
+}
+.fsb-text {
+  font-size: 12.5px;
+  color: var(--ink);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.fsb-highlight {
+  color: var(--chestnut);
+  font-weight: 700;
+}
+.free-shipping-bar[data-free="true"] .fsb-highlight {
+  color: var(--ok);
+}
+.fsb-track {
+  height: 6px;
+  background: var(--cream3);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+.fsb-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--caramel), var(--chestnut));
+  border-radius: 999px;
+  transition: width 0.4s var(--ease);
+}
+.free-shipping-bar[data-free="true"] .fsb-fill {
+  background: linear-gradient(90deg, #3E7C4F, #2E7D32);
+}
+
+.pdp-trust-strip {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 18px 0;
+  padding: 14px;
+  background: var(--cream);
+  border: 1px dashed var(--kantha);
+  border-radius: 12px;
+}
+.pts-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pts-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex: none;
+}
+.pts-body strong {
+  display: block;
+  font-size: 12.5px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.pts-body span {
+  display: block;
+  font-size: 11px;
+  color: var(--ink2);
+  line-height: 1.3;
+}
+@media (max-width: 480px) {
+  .pdp-trust-strip {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px;
+  }
+}
+

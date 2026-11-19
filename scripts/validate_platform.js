@@ -87,6 +87,7 @@ catalog.PRODUCTS.forEach(p => {
 const jsFiles = [
   'server.js',
   'api/capi.js',
+  'api/index.js',
   'lib/supabaseServer.js',
   'assets/js/commerce.js',
   'assets/js/config.js',
