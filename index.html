@@ -16,6 +16,7 @@
 
   <!-- OpenGraph / Facebook Advertising Meta Tags -->
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://farizasterritory.com/">
   <meta property="og:site_name" content="Fariza's Territory">
   <meta property="og:title" content="Fariza's Territory — Elegance in Every Detail | Fashion & Artisan Accessories">
   <meta property="og:description" content="53 Exclusive Boutique Fashion & Artisan Accessories. Authentic fabrics, certified artisanal crafts, and dedicated concierge ordering. Cash on Delivery across Dhaka and nationwide.">
@@ -61,7 +62,7 @@
   <link rel="stylesheet" href="/assets/css/style.css">
 
   <!-- Core Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/vendor/supabase.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/motion@11.11.17/dist/motion.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
@@ -103,7 +104,7 @@
   </header>
 </div>
 
-<div class="mmenu" id="mmenu" aria-hidden="true">
+<div class="mmenu" id="mmenu" role="dialog" aria-modal="true" aria-label="Navigation menu" aria-hidden="true" inert>
   <div class="mmenu-top">
     <span class="overline">The Interactive Boutique</span>
     <button class="iconbtn" data-act="menu-close" aria-label="Close menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
@@ -125,7 +126,7 @@
   <p class="bn">ফারিজা'স টেরিটরি — মিরপুর, ঢাকা। প্রতিটি খুঁটিনাটিতে মার্জিত রুচি।</p>
 </div>
 
-<div class="search-ov" id="search-ov" role="dialog" aria-modal="true" aria-label="Search products" aria-hidden="true">
+<div class="search-ov" id="search-ov" role="dialog" aria-modal="true" aria-label="Search products" aria-hidden="true" inert>
   <div class="container" style="display:flex;flex-direction:column;height:100%">
     <div class="so-top">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.2-3.2"/></svg>
@@ -141,19 +142,19 @@
 
 <div class="scrim" id="scrim" data-act="drawer-close"></div>
 
-<aside class="drawer" id="drawer-wish" role="dialog" aria-modal="true" aria-label="Wishlist" aria-hidden="true">
+<aside class="drawer" id="drawer-wish" role="dialog" aria-modal="true" aria-label="Wishlist" aria-hidden="true" inert>
   <div class="dr-head"><b>Wishlist <span class="small" id="wish-dr-count"></span></b><button class="iconbtn" data-act="drawer-close" aria-label="Close wishlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>
   <div class="dr-body" id="wish-body"></div>
   <div class="dr-foot"><a class="btn btn-line btn-block" href="#/shop" data-act="drawer-close"><span>Continue browsing</span></a></div>
 </aside>
 
-<aside class="drawer" id="drawer-bag" role="dialog" aria-modal="true" aria-label="Inquiry bag" aria-hidden="true">
+<aside class="drawer" id="drawer-bag" role="dialog" aria-modal="true" aria-label="Inquiry bag" aria-hidden="true" inert>
   <div class="dr-head"><b>Inquiry Bag <span class="small" id="bag-dr-count"></span></b><button class="iconbtn" data-act="drawer-close" aria-label="Close bag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>
   <div class="dr-body" id="bag-body"></div>
   <div class="dr-foot" id="bag-foot"></div>
 </aside>
 
-<div class="lb" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" aria-hidden="true">
+<div class="lb" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" aria-hidden="true" inert>
   <div class="lb-top">
     <div class="lb-cap" id="lb-cap"></div>
     <div class="lb-tools">
@@ -171,8 +172,7 @@
   <div class="lb-foot"><span>Scroll to zoom · drag to pan · double-click to toggle · ← → photos · Esc closes</span><span id="lb-src"></span></div>
 </div>
 
-<div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="Boutique console" aria-hidden="true">
-  <div class="scrim show" style="position:absolute" data-act="modal-close"></div>
+<dialog class="modal" id="modal" closedby="any" aria-label="Boutique console">
   <div class="modal-card">
     <div class="mo-head"><b>Boutique Console</b><button class="iconbtn" data-act="modal-close" aria-label="Close console"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>
     <div class="mo-tabs">
@@ -182,12 +182,13 @@
     </div>
     <div class="mo-body" id="mo-body"></div>
   </div>
-</div>
+</dialog>
 
-<div class="quick-view-ov" id="quick-view-ov" role="dialog" aria-modal="true" aria-label="Quick View piece" aria-hidden="true">
+<dialog class="quick-view-ov" id="quick-view-ov" closedby="any" aria-label="Quick View piece">
   <div class="quick-view-card" id="quick-view-card"></div>
-</div>
+</dialog>
 
+<div id="ft-live-announcer" class="visually-hidden" aria-live="polite"></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <button class="backtop" id="backtop" data-act="backtop" aria-label="Back to top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
 

@@ -129,27 +129,36 @@ function applyCorsHeaders(req, res) {
 }
 
 function getCapiConfig() {
-  const datasetId =
+  const datasetId = String(
     process.env.META_DATASET_ID ||
     process.env.META_PIXEL_ID ||
-    '1657670575734647';
+    '1657670575734647'
+  ).trim();
 
-  const accessToken =
+  const pixelId = String(
+    process.env.META_PIXEL_ID ||
+    process.env.META_DATASET_ID ||
+    '1657670575734647'
+  ).trim();
+
+  const accessToken = String(
     process.env.META_CAPI_ACCESS_TOKEN ||
     process.env.META_ACCESS_TOKEN ||
     process.env.FB_ACCESS_TOKEN ||
     process.env.FACEBOOK_ACCESS_TOKEN ||
     process.env.META_PIXEL_ACCESS_TOKEN ||
-    '';
+    ''
+  ).trim();
 
   const envTestCode = String(process.env.META_TEST_EVENT_CODE || '').trim();
-  return { datasetId, accessToken, envTestCode };
+  const isProduction = String(process.env.NODE_ENV || '').trim().toLowerCase() === 'production';
+  return { datasetId, pixelId, accessToken, envTestCode, isProduction };
 }
 
 function buildCapiPayload(params, options = {}) {
   const body = params || {};
   const { allowTestCode = false } = options;
-  const { envTestCode } = getCapiConfig();
+  const { envTestCode, isProduction } = getCapiConfig();
 
   const eventName = String(body.eventName || body.event_name || 'PageView').trim();
   const eventId = String(
@@ -213,9 +222,12 @@ function buildCapiPayload(params, options = {}) {
   if (rawCustom.contact_channel) customData.contact_channel = String(rawCustom.contact_channel).slice(0, 40);
   if (rawCustom.search_string) customData.search_string = String(rawCustom.search_string).slice(0, 120);
 
+  // Per .env.example: Leave META_TEST_EVENT_CODE blank in production so events optimize live conversions.
+  // If NODE_ENV=production, ignore stray envTestCode on live storefront/order events unless allowTestCode=true (admin diagnostic).
+  const activeEnvTestCode = isProduction ? '' : envTestCode;
   const requestedTestCode = allowTestCode
     ? String(body.test_event_code || body.testEventCode || envTestCode || '').trim()
-    : envTestCode;
+    : activeEnvTestCode;
 
   const payload = {
     data: [
@@ -244,8 +256,12 @@ function buildCapiPayload(params, options = {}) {
 }
 
 async function dispatchCapiEvent(params, options = {}) {
-  const { allowPrivilegedEvents = false, allowTestCode = false } = options;
-  const { datasetId, accessToken } = getCapiConfig();
+  const { allowPrivilegedEvents = false, allowTestCode = false, fetchImpl = null, accessTokenOverride = null } = options;
+  const config = getCapiConfig();
+  const datasetId = config.datasetId;
+  const accessToken = accessTokenOverride !== null && accessTokenOverride !== undefined
+    ? String(accessTokenOverride).trim()
+    : config.accessToken;
   const built = buildCapiPayload(params, { allowTestCode });
 
   if (!allowPrivilegedEvents && !PUBLIC_ALLOWED_EVENTS.includes(built.eventName)) {
@@ -253,6 +269,7 @@ async function dispatchCapiEvent(params, options = {}) {
       status: 403,
       body: {
         success: false,
+        delivered: false,
         error: `Event '${built.eventName}' cannot be submitted from an unauthenticated browser session.`
       }
     };
@@ -263,8 +280,9 @@ async function dispatchCapiEvent(params, options = {}) {
       status: 200,
       body: {
         success: true,
+        delivered: false,
         mode: 'preview_no_token',
-        message: 'Event constructed according to Meta CAPI specification. Set META_CAPI_ACCESS_TOKEN on server to push live.',
+        message: 'Preview only (not transmitted to Meta): Set META_CAPI_ACCESS_TOKEN on server to push live.',
         dataset_id: datasetId,
         event_name: built.eventName,
         event_id: built.eventId,
@@ -274,23 +292,47 @@ async function dispatchCapiEvent(params, options = {}) {
     };
   }
 
+  const doFetch = typeof fetchImpl === 'function' ? fetchImpl : fetch;
   const metaUrl = `https://graph.facebook.com/v19.0/${encodeURIComponent(datasetId)}/events?access_token=${encodeURIComponent(accessToken)}`;
-  const response = await fetch(metaUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(built.payload)
-  });
-
-  const result = await response.json();
-  if (!response.ok) {
+  let response;
+  let result = {};
+  try {
+    response = await doFetch(metaUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(built.payload),
+      signal: typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+        ? AbortSignal.timeout(10000)
+        : undefined
+    });
+    result = await response.json().catch(() => ({}));
+  } catch (networkErr) {
     return {
-      status: response.status,
+      status: 502,
       body: {
         success: false,
-        error: result.error || 'Meta API returned error',
+        delivered: false,
+        mode: built.requestedTestCode ? 'test_event' : 'live_production',
+        error: networkErr && networkErr.message ? networkErr.message : 'Network error calling Meta Graph API',
+        event_name: built.eventName,
+        event_id: built.eventId
+      }
+    };
+  }
+
+  const eventsReceived = Number(result && result.events_received ? result.events_received : 0);
+  if (!response.ok || eventsReceived < 1) {
+    return {
+      status: response.ok ? 502 : response.status,
+      body: {
+        success: false,
+        delivered: false,
+        mode: built.requestedTestCode ? 'test_event' : 'live_production',
+        error: (result && result.error) || `Meta API did not confirm event receipt (HTTP ${response.status})`,
+        events_received: eventsReceived,
         event_name: built.eventName,
         event_id: built.eventId,
-        fb_trace_id: result.error && result.error.fbtrace_id
+        fb_trace_id: result && result.error && result.error.fbtrace_id
       }
     };
   }
@@ -299,8 +341,9 @@ async function dispatchCapiEvent(params, options = {}) {
     status: 200,
     body: {
       success: true,
+      delivered: true,
       mode: built.requestedTestCode ? 'test_event' : 'live_production',
-      events_received: result.events_received,
+      events_received: eventsReceived,
       event_name: built.eventName,
       event_id: built.eventId,
       fbtrace_id: result.fbtrace_id,
@@ -317,16 +360,18 @@ async function handler(req, res) {
     return;
   }
 
-  const { datasetId, accessToken, envTestCode } = getCapiConfig();
+  const { datasetId, pixelId, accessToken, envTestCode, isProduction } = getCapiConfig();
+  const activeEnvTestCode = isProduction ? '' : envTestCode;
 
   if (req.method === 'GET') {
     return res.status(200).json({
       status: 'active',
       service: "Fariza's Territory Meta Conversions API (CAPI)",
       dataset_id: datasetId,
+      pixel_id: pixelId,
       token_configured: Boolean(accessToken),
-      mode: accessToken ? (envTestCode ? 'live_with_env_test_code' : 'live_production') : 'preview_no_token',
-      test_event_code_configured: Boolean(envTestCode),
+      mode: accessToken ? (activeEnvTestCode ? 'live_with_env_test_code' : 'live_production') : 'preview_no_token',
+      test_event_code_configured: Boolean(activeEnvTestCode),
       public_allowed_events: PUBLIC_ALLOWED_EVENTS,
       timestamp: Math.floor(Date.now() / 1000)
     });
@@ -393,6 +438,7 @@ async function handler(req, res) {
 module.exports = handler;
 module.exports.PUBLIC_ALLOWED_EVENTS = PUBLIC_ALLOWED_EVENTS;
 module.exports.PRIVILEGED_EVENTS = PRIVILEGED_EVENTS;
+module.exports.getCapiConfig = getCapiConfig;
 module.exports.dispatchCapiEvent = dispatchCapiEvent;
 module.exports.buildCapiPayload = buildCapiPayload;
 module.exports.getAllowedOriginsSet = getAllowedOriginsSet;

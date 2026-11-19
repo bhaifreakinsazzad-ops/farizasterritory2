@@ -94,6 +94,8 @@ const jsFiles = [
   'assets/js/catalogData.js',
   'assets/js/threeHero.js',
   'assets/js/threeCollectionParallax.js',
+  'assets/js/threeui.js',
+  'assets/js/threeAdminCockpit.js',
   'assets/js/animePolish.js',
   'assets/js/app.js'
 ];
@@ -167,6 +169,27 @@ assert.ok(fs.existsSync('supabase/migrations/02_security_hardening.sql'), '02_se
 const migration02 = fs.readFileSync('supabase/migrations/02_security_hardening.sql', 'utf8');
 assert.ok(!/FOR ALL\s+USING\s*\(\s*true\s*\)/i.test(migration02), '02_security_hardening.sql must not contain permissive FOR ALL USING (true)');
 assert.ok(fs.existsSync('supabase/migrations/02_security_hardening_rollback.sql'), '02_security_hardening_rollback.sql must exist');
+
+assert.ok(fs.existsSync('supabase/migrations/03_handover_reconciliation.sql'), '03_handover_reconciliation.sql must exist');
+assert.ok(fs.existsSync('supabase/migrations/03_handover_reconciliation_rollback.sql'), '03_handover_reconciliation_rollback.sql must exist');
+const migration03 = fs.readFileSync('supabase/migrations/03_handover_reconciliation.sql', 'utf8');
+assert.ok(migration03.includes('private.is_staff_member'), '03_handover_reconciliation.sql must use non-recursive private.is_staff_member()');
+assert.ok(migration03.includes('private.is_super_admin'), '03_handover_reconciliation.sql must use non-recursive private.is_super_admin()');
+assert.ok(migration03.includes('capi_outbox') && migration03.includes('audit_logs'), '03_handover_reconciliation.sql must provision capi_outbox and audit_logs');
+assert.ok(migration03.includes('ft_create_order_atomic') && migration03.includes('ft_transition_order_inventory'), '03_handover_reconciliation.sql must define atomic stock RPCs');
+
+const seedSql = fs.readFileSync('supabase/seed.sql', 'utf8');
+assert.ok(!seedSql.includes('8801700000000'), 'seed.sql must not seed placeholder 8801700000000 WhatsApp');
+assert.ok(seedSql.includes('3000'), 'seed.sql must align free_delivery_threshold = 3000');
+
+const indexHtmlRaw = fs.readFileSync('index.html', 'utf8');
+const ghlHtmlRaw = fs.readFileSync('ghl-bundle.html', 'utf8');
+assert.ok(!indexHtmlRaw.includes('@supabase/supabase-js@2"'), 'index.html must not use unpinned @supabase/supabase-js@2');
+assert.ok(!adminHtml.includes('@supabase/supabase-js@2"'), 'admin.html must not use unpinned @supabase/supabase-js@2');
+assert.ok(!ghlHtmlRaw.includes('@supabase/supabase-js@2"'), 'ghl-bundle.html must not use unpinned @supabase/supabase-js@2');
+assert.ok(!ghlHtmlRaw.includes('8801700000000'), 'ghl-bundle.html must not embed placeholder 8801700000000');
+
+assert.ok(fs.existsSync('docs/SELLER_53_SKU_LEDGER.csv'), 'docs/SELLER_53_SKU_LEDGER.csv must exist');
 
 assert.ok(!fs.existsSync('netlify.toml'), 'Misleading static netlify.toml must be removed');
 assert.ok(!fs.existsSync('vercel.json'), 'Misleading static vercel.json must be removed');

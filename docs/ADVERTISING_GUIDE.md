@@ -13,9 +13,10 @@
    - Browser + CAPI share deduplicated `eventID`s for: `PageView`, `ViewContent`, `Search`, `AddToCart`, `AddToWishlist`, `InitiateCheckout`, `Contact`, `ApplyPromotion`, and `Lead`.
    - `Lead` fires **only after** `POST /api/orders` confirms durable persistence (`201`).
    - Public `/api/capi` rejects `Purchase` and `CompleteRegistration` with HTTP `403`, enforces origin checks, and ignores client-injected `test_event_code`.
-3. **Authoritative Server-Side `Purchase` Event**:
-   - Dispatched strictly once from `PATCH /api/admin/orders/:orderRef` when boutique staff transitions an order to `confirmed` (recording `purchase_capi_sent_at` and `purchase_capi_event_id = pur_<ORDER_REF>`).
-   - Authenticated staff test runs use `POST /api/admin/capi-test`.
+3. **Authoritative Server-Side `Purchase` Event & Durable `capi_outbox`**:
+   - Dispatched server-side via durable `public.capi_outbox` (`event_id = pur_<ORDER_REF>`) when boutique staff transitions a COD order to `confirmed`.
+   - `purchase_capi_sent_at` is recorded **strictly and exclusively** when `mode === 'live_production'` AND Meta Graph API confirms positive receipt (`delivered === true`, `events_received >= 1`). `preview_no_token` (missing token) and HTTP 5xx errors stay queued in `capi_outbox` for automatic exponential-backoff retry or operator retry in **Admin ➔ CAPI Outbox**.
+   - Authenticated owner test runs use `POST /api/admin/capi-test` (`403` for `staff` role).
 
 ---
 

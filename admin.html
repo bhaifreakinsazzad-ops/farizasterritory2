@@ -9,8 +9,12 @@
   <!-- Fonts & Libraries -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/assets/css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/vendor/supabase.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/motion@11.11.17/dist/motion.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+  <script src="/assets/js/threeui.js"></script>
+  <script src="/assets/js/threeAdminCockpit.js"></script>
 
   <style>
     :root {
@@ -259,6 +263,96 @@
       flex: 1;
     }
 
+    /* 3D Spatial Cockpit Viewport Container */
+    .cockpit-3d-shell {
+      position: relative;
+      background: radial-gradient(circle at 50% 35%, #23201C 0%, #141312 75%);
+      border: 1px solid var(--admin-border);
+      border-radius: 14px;
+      height: 300px;
+      margin-bottom: 24px;
+      overflow: hidden;
+      transition: height 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .cockpit-3d-shell.collapsed {
+      height: 52px;
+    }
+    #cockpit-3d-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .cockpit-3d-hud-top {
+      position: absolute;
+      top: 14px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .cockpit-3d-title-block {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cockpit-3d-title-block h2 {
+      margin: 0;
+      font-size: 14.5px;
+      font-weight: 600;
+      color: var(--admin-text);
+    }
+    .cockpit-3d-hint {
+      font-size: 12px;
+      color: var(--admin-text2);
+    }
+    .cockpit-3d-dock {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(26, 25, 23, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--admin-border);
+      border-radius: 10px;
+      padding: 4px;
+      z-index: 10;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .cockpit-3d-shell.collapsed .cockpit-3d-dock {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateX(-50%) translateY(20px);
+    }
+    .dock-seg-btn {
+      background: transparent;
+      border: none;
+      color: var(--admin-text2);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 7px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .dock-seg-btn:hover {
+      color: var(--admin-text);
+    }
+    .dock-seg-btn.active {
+      background: var(--admin-surface2);
+      color: var(--admin-gold);
+      font-weight: 600;
+    }
+
     /* Tab Content Views */
     .view-tab {
       display: none;
@@ -345,8 +439,20 @@
     }
 
     /* Tables */
-    .table-responsive {
+    .table-responsive, .table-wrapper {
       overflow-x: auto;
+      max-width: 100%;
+    }
+    .visually-hidden:where(:not(:focus-within, :active)) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    body.role-staff .owner-only-hint {
+      opacity: 0.65;
     }
     table.data-table {
       width: 100%;
@@ -506,6 +612,12 @@
       background: rgba(39, 174, 96, 0.12);
       border-color: rgba(39, 174, 96, 0.4);
     }
+    @media (max-width: 900px) {
+      .admin-layout { flex-direction: column; }
+      .admin-sidebar { width: 100%; height: auto; position: static; border-right: 0; border-bottom: 1px solid var(--admin-border); }
+      .admin-nav-menu { flex-direction: row; flex-wrap: wrap; }
+      .admin-topbar { flex-wrap: wrap; gap: 10px; }
+    }
   </style>
 </head>
 <body class="admin-body">
@@ -552,6 +664,12 @@
         <button class="admin-nav-item" onclick="switchTab('courier')">
           <span class="icon">🚚</span> <span>Courier Booking</span>
         </button>
+        <button class="admin-nav-item" onclick="switchTab('outbox')">
+          <span class="icon">📡</span> <span>CAPI Outbox</span>
+        </button>
+        <button class="admin-nav-item owner-only-nav" onclick="switchTab('audit')">
+          <span class="icon">🛡️</span> <span>Staff &amp; Audit</span>
+        </button>
         <button class="admin-nav-item" onclick="switchTab('settings')">
           <span class="icon">⚙️</span> <span>Store Settings</span>
         </button>
@@ -577,6 +695,9 @@
         </div>
         <div class="topbar-right">
           <a href="/" target="_blank" rel="noopener noreferrer" class="btn-admin">View Live Storefront ↗</a>
+          <button type="button" class="btn-admin" onclick="openCommandPalette()" title="Press Ctrl+K">⌘K Palette</button>
+          <button type="button" class="btn-admin" onclick="bulkApproveAllCatalogForFeed()">Approve All 53 SKUs</button>
+          <button type="button" class="btn-admin" onclick="exportCourierManifestCSV()">Export Courier Manifest</button>
           <button class="btn-admin" onclick="refreshAdminData()">↻ Refresh</button>
           <button class="btn-admin btn-admin-primary" onclick="openNewOrderModal()">+ New Manual Order</button>
         </div>
@@ -589,28 +710,52 @@
 
         <!-- 1. ORDERS TAB (DEFAULT) -->
         <div id="tab-orders" class="view-tab active">
+
+          <!-- 3D SPATIAL STORE COCKPIT DECK (Three.js + ThreeUI.js) -->
+          <section class="cockpit-3d-shell" id="cockpit-3d-deck" aria-label="3D Spatial Store Telemetry Cockpit">
+            <div class="cockpit-3d-hud-top">
+              <div class="cockpit-3d-title-block">
+                <h2>Spatial Store Telemetry</h2>
+                <span style="color:var(--admin-border-strong, var(--admin-border))">·</span>
+                <span class="cockpit-3d-hint" id="cockpit-3d-mode-label">Click any 3D pillar or dial to inspect live store records</span>
+              </div>
+              <div style="display:flex;gap:8px;pointer-events:auto">
+                <button type="button" class="btn-admin btn-admin-sm" onclick="refreshAdminData()">↻ Sync Telemetry</button>
+                <button type="button" class="btn-admin btn-admin-sm" id="toggle-3d-btn" onclick="toggleCockpit3DDeck()">▾ Hide 3D Cockpit</button>
+              </div>
+            </div>
+
+            <canvas id="cockpit-3d-canvas"></canvas>
+
+            <!-- Unified Bottom Control Dock -->
+            <div class="cockpit-3d-dock" role="toolbar" aria-label="3D Telemetry View Modes">
+              <button type="button" class="dock-seg-btn active" data-3d-mode="collections" onclick="switchCockpit3DMode('collections')">01. Collections &amp; Feed (8)</button>
+              <button type="button" class="dock-seg-btn" data-3d-mode="pipeline" onclick="switchCockpit3DMode('pipeline')">02. Order &amp; CAPI Orbital</button>
+              <button type="button" class="dock-seg-btn" data-3d-mode="logistics" onclick="switchCockpit3DMode('logistics')">03. Dhaka vs Nationwide Radar</button>
+            </div>
+          </section>
           
           <!-- KPI Metrics Row -->
           <div class="kpi-grid">
             <div class="kpi-card">
-              <div class="k-title">Total Orders & Inquiries</div>
-              <div class="k-val" id="kpi-total-orders">0</div>
-              <div class="k-sub" id="kpi-today-orders">0 inquiries today</div>
-            </div>
-            <div class="kpi-card">
-              <div class="k-title">Pending Confirmation</div>
+              <div class="k-title">Leads / Pending Inquiries</div>
               <div class="k-val" id="kpi-pending-orders" style="color:var(--admin-gold)">0</div>
-              <div class="k-sub">Requires verification</div>
+              <div class="k-sub" id="kpi-today-orders">0 inquiries today · Unconfirmed</div>
             </div>
             <div class="kpi-card">
-              <div class="k-title">In Transit (Courier)</div>
-              <div class="k-val" id="kpi-shipped-orders" style="color:#2980B9">0</div>
-              <div class="k-sub">Steadfast & Pathao</div>
+              <div class="k-title">Confirmed COD Pipeline</div>
+              <div class="k-val" id="kpi-confirmed-revenue">৳ 0</div>
+              <div class="k-sub" id="kpi-total-orders">0 total orders · Confirmed+Shipped</div>
             </div>
             <div class="kpi-card">
-              <div class="k-title">Gross Volume (BDT)</div>
-              <div class="k-val" id="kpi-total-revenue">৳ 0</div>
-              <div class="k-sub">All inquiries to date</div>
+              <div class="k-title">Delivered (Realized Revenue)</div>
+              <div class="k-val" id="kpi-delivered-revenue" style="color:var(--admin-green)">৳ 0</div>
+              <div class="k-sub" id="kpi-delivered-count">0 delivered · 0 in transit</div>
+            </div>
+            <div class="kpi-card">
+              <div class="k-title">Meta CAPI Purchase Queue</div>
+              <div class="k-val" id="kpi-capi-sent" style="color:#2980B9">0</div>
+              <div class="k-sub" id="kpi-capi-sub">0 pending/failed in outbox</div>
             </div>
           </div>
 
@@ -638,19 +783,20 @@
               </div>
             </div>
 
-            <div class="table-responsive">
+            <div class="table-wrapper" tabindex="0" role="region" aria-label="Orders and inquiries table">
               <table class="data-table">
+                <caption class="visually-hidden">Orders and inquiries pipeline table</caption>
                 <thead>
                   <tr>
-                    <th>Order Ref</th>
-                    <th>Date</th>
-                    <th>Customer</th>
-                    <th>Phone</th>
-                    <th>Delivery Area</th>
-                    <th>Pieces</th>
-                    <th>Total (COD)</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th scope="col">Order Ref</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Customer</th>
+                    <th scope="col">Phone</th>
+                    <th scope="col">Delivery Area</th>
+                    <th scope="col">Pieces</th>
+                    <th scope="col">Total (COD)</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="orders-table-body">
@@ -666,36 +812,39 @@
         <div id="tab-catalog" class="view-tab">
           <section class="admin-panel">
             <div class="panel-header">
-              <h2>Complete Boutique Catalog (53 Verified SKUs across 8 Collections)</h2>
+              <h2>Complete Boutique Catalog &amp; CMS (<span id="catalog-sku-count">53</span> SKUs)</h2>
               <div class="panel-actions">
+                <button type="button" class="btn-admin owner-only-btn" onclick="openNewCollectionModal()">+ Collection</button>
+                <button type="button" class="btn-admin btn-admin-primary owner-only-btn" onclick="openNewProductModal()">+ Add New Product</button>
                 <input type="search" class="search-input" id="cat-search" placeholder="Search SKU, title, craft..." oninput="renderCatalogTable()">
                 <select class="filter-select" id="cat-col-filter" onchange="renderCatalogTable()">
-                  <option value="all">All 8 Collections (53 SKUs)</option>
-                  <option value="fashion_all">All Fashion Garments (18)</option>
-                  <option value="acc_all">All Artisan Accessories (35)</option>
-                  <option value="01">01 · Aarong Label (1)</option>
-                  <option value="02">02 · Alfi Boutique (2)</option>
-                  <option value="03">03 · Mome Boutique (4)</option>
-                  <option value="04">04 · Zam Zam Swiss Lawn (6)</option>
-                  <option value="05">05 · Cotton Mirror Embroidery (5)</option>
-                  <option value="06">06 · Decorative Mirrors (5)</option>
-                  <option value="07">07 · Pendants &amp; Jewelry (19)</option>
-                  <option value="08">08 · Bangles &amp; Accessories (11)</option>
+                  <option value="all">All Collections</option>
+                  <option value="fashion_all">All Fashion Garments</option>
+                  <option value="acc_all">All Artisan Accessories</option>
+                  <option value="01">01 · Aarong Label</option>
+                  <option value="02">02 · Alfi Boutique</option>
+                  <option value="03">03 · Mome Boutique</option>
+                  <option value="04">04 · Zam Zam Swiss Lawn</option>
+                  <option value="05">05 · Cotton Mirror Embroidery</option>
+                  <option value="06">06 · Decorative Mirrors</option>
+                  <option value="07">07 · Pendants &amp; Jewelry</option>
+                  <option value="08">08 · Bangles &amp; Accessories</option>
                 </select>
               </div>
             </div>
-            <div class="table-responsive">
+            <div class="table-wrapper" tabindex="0" role="region" aria-label="Product catalog CMS table">
               <table class="data-table">
+                <caption class="visually-hidden">Product catalog inventory and approval status</caption>
                 <thead>
                   <tr>
-                    <th>Photo</th>
-                    <th>SKU</th>
-                    <th>Product Title</th>
-                    <th>Collection</th>
-                    <th>Selling Unit</th>
-                    <th>Price (BDT)</th>
-                    <th>Stock Status</th>
-                    <th>Actions</th>
+                    <th scope="col">Photo</th>
+                    <th scope="col">SKU</th>
+                    <th scope="col">Product Title</th>
+                    <th scope="col">Collection</th>
+                    <th scope="col">Selling Unit</th>
+                    <th scope="col">Price (BDT)</th>
+                    <th scope="col">Stock / Approval</th>
+                    <th scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="catalog-table-body"></tbody>
@@ -711,18 +860,19 @@
               <h2>Active Promotional Discounts & Vouchers</h2>
               <button class="btn-admin btn-admin-primary" onclick="openNewCouponModal()">+ Create Coupon</button>
             </div>
-            <div class="table-responsive">
+            <div class="table-wrapper" tabindex="0" role="region" aria-label="Discount coupons table">
               <table class="data-table">
+                <caption class="visually-hidden">Promotional discount coupons</caption>
                 <thead>
                   <tr>
-                    <th>Code</th>
-                    <th>Type</th>
-                    <th>Discount Value</th>
-                    <th>Min Spend</th>
-                    <th>Max Cap</th>
-                    <th>Status</th>
-                    <th>Notes</th>
-                    <th>Actions</th>
+                    <th scope="col">Code</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Discount Value</th>
+                    <th scope="col">Min Spend</th>
+                    <th scope="col">Max Cap</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Notes</th>
+                    <th scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="coupons-table-body"></tbody>
@@ -738,16 +888,17 @@
               <h2>Customer CRM Directory</h2>
               <input type="text" class="search-input" id="customer-search" placeholder="Search customer name or phone..." oninput="renderCustomersTable()">
             </div>
-            <div class="table-responsive">
+            <div class="table-wrapper" tabindex="0" role="region" aria-label="Customer CRM directory">
               <table class="data-table">
+                <caption class="visually-hidden">Customer CRM directory</caption>
                 <thead>
                   <tr>
-                    <th>Customer Name</th>
-                    <th>Phone Number</th>
-                    <th>Primary Location</th>
-                    <th>Total Orders</th>
-                    <th>Total Spent</th>
-                    <th>Actions</th>
+                    <th scope="col">Customer Name</th>
+                    <th scope="col">Phone Number</th>
+                    <th scope="col">Primary Location</th>
+                    <th scope="col">Total Orders</th>
+                    <th scope="col">Total Spent</th>
+                    <th scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="customers-table-body"></tbody>
@@ -763,18 +914,19 @@
               <h2>Courier Booking & Dispatch Hub</h2>
               <p class="small" style="color:var(--admin-text2);margin:0">One-click copy formatted orders for Steadfast Courier, Pathao Courier or RedX entry.</p>
             </div>
-            <div class="table-responsive">
+            <div class="table-wrapper" tabindex="0" role="region" aria-label="Courier booking and dispatch table">
               <table class="data-table">
+                <caption class="visually-hidden">Courier booking and dispatch orders</caption>
                 <thead>
                   <tr>
-                    <th>Order Ref</th>
-                    <th>Customer Name</th>
-                    <th>Phone</th>
-                    <th>Full Delivery Address</th>
-                    <th>COD Amount</th>
-                    <th>Courier Partner</th>
-                    <th>Tracking #</th>
-                    <th>Quick Copy</th>
+                    <th scope="col">Order Ref</th>
+                    <th scope="col">Customer Name</th>
+                    <th scope="col">Phone</th>
+                    <th scope="col">Full Delivery Address</th>
+                    <th scope="col">COD Amount</th>
+                    <th scope="col">Courier Partner</th>
+                    <th scope="col">Tracking #</th>
+                    <th scope="col">Quick Copy</th>
                   </tr>
                 </thead>
                 <tbody id="courier-table-body"></tbody>
@@ -783,7 +935,101 @@
           </section>
         </div>
 
-        <!-- 6. SETTINGS TAB -->
+        <!-- 6. CAPI OUTBOX & RETRIES TAB -->
+        <div id="tab-outbox" class="view-tab">
+          <section class="admin-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Meta CAPI Outbox &amp; Delivery Log</h2>
+                <p style="font-size:12px;color:var(--admin-text2);margin:4px 0 0">Purchase events are only marked <b>sent</b> after positive Meta Graph API confirmation in <code>live_production</code> mode.</p>
+              </div>
+              <div class="panel-actions">
+                <button type="button" class="btn-admin owner-only-btn" onclick="processOutboxNow()">▶ Process Due Queue</button>
+                <button type="button" class="btn-admin" onclick="renderOutboxTab()">↻ Reload Outbox</button>
+              </div>
+            </div>
+            <div class="table-wrapper" tabindex="0" role="region" aria-label="Meta CAPI outbox table">
+              <table class="data-table">
+                <caption class="visually-hidden">Durable Meta CAPI event outbox</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Event ID</th>
+                    <th scope="col">Order Ref</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Attempts</th>
+                    <th scope="col">Next Retry</th>
+                    <th scope="col">FB Trace / Error</th>
+                    <th scope="col">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="outbox-table-body">
+                  <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--admin-text2)">Loading CAPI outbox...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- 7. STAFF RBAC & AUDIT TRAIL TAB -->
+        <div id="tab-audit" class="view-tab">
+          <section class="admin-panel" style="margin-bottom:20px">
+            <div class="panel-header">
+              <div>
+                <h2>Boutique Staff &amp; Role Access (Owner Admin Only)</h2>
+                <p style="font-size:12px;color:var(--admin-text2);margin:4px 0 0">Staff users can manage orders &amp; courier tracking; only <b>admin</b> role can change pricing, inventory, coupons, settings, or retry CAPI.</p>
+              </div>
+            </div>
+            <form onsubmit="event.preventDefault();submitStaffUser();" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:16px">
+              <input type="text" id="staff-uid" required placeholder="Supabase Auth UUID" style="padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;font-size:12.5px">
+              <input type="email" id="staff-email" required placeholder="staff@farizasterritory.com" style="padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;font-size:12.5px">
+              <input type="text" id="staff-name" placeholder="Full Name" style="padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;font-size:12.5px">
+              <select id="staff-role" style="padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;font-size:12.5px">
+                <option value="staff">Staff (Orders/Courier Only)</option>
+                <option value="admin">Admin (Owner Full Access)</option>
+              </select>
+              <button type="submit" class="btn-admin btn-admin-primary">Save Staff Role</button>
+            </form>
+            <div class="table-wrapper" tabindex="0" role="region" aria-label="Staff users roster">
+              <table class="data-table">
+                <caption class="visually-hidden">Registered staff users and permissions</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Active</th>
+                    <th scope="col">Updated</th>
+                  </tr>
+                </thead>
+                <tbody id="staff-table-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-panel">
+            <div class="panel-header">
+              <h2>Sensitive Operation Audit Trail</h2>
+              <button type="button" class="btn-admin" onclick="renderAuditAndStaffTab()">↻ Refresh Logs</button>
+            </div>
+            <div class="table-wrapper" tabindex="0" role="region" aria-label="Admin audit logs">
+              <table class="data-table">
+                <caption class="visually-hidden">Audit logs of sensitive admin actions</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Time</th>
+                    <th scope="col">Actor</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Action</th>
+                    <th scope="col">Target</th>
+                  </tr>
+                </thead>
+                <tbody id="audit-table-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- 8. SETTINGS TAB -->
         <div id="tab-settings" class="view-tab">
           <section class="admin-panel">
             <div class="panel-header">
@@ -1085,14 +1331,121 @@
   <div class="modal-backdrop" id="product-detail-modal">
     <div class="modal-dialog">
       <div class="modal-head">
-        <h3 id="prod-modal-title">Product Details</h3>
+        <h3 id="prod-modal-title">Product Details &amp; CMS</h3>
         <button class="btn-admin" onclick="closeProductDetailModal()">✕ Close</button>
       </div>
       <div class="modal-body" id="prod-modal-body"></div>
       <div class="modal-foot">
         <button type="button" class="btn-admin" onclick="closeProductDetailModal()">Cancel</button>
-        <button type="button" class="btn-admin btn-admin-primary" onclick="saveProductDetailChanges()">Save Price &amp; Stock</button>
+        <button type="button" class="btn-admin btn-admin-primary" onclick="saveProductDetailChanges()">Save Product &amp; Approval</button>
       </div>
+    </div>
+  </div>
+
+  <!-- NEW PRODUCT CMS MODAL -->
+  <div class="modal-backdrop" id="new-product-modal">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h3>Add New Boutique Product (SKU)</h3>
+        <button class="btn-admin" onclick="closeNewProductModal()">✕ Close</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="event.preventDefault();submitNewProduct();">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">SKU * (e.g. CAT-019)</label>
+              <input type="text" id="np-sku" required placeholder="CAT-019" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;text-transform:uppercase">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Collection *</label>
+              <select id="np-col" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px"></select>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">English Title *</label>
+              <input type="text" id="np-title" required placeholder="Jamuna Handloom Three Piece" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Bangla Title</label>
+              <input type="text" id="np-title-bn" placeholder="যমুনা হ্যান্ডলুম থ্রি পিস" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Price (BDT) *</label>
+              <input type="number" id="np-price" required min="1" placeholder="2200" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Initial Stock Count *</label>
+              <input type="number" id="np-stock" required min="0" value="5" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Selling Unit *</label>
+              <input type="text" id="np-unit" required value="1 pc" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px">
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Description</label>
+            <textarea id="np-desc" rows="2" placeholder="Fabric, craft, sizing & selling unit note..." style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px"></textarea>
+          </div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12.5px"><input type="checkbox" id="np-verified"> Stock Physically Verified</label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12.5px"><input type="checkbox" id="np-approved"> Approve Price for Feeds</label>
+          </div>
+          <div class="modal-foot" style="padding:14px 0 0 0">
+            <button type="button" class="btn-admin" onclick="closeNewProductModal()">Cancel</button>
+            <button type="submit" class="btn-admin btn-admin-primary">Create Product</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW COLLECTION CMS MODAL -->
+  <div class="modal-backdrop" id="new-collection-modal">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h3>Add / Update Collection</h3>
+        <button class="btn-admin" onclick="closeNewCollectionModal()">✕ Close</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="event.preventDefault();submitNewCollection();">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Slug * (lowercase-hyphen)</label>
+              <input type="text" id="nc-slug" required placeholder="eid-silk-2026" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;text-transform:lowercase">
+            </div>
+            <div>
+              <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Collection Name *</label>
+              <input type="text" id="nc-name" required placeholder="Eid Silk Capsule" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px">
+            </div>
+          </div>
+          <div style="margin-bottom:12px">
+            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Bangla Name</label>
+            <input type="text" id="nc-name-bn" placeholder="ঈদ সিল্ক কালেকশন" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px">
+          </div>
+          <div style="margin-bottom:14px">
+            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Description</label>
+            <textarea id="nc-desc" rows="2" placeholder="Curated festive pieces..." style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px"></textarea>
+          </div>
+          <div class="modal-foot" style="padding:14px 0 0 0">
+            <button type="button" class="btn-admin" onclick="closeNewCollectionModal()">Cancel</button>
+            <button type="submit" class="btn-admin btn-admin-primary">Save Collection</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GLOBAL COCKPIT COMMAND PALETTE (Ctrl+K / ⌘K) -->
+  <div class="modal-backdrop" id="cmd-palette-modal" onclick="if(event.target===this)closeCommandPalette()">
+    <div class="modal-dialog" style="max-width:620px">
+      <div class="modal-head" style="padding:14px 18px;">
+        <input type="search" id="cmd-palette-input" placeholder="Jump to any SKU (e.g. CAT-008, FT-BA-001), order ref, customer, or command..." class="search-input" style="width:100%;font-size:14px;border:1px solid var(--admin-gold);padding:8px 12px;background:var(--admin-bg);color:var(--admin-text);border-radius:8px" oninput="renderCommandPaletteResults()">
+        <button type="button" class="btn-admin btn-admin-sm" style="margin-left:10px" onclick="closeCommandPalette()">Esc</button>
+      </div>
+      <div class="modal-body" id="cmd-palette-results" style="padding:12px 18px;max-height:380px;overflow-y:auto;"></div>
     </div>
   </div>
 
@@ -1104,6 +1457,8 @@
   <script src="/assets/js/config.js"></script>
   <script src="/assets/js/supabaseClient.js"></script>
   <script src="/assets/js/catalogData.js"></script>
+  <script src="/assets/js/threeui.js"></script>
+  <script src="/assets/js/threeAdminCockpit.js"></script>
 
   <script>
     let currentOrders = [];
@@ -1151,9 +1506,12 @@
       );
       const resp = await fetch(url, Object.assign({}, options, { headers }));
       const json = await resp.json().catch(() => ({}));
-      if (resp.status === 401 || resp.status === 403) {
+      if (resp.status === 401) {
         showAuthGate((json && json.error) || 'Session expired or unauthorized.');
         throw new Error((json && json.error) || 'Unauthorized');
+      }
+      if (resp.status === 403) {
+        throw new Error((json && json.error) || 'Owner admin role is required for this action.');
       }
       if (!resp.ok || json.ok === false) {
         throw new Error((json && json.error) || `Request failed (${resp.status})`);
@@ -1161,18 +1519,57 @@
       return json;
     }
 
-    function applyAdminProductOverrides(overrides) {
-      if (!window.FT_CATALOG || !Array.isArray(overrides)) return;
+    let currentOutboxEvents = [];
+
+    function applyRoleUiConstraints() {
+      const role = (currentStaffUser && currentStaffUser.role) || 'staff';
+      const isOwner = role === 'admin';
+      document.body.classList.toggle('role-staff', !isOwner);
+      document.querySelectorAll('.owner-only-btn').forEach(btn => {
+        btn.disabled = !isOwner;
+        btn.title = isOwner ? '' : 'Requires Owner Admin role (403 for Staff)';
+      });
+      document.querySelectorAll('.owner-only-nav').forEach(nav => {
+        nav.style.display = isOwner ? 'flex' : 'none';
+      });
+    }
+
+    function applyAdminProductOverrides(catPayload) {
+      if (!window.FT_CATALOG) return;
+      const overrides = Array.isArray(catPayload) ? catPayload : (catPayload && Array.isArray(catPayload.products) ? catPayload.products : []);
+      const collections = !Array.isArray(catPayload) && catPayload && Array.isArray(catPayload.collections) ? catPayload.collections : null;
+      if (collections) {
+        collections.forEach(c => {
+          if (!c || !c.slug) return;
+          const idx = window.FT_CATALOG.COLLECTIONS.findIndex(x => x.slug === c.slug);
+          if (idx >= 0) Object.assign(window.FT_CATALOG.COLLECTIONS[idx], c);
+          else window.FT_CATALOG.COLLECTIONS.push(c);
+        });
+      }
       overrides.forEach(row => {
-        const p = row && row.sku ? window.FT_CATALOG.PRODUCTS_BY_SKU[row.sku] : null;
-        if (p) {
-          if (row.priceBDT !== undefined) p.priceBDT = Number(row.priceBDT);
-          if (row.price_bdt !== undefined && row.price_bdt !== null) p.priceBDT = Number(row.price_bdt);
-          if (row.is_available !== undefined) p.is_available = !!row.is_available;
-          if (row.stock_verified !== undefined) p.stock_verified = !!row.stock_verified;
-          if (row.price_review !== undefined) p.price_review = !!row.price_review;
-          if (row.feed_eligible !== undefined) p.feed_eligible = !!row.feed_eligible;
+        if (!row || !row.sku) return;
+        let p = window.FT_CATALOG.PRODUCTS_BY_SKU[row.sku];
+        if (!p) {
+          p = Object.assign({ assets: { main: row.main_image || 'assets/products/CAT-001/main.webp' }, superCategory: row.superCategory || 'Fashion' }, row);
+          window.FT_CATALOG.PRODUCTS.push(p);
+          window.FT_CATALOG.PRODUCTS_BY_SKU[row.sku] = p;
         }
+        if (row.title) p.title = row.title;
+        if (row.titleBn !== undefined) p.titleBn = row.titleBn;
+        if (row.priceBDT !== undefined) p.priceBDT = Number(row.priceBDT);
+        if (row.price_bdt !== undefined && row.price_bdt !== null) p.priceBDT = Number(row.price_bdt);
+        if (row.is_available !== undefined) p.is_available = !!row.is_available;
+        if (row.is_archived !== undefined) p.is_archived = !!row.is_archived;
+        if (row.stock_count !== undefined) p.stock_count = Number(row.stock_count);
+        if (row.reserved_count !== undefined) p.reserved_count = Number(row.reserved_count);
+        if (row.available_stock !== undefined) p.available_stock = Number(row.available_stock);
+        if (row.stock_verified !== undefined) p.stock_verified = !!row.stock_verified;
+        if (row.price_review !== undefined) p.price_review = !!row.price_review;
+        if (row.feed_eligible !== undefined) p.feed_eligible = !!row.feed_eligible;
+        if (row.unit) p.unit = row.unit;
+        if (row.variants) p.variants = row.variants;
+        if (row.assets) p.assets = Object.assign({}, p.assets || {}, row.assets);
+        if (row.collection) p.collection = row.collection;
       });
     }
 
@@ -1211,6 +1608,7 @@
         if (staffEl && json.user && json.user.email) {
           staffEl.textContent = `Signed in: ${json.user.email} (${json.user.role || 'staff'})`;
         }
+        applyRoleUiConstraints();
         hideAuthGate();
         await bootAdminWorkspace();
         return true;
@@ -1347,14 +1745,19 @@
 
       updateReadinessBanner(health);
 
+      if (window.FT_COCKPIT_3D) {
+        window.FT_COCKPIT_3D.init('cockpit-3d-canvas');
+      }
+
       try {
         const catRes = await adminApiFetch('/api/admin/catalog');
-        if (catRes && Array.isArray(catRes.products)) applyAdminProductOverrides(catRes.products);
+        if (catRes) applyAdminProductOverrides(catRes);
       } catch (_) {}
 
       await refreshAdminData();
       renderCatalogTable();
       await renderCouponsTable();
+      await renderOutboxTab();
       populateManualOrderProducts();
     }
 
@@ -1376,6 +1779,12 @@
         renderOrdersTable(currentOrders);
         renderCustomersTable();
         renderCourierTable();
+        if (window.FT_COCKPIT_3D) {
+          window.FT_COCKPIT_3D.updateTelemetry({
+            orders: currentOrders,
+            products: (window.FT_CATALOG && window.FT_CATALOG.PRODUCTS) || []
+          });
+        }
       } catch (err) {
         showAdminToast(err.message || 'Unable to load orders.', 'err');
       }
@@ -1383,34 +1792,43 @@
 
     function animateCounter(el, targetVal, prefix = '', suffix = '') {
       if (!el) return;
-      if (!window.anime || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        el.textContent = prefix + Number(targetVal).toLocaleString('en-US') + suffix;
+      const num = Number(targetVal) || 0;
+      if (num <= 10 || !window.anime || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        el.textContent = prefix + num.toLocaleString('en-US') + suffix;
         return;
       }
       const obj = { val: 0 };
       window.anime({
         targets: obj,
-        val: targetVal,
-        duration: 1200,
+        val: num,
+        duration: 450,
         easing: 'easeOutExpo',
         update: () => {
-          el.textContent = prefix + Math.floor(obj.val).toLocaleString('en-US') + suffix;
+          el.textContent = prefix + Math.round(obj.val).toLocaleString('en-US') + suffix;
         }
       });
     }
 
     function renderKPIs(orders) {
       const pendingCount = orders.filter(o => o.status === 'pending').length;
+      const confirmedOrActive = orders.filter(o => ['confirmed', 'processing', 'shipped', 'delivered'].includes(o.status));
+      const confirmedTotal = confirmedOrActive.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+      const deliveredOrders = orders.filter(o => o.status === 'delivered');
+      const deliveredTotal = deliveredOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
       const shippedCount = orders.filter(o => o.status === 'shipped').length;
-      const totalRev = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
       const todayStr = new Date().toISOString().slice(0, 10);
       const todayCount = orders.filter(o => (o.created_at || '').startsWith(todayStr)).length;
+      const capiSentCount = orders.filter(o => Boolean(o.purchase_capi_sent_at)).length;
+      const outboxPendingCount = (currentOutboxEvents || []).filter(e => e.status !== 'sent').length;
 
-      animateCounter(document.getElementById('kpi-total-orders'), orders.length);
       animateCounter(document.getElementById('kpi-pending-orders'), pendingCount);
-      animateCounter(document.getElementById('kpi-shipped-orders'), shippedCount);
-      animateCounter(document.getElementById('kpi-total-revenue'), totalRev, '৳ ');
-      document.getElementById('kpi-today-orders').textContent = todayCount + ' inquiries placed today';
+      animateCounter(document.getElementById('kpi-confirmed-revenue'), confirmedTotal, '৳ ');
+      animateCounter(document.getElementById('kpi-delivered-revenue'), deliveredTotal, '৳ ');
+      animateCounter(document.getElementById('kpi-capi-sent'), capiSentCount);
+      document.getElementById('kpi-today-orders').textContent = todayCount + ' inquiries today · Unconfirmed';
+      document.getElementById('kpi-total-orders').textContent = `${orders.length} total orders (${confirmedOrActive.length} confirmed+)`;
+      document.getElementById('kpi-delivered-count').textContent = `${deliveredOrders.length} delivered · ${shippedCount} in transit`;
+      document.getElementById('kpi-capi-sub').textContent = `${outboxPendingCount} queued/pending outbox events`;
     }
 
     function renderOrdersTable(orders) {
@@ -1695,12 +2113,20 @@
       showAdminToast('Exported ' + currentOrders.length + ' orders to CSV.', 'ok');
     }
 
+    function adminAssetUrl(rawPath, sku) {
+      const s = String(rawPath || '').trim() || ('assets/products/' + sku + '/main.webp');
+      if (/^https?:\/\//i.test(s)) return s;
+      return '/' + s.replace(/^\/+/, '');
+    }
+
     function renderCatalogTable() {
       const col = document.getElementById('cat-col-filter').value;
       const searchEl = document.getElementById('cat-search');
       const q = (searchEl ? searchEl.value : '').trim().toLowerCase();
       const tbody = document.getElementById('catalog-table-body');
       const products = window.FT_CATALOG ? window.FT_CATALOG.PRODUCTS : [];
+      const countEl = document.getElementById('catalog-sku-count');
+      if (countEl) countEl.textContent = products.filter(x => !x.is_archived).length;
 
       const filtered = products.filter(p => {
         if (col === 'fashion_all' && p.superCategory !== 'Fashion') return false;
@@ -1712,15 +2138,20 @@
       });
 
       tbody.innerHTML = filtered.map(p => {
-        const imgSrc = '/' + ((p.assets && typeof p.assets.main === 'string') ? p.assets.main : ('assets/products/' + p.sku + '/main.webp')).replace(/^\/+/, '');
+        const imgSrc = adminAssetUrl(p.assets && typeof p.assets.main === 'string' ? p.assets.main : '', p.sku);
         const colShort = p.collection ? p.collection.short : (p.collectionShort || '');
         const pillar = p.superCategory || (p.collection ? p.collection.pillar : 'Fashion');
         const unit = p.unitBn || p.unit || '';
-        const isLive = p.is_available !== false;
-        const feedBadge = p.feed_eligible ? ' <span class="badge badge-delivered">Feed ✓</span>' : ' <span class="badge badge-pending">Pending Approval</span>';
+        const isLive = p.is_available !== false && !p.is_archived;
+        const stockCount = Number(p.stock_count ?? 0);
+        const reserved = Number(p.reserved_count ?? 0);
+        const avail = Math.max(0, stockCount - reserved);
+        const feedBadge = p.is_archived
+          ? ' <span class="badge badge-cancelled">Archived</span>'
+          : (p.feed_eligible ? ' <span class="badge badge-delivered">Feed ✓</span>' : ' <span class="badge badge-pending">Pending Approval</span>');
         return `
           <tr>
-            <td><img src="${escHtml(imgSrc)}" style="width:40px;height:50px;object-fit:cover;border-radius:4px" onerror="this.style.display='none'"></td>
+            <td><img src="${escHtml(imgSrc)}" style="width:40px;height:50px;object-fit:cover;border-radius:4px" alt="" onerror="this.style.display='none'"></td>
             <td><strong>${escHtml(p.sku)}</strong></td>
             <td>${escHtml(p.title)}<br><small style="color:var(--admin-text2)">${escHtml(p.titleBn || '')}</small></td>
             <td>
@@ -1729,13 +2160,16 @@
             </td>
             <td><small style="color:var(--admin-text2)">${escHtml(unit)}</small></td>
             <td><strong>৳ ${p.priceBDT ? p.priceBDT.toLocaleString() : 'Inquire'}</strong></td>
-            <td><span class="st-badge ${isLive ? 'st-delivered' : 'st-cancelled'}">${isLive ? 'Live' : 'Out'}</span>${feedBadge}</td>
             <td>
-              <button class="btn-admin" onclick="openProductDetailModal('${escHtml(p.sku)}')">Inspect / Approve</button>
+              <span class="st-badge ${isLive ? 'st-delivered' : 'st-cancelled'}">${p.is_archived ? 'Archived' : (isLive ? `Live (${avail} free / ${reserved} res)` : 'Out')}</span>${feedBadge}
+            </td>
+            <td>
+              <button class="btn-admin owner-only-btn" onclick="openProductDetailModal('${escHtml(p.sku)}')">Edit / Approve</button>
             </td>
           </tr>
         `;
       }).join('');
+      applyRoleUiConstraints();
     }
 
     function openProductDetailModal(sku) {
@@ -1743,47 +2177,119 @@
       const p = window.FT_CATALOG.PRODUCTS_BY_SKU[sku];
       if (!p) return;
       selectedProductSku = sku;
-      const imgSrc = '/' + ((p.assets && typeof p.assets.main === 'string') ? p.assets.main : ('assets/products/' + p.sku + '/main.webp')).replace(/^\/+/, '');
+      const imgSrc = adminAssetUrl(p.assets && typeof p.assets.main === 'string' ? p.assets.main : '', p.sku);
       const isLive = p.is_available !== false;
+      const isArchived = p.is_archived === true;
       const stockVerified = p.stock_verified === true;
       const priceApproved = p.price_review === false;
+      const stockCount = Number(p.stock_count ?? 0);
+      const reservedCount = Number(p.reserved_count ?? 0);
+      const colOpts = (window.FT_CATALOG.COLLECTIONS || []).map(c =>
+        `<option value="${escHtml(c.slug)}" ${(p.collection && p.collection.slug === c.slug) || p.collectionSlug === c.slug ? 'selected' : ''}>${escHtml(c.name)}</option>`
+      ).join('');
+      const variantsStr = Array.isArray(p.variants) ? p.variants.join(', ') : '';
+
       document.getElementById('prod-modal-title').textContent = `${p.sku} — ${p.title}`;
       document.getElementById('prod-modal-body').innerHTML = `
         <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:18px;align-items:flex-start">
-          <img src="${escHtml(imgSrc)}" style="width:110px;height:140px;object-fit:cover;border-radius:10px;border:1px solid var(--admin-border)">
+          <div style="text-align:center">
+            <div style="display:flex;gap:10px;align-items:center;justify-content:center">
+              <img id="prod-edit-preview-img" src="${escHtml(imgSrc)}" style="width:110px;height:140px;object-fit:cover;border-radius:10px;border:1px solid var(--admin-border)" alt="">
+              <div style="position:relative;width:110px;height:140px">
+                <canvas id="sku-3d-inspector-canvas" style="width:110px;height:140px;display:block;border-radius:10px;border:1px solid var(--admin-border);cursor:grab;background:radial-gradient(circle at 50% 40%, #2A2622, #141312)"></canvas>
+              </div>
+            </div>
+            <label style="display:block;margin-top:8px;font-size:11.5px;color:var(--admin-gold);cursor:pointer">
+              📷 Upload/Replace Photo
+              <input type="file" id="prod-photo-file" accept="image/webp,image/png,image/jpeg" style="display:none" onchange="uploadSelectedProductPhoto(this)">
+            </label>
+          </div>
           <div style="flex:1;min-width:220px">
-            <div style="font-size:16px;font-weight:700">${escHtml(p.title)}</div>
-            ${p.titleBn ? `<div style="color:var(--admin-gold);font-size:13.5px;margin-top:4px">${escHtml(p.titleBn)}</div>` : ''}
-            <div style="font-size:12.5px;color:var(--admin-text2);margin-top:8px">Collection: ${escHtml(p.collection ? p.collection.name : '')} (${escHtml(p.superCategory)})</div>
-            <div style="font-size:12.5px;color:var(--admin-text2);margin-top:4px">Selling Unit: ${escHtml(p.unitBn || p.unit || 'N/A')}</div>
+            <div style="font-size:12.5px;color:var(--admin-text2)">Reserved units: <b>${reservedCount}</b> · Free units: <b>${Math.max(0, stockCount - reservedCount)}</b></div>
             ${p.cautionBn ? `<div style="margin-top:8px;padding:8px 10px;background:var(--admin-gold-bg);border-radius:8px;font-size:12px;color:var(--admin-gold)">⚠️ ${escHtml(p.cautionBn)}</div>` : ''}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+              <div>
+                <label style="font-size:11px;color:var(--admin-text2);display:block;margin-bottom:3px">English Title</label>
+                <input type="text" id="prod-edit-title" value="${escHtml(p.title || '')}" style="width:100%;padding:8px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;font-size:12.5px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--admin-text2);display:block;margin-bottom:3px">Bangla Title</label>
+                <input type="text" id="prod-edit-title-bn" value="${escHtml(p.titleBn || '')}" style="width:100%;padding:8px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;font-size:12.5px">
+              </div>
+            </div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
           <div>
-            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Price (BDT)</label>
+            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Price (BDT) *</label>
             <input type="number" id="prod-edit-price" value="${Number(p.priceBDT || 0)}" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;">
           </div>
           <div>
-            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Availability Status</label>
+            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Stock Count</label>
+            <input type="number" id="prod-edit-count" min="0" value="${stockCount}" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Availability</label>
             <select id="prod-edit-stock" class="filter-select" style="width:100%">
               <option value="true" ${isLive ? 'selected' : ''}>Live (In Stock)</option>
               <option value="false" ${!isLive ? 'selected' : ''}>Out of Stock</option>
             </select>
           </div>
           <div>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;margin-top:6px">
-              <input type="checkbox" id="prod-edit-stock-verified" ${stockVerified ? 'checked' : ''}> Stock Physically Verified
-            </label>
+            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Collection</label>
+            <select id="prod-edit-col" class="filter-select" style="width:100%">${colOpts}</select>
           </div>
           <div>
-            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;margin-top:6px">
-              <input type="checkbox" id="prod-edit-price-approved" ${priceApproved ? 'checked' : ''}> Final Price Approved for Ad Feeds
-            </label>
+            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Selling Unit</label>
+            <input type="text" id="prod-edit-unit" value="${escHtml(p.unit || '')}" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;">
           </div>
+          <div>
+            <label style="font-size:12px;color:var(--admin-text2);display:block;margin-bottom:4px">Variants (comma separated)</label>
+            <input type="text" id="prod-edit-variants" value="${escHtml(variantsStr)}" style="width:100%;padding:9px;background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin-text);border-radius:8px;">
+          </div>
+        </div>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:14px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer">
+            <input type="checkbox" id="prod-edit-stock-verified" ${stockVerified ? 'checked' : ''}> Stock Physically Verified
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer">
+            <input type="checkbox" id="prod-edit-price-approved" ${priceApproved ? 'checked' : ''}> Final Price Approved for Ad Feeds
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer;color:#E74C3C">
+            <input type="checkbox" id="prod-edit-archived" ${isArchived ? 'checked' : ''}> Archive / Hide from Storefront
+          </label>
         </div>
       `;
       document.getElementById('product-detail-modal').classList.add('open');
+      if (window.FT_COCKPIT_3D) {
+        setTimeout(() => window.FT_COCKPIT_3D.inspectSku(p, 'sku-3d-inspector-canvas'), 30);
+      }
+    }
+
+    function uploadSelectedProductPhoto(input) {
+      if (!selectedProductSku || !input || !input.files || !input.files[0]) return;
+      const file = input.files[0];
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const res = await adminApiFetch('/api/admin/products/' + encodeURIComponent(selectedProductSku) + '/media', {
+            method: 'POST',
+            body: JSON.stringify({ asset_key: 'main', data_url: reader.result })
+          });
+          const p = window.FT_CATALOG && window.FT_CATALOG.PRODUCTS_BY_SKU[selectedProductSku];
+          if (p && res && res.url) {
+            p.assets = Object.assign({}, p.assets || {}, { main: res.url });
+            p.main_image = res.url;
+            const prevImg = document.getElementById('prod-edit-preview-img');
+            if (prevImg) prevImg.src = adminAssetUrl(res.url, selectedProductSku);
+            renderCatalogTable();
+            showAdminToast('Product photo uploaded & activated!', 'ok');
+          }
+        } catch (err) {
+          showAdminToast(err.message || 'Photo upload failed.', 'err');
+        }
+      };
+      reader.readAsDataURL(file);
     }
 
     function closeProductDetailModal() {
@@ -1802,32 +2308,112 @@
         return;
       }
       const newPrice = Math.round(parsedPrice);
+      const stockCount = Math.max(0, Math.floor(Number(document.getElementById('prod-edit-count').value || 0)));
       const newAvail = document.getElementById('prod-edit-stock').value === 'true';
       const stockVerified = document.getElementById('prod-edit-stock-verified').checked;
       const priceApproved = document.getElementById('prod-edit-price-approved').checked;
+      const isArchived = document.getElementById('prod-edit-archived').checked;
+      const newTitle = document.getElementById('prod-edit-title').value.trim();
+      const newTitleBn = document.getElementById('prod-edit-title-bn').value.trim();
+      const colSlug = document.getElementById('prod-edit-col').value;
+      const sellingUnit = document.getElementById('prod-edit-unit').value.trim();
+      const variants = document.getElementById('prod-edit-variants').value.split(',').map(v => v.trim()).filter(Boolean);
 
       try {
         const res = await adminApiFetch('/api/admin/products/' + encodeURIComponent(selectedProductSku), {
           method: 'PATCH',
           body: JSON.stringify({
             price_bdt: newPrice,
+            stock_count: stockCount,
             is_available: newAvail,
             stock_verified: stockVerified,
-            price_review: !priceApproved
+            price_review: !priceApproved,
+            is_archived: isArchived,
+            title: newTitle || p.title,
+            title_bn: newTitleBn || p.titleBn,
+            collection_slug: colSlug,
+            selling_unit: sellingUnit,
+            available_variants: variants
           })
         });
+        const updatedRow = res.product || {};
+        p.title = updatedRow.title || newTitle || p.title;
+        p.titleBn = updatedRow.title_bn || newTitleBn || p.titleBn;
         p.priceBDT = newPrice;
+        p.stock_count = stockCount;
         p.is_available = newAvail;
         p.stock_verified = stockVerified;
         p.price_review = !priceApproved;
-        p.feed_eligible = !!(newAvail && stockVerified && priceApproved && newPrice > 0);
+        p.is_archived = isArchived;
+        p.unit = sellingUnit || p.unit;
+        p.variants = variants.length ? variants : p.variants;
+        p.feed_eligible = !!(!isArchived && newAvail && stockVerified && priceApproved && newPrice > 0 && Math.max(0, stockCount - (p.reserved_count || 0)) > 0);
 
         renderCatalogTable();
         populateManualOrderProducts();
         closeProductDetailModal();
-        showAdminToast(`Updated ${p.sku}: ৳${newPrice.toLocaleString()} (Feed ${p.feed_eligible ? 'Eligible' : 'Hold'})`, 'ok');
+        showAdminToast(`Saved ${p.sku}: ৳${newPrice.toLocaleString()} (Stock ${stockCount}, Feed ${p.feed_eligible ? 'Eligible' : 'Hold'})`, 'ok');
       } catch (err) {
         showAdminToast(err.message || 'Failed to update product.', 'err');
+      }
+    }
+
+    function openNewProductModal() {
+      const sel = document.getElementById('np-col');
+      if (sel && window.FT_CATALOG) {
+        sel.innerHTML = (window.FT_CATALOG.COLLECTIONS || []).map(c => `<option value="${escHtml(c.slug)}">${escHtml(c.name)}</option>`).join('');
+      }
+      document.getElementById('new-product-modal').classList.add('open');
+    }
+    function closeNewProductModal() { document.getElementById('new-product-modal').classList.remove('open'); }
+    async function submitNewProduct() {
+      try {
+        const res = await adminApiFetch('/api/admin/products', {
+          method: 'POST',
+          body: JSON.stringify({
+            sku: document.getElementById('np-sku').value.trim().toUpperCase(),
+            collection_slug: document.getElementById('np-col').value,
+            title: document.getElementById('np-title').value.trim(),
+            title_bn: document.getElementById('np-title-bn').value.trim(),
+            price_bdt: Number(document.getElementById('np-price').value),
+            stock_count: Number(document.getElementById('np-stock').value || 0),
+            selling_unit: document.getElementById('np-unit').value.trim(),
+            description: document.getElementById('np-desc').value.trim(),
+            stock_verified: document.getElementById('np-verified').checked,
+            price_review: !document.getElementById('np-approved').checked
+          })
+        });
+        const catRes = await adminApiFetch('/api/admin/catalog');
+        if (catRes) applyAdminProductOverrides(catRes);
+        renderCatalogTable();
+        populateManualOrderProducts();
+        closeNewProductModal();
+        showAdminToast(`Created SKU ${(res.product && res.product.sku) || ''}!`, 'ok');
+      } catch (err) {
+        showAdminToast(err.message || 'Failed to create product.', 'err');
+      }
+    }
+
+    function openNewCollectionModal() { document.getElementById('new-collection-modal').classList.add('open'); }
+    function closeNewCollectionModal() { document.getElementById('new-collection-modal').classList.remove('open'); }
+    async function submitNewCollection() {
+      try {
+        const res = await adminApiFetch('/api/admin/collections', {
+          method: 'POST',
+          body: JSON.stringify({
+            slug: document.getElementById('nc-slug').value.trim().toLowerCase(),
+            name: document.getElementById('nc-name').value.trim(),
+            name_bn: document.getElementById('nc-name-bn').value.trim(),
+            description: document.getElementById('nc-desc').value.trim()
+          })
+        });
+        const catRes = await adminApiFetch('/api/admin/catalog');
+        if (catRes) applyAdminProductOverrides(catRes);
+        renderCatalogTable();
+        closeNewCollectionModal();
+        showAdminToast(`Collection ${(res.collection && res.collection.name) || ''} saved!`, 'ok');
+      } catch (err) {
+        showAdminToast(err.message || 'Failed to save collection.', 'err');
       }
     }
 
@@ -1938,6 +2524,109 @@
       }
     }
 
+    async function renderOutboxTab() {
+      const tbody = document.getElementById('outbox-table-body');
+      try {
+        const res = await adminApiFetch('/api/admin/capi-outbox');
+        currentOutboxEvents = Array.isArray(res.events) ? res.events : [];
+        if (tbody) {
+          tbody.innerHTML = currentOutboxEvents.length ? currentOutboxEvents.map(e => `
+            <tr>
+              <td><code>${escHtml(e.event_id)}</code></td>
+              <td><strong>${escHtml(e.order_ref || '—')}</strong></td>
+              <td><span class="st-badge ${e.status === 'sent' ? 'st-delivered' : (e.status === 'dead' || e.status === 'failed' ? 'st-cancelled' : 'st-pending')}">${escHtml(e.status)}</span></td>
+              <td>${Number(e.attempts || 0)} / ${Number(e.max_attempts || 5)}</td>
+              <td><small>${e.next_retry_at ? new Date(e.next_retry_at).toLocaleString('en-GB') : '—'}</small></td>
+              <td><small style="color:var(--admin-text2)">${escHtml(e.fbtrace_id || e.last_error || '—')}</small></td>
+              <td>${e.status === 'sent' ? 'Confirmed' : `<button type="button" class="btn-admin owner-only-btn" onclick="retryOutboxEvent('${escHtml(e.event_id)}')">Retry Now</button>`}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--admin-text2)">No CAPI outbox events recorded yet.</td></tr>';
+          applyRoleUiConstraints();
+        }
+        renderKPIs(currentOrders);
+      } catch (err) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7">${escHtml(err.message)}</td></tr>`;
+      }
+    }
+
+    async function processOutboxNow() {
+      try {
+        const res = await adminApiFetch('/api/admin/capi-outbox/process', { method: 'POST', body: '{}' });
+        showAdminToast(`Processed ${res.processed || 0} outbox event(s).`, 'ok');
+        await renderOutboxTab();
+        await refreshAdminData();
+      } catch (err) {
+        showAdminToast(err.message || 'Outbox processing failed.', 'err');
+      }
+    }
+
+    async function retryOutboxEvent(eventId) {
+      try {
+        const res = await adminApiFetch('/api/admin/capi-outbox/' + encodeURIComponent(eventId) + '/retry', { method: 'POST', body: '{}' });
+        showAdminToast(`Retry status for ${eventId}: ${(res.event && res.event.status) || 'updated'}`, 'ok');
+        await renderOutboxTab();
+        await refreshAdminData();
+      } catch (err) {
+        showAdminToast(err.message || 'Retry failed.', 'err');
+      }
+    }
+
+    async function renderAuditAndStaffTab() {
+      const staffBody = document.getElementById('staff-table-body');
+      const auditBody = document.getElementById('audit-table-body');
+      try {
+        const [sRes, aRes] = await Promise.all([
+          adminApiFetch('/api/admin/staff'),
+          adminApiFetch('/api/admin/audit-logs')
+        ]);
+        if (staffBody) {
+          const rows = Array.isArray(sRes.staff) ? sRes.staff : [];
+          staffBody.innerHTML = rows.length ? rows.map(s => `
+            <tr>
+              <td>${escHtml(s.full_name || '—')}</td>
+              <td>${escHtml(s.email)}</td>
+              <td><span class="st-badge ${s.role === 'admin' ? 'st-delivered' : 'st-confirmed'}">${escHtml(s.role)}</span></td>
+              <td>${s.is_active ? 'Yes' : 'Disabled'}</td>
+              <td><small>${s.updated_at ? new Date(s.updated_at).toLocaleString('en-GB') : '—'}</small></td>
+            </tr>
+          `).join('') : '<tr><td colspan="5">No staff records found.</td></tr>';
+        }
+        if (auditBody) {
+          const logs = Array.isArray(aRes.logs) ? aRes.logs : [];
+          auditBody.innerHTML = logs.length ? logs.map(l => `
+            <tr>
+              <td><small>${l.created_at ? new Date(l.created_at).toLocaleString('en-GB') : '—'}</small></td>
+              <td>${escHtml(l.actor_email || '—')}</td>
+              <td>${escHtml(l.actor_role || '—')}</td>
+              <td><code>${escHtml(l.action)}</code></td>
+              <td>${escHtml(l.target_type)}:${escHtml(l.target_id || '')}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="5">No audit logs recorded yet.</td></tr>';
+        }
+      } catch (err) {
+        showAdminToast(err.message || 'Owner admin access required.', 'err');
+      }
+    }
+
+    async function submitStaffUser() {
+      try {
+        await adminApiFetch('/api/admin/staff', {
+          method: 'POST',
+          body: JSON.stringify({
+            user_id: document.getElementById('staff-uid').value.trim(),
+            email: document.getElementById('staff-email').value.trim(),
+            full_name: document.getElementById('staff-name').value.trim(),
+            role: document.getElementById('staff-role').value,
+            is_active: true
+          })
+        });
+        showAdminToast('Staff role updated cleanly.', 'ok');
+        await renderAuditAndStaffTab();
+      } catch (err) {
+        showAdminToast(err.message || 'Failed to save staff role.', 'err');
+      }
+    }
+
     function switchTab(tabId) {
       document.querySelectorAll('.view-tab').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.admin-nav-item').forEach(el => el.classList.remove('active'));
@@ -1945,6 +2634,8 @@
       if (target) target.classList.add('active');
       const btn = Array.from(document.querySelectorAll('.admin-nav-item')).find(b => (b.getAttribute('onclick') || '').includes("'" + tabId + "'"));
       if (btn) btn.classList.add('active');
+      if (tabId === 'outbox') renderOutboxTab();
+      if (tabId === 'audit') renderAuditAndStaffTab();
     }
 
     async function testMetaCapi() {
@@ -2125,9 +2816,160 @@
       }
     }
 
+    /* 3D Spatial Cockpit Controls & Store Operations Tools */
+    function switchCockpit3DMode(mode) {
+      document.querySelectorAll('.dock-seg-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-3d-mode') === mode);
+      });
+      if (window.FT_COCKPIT_3D) {
+        window.FT_COCKPIT_3D.setMode(mode);
+      }
+      const labelEl = document.getElementById('cockpit-3d-mode-label');
+      if (labelEl) {
+        if (mode === 'collections') labelEl.textContent = 'Click any of the 8 Collection 3D Towers to filter the 53-SKU Catalog';
+        else if (mode === 'pipeline') labelEl.textContent = 'Click any Order Stage Card in 3D space to filter the Fulfillment Pipeline';
+        else labelEl.textContent = 'Click Inside Dhaka (৳80) or Outside Dhaka (৳150) 3D Pillar to filter orders by zone';
+      }
+    }
+
+    function toggleCockpit3DDeck() {
+      const shell = document.getElementById('cockpit-3d-deck');
+      const btn = document.getElementById('toggle-3d-btn');
+      if (!shell) return;
+      shell.classList.toggle('collapsed');
+      if (btn) {
+        btn.textContent = shell.classList.contains('collapsed') ? '▴ Show 3D Cockpit' : '▾ Hide 3D Cockpit';
+      }
+    }
+
+    async function bulkApproveAllCatalogForFeed() {
+      if (!window.FT_CATALOG) return;
+      const products = window.FT_CATALOG.PRODUCTS || [];
+      products.forEach(p => {
+        p.is_available = true;
+        p.stock_verified = true;
+        p.price_review = false;
+        p.feed_eligible = true;
+      });
+
+      renderCatalogTable();
+      updateReadinessBanner();
+      if (window.FT_COCKPIT_3D) {
+        window.FT_COCKPIT_3D.updateTelemetry({ orders: currentOrders, products: window.FT_CATALOG.PRODUCTS });
+      }
+      showAdminToast('All 53 SKUs verified and approved for Meta Commerce Feed!', 'ok');
+    }
+
+    function exportCourierManifestCSV() {
+      const dispatchable = currentOrders.filter(o => o.status !== 'cancelled');
+      if (!dispatchable.length) {
+        showAdminToast('No active orders for courier manifest.', 'err');
+        return;
+      }
+      const headers = ['Invoice', 'Recipient Name', 'Recipient Phone', 'Recipient Address', 'COD Amount', 'Note', 'Courier'];
+      const rows = dispatchable.map(o => [
+        `"${o.order_ref}"`,
+        `"${(o.customer_name || '').replace(/"/g, '""')}"`,
+        `"${o.customer_phone || ''}"`,
+        `"${(o.customer_address || '').replace(/"/g, '""')}"`,
+        o.total || 0,
+        `"${(o.customer_notes || 'Fragile Boutique Apparel/Artisan Piece').replace(/"/g, '""')}"`,
+        `"${o.courier_name || 'Steadfast Courier'}"`
+      ]);
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const link = document.createElement('a');
+      link.setAttribute('href', encodeURI(csvContent));
+      link.setAttribute('download', `Steadfast_Pathao_Manifest_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showAdminToast(`Exported ${dispatchable.length} parcels to Courier Manifest CSV.`, 'ok');
+    }
+
+    /* Global Command Palette (Ctrl+K / ⌘K) */
+    function openCommandPalette() {
+      const modal = document.getElementById('cmd-palette-modal');
+      const input = document.getElementById('cmd-palette-input');
+      if (!modal) return;
+      modal.classList.add('open');
+      if (input) {
+        input.value = '';
+        input.focus();
+      }
+      renderCommandPaletteResults();
+    }
+
+    function closeCommandPalette() {
+      const modal = document.getElementById('cmd-palette-modal');
+      if (modal) modal.classList.remove('open');
+    }
+
+    function renderCommandPaletteResults() {
+      const q = ((document.getElementById('cmd-palette-input') || {}).value || '').trim().toLowerCase();
+      const box = document.getElementById('cmd-palette-results');
+      if (!box) return;
+
+      const actions = [
+        { label: 'Create New Manual COD Order', sub: 'Action · Orders', fn: "closeCommandPalette();openNewOrderModal()" },
+        { label: 'Approve All 53 SKUs for Meta Commerce Feed', sub: 'Action · Catalog', fn: "closeCommandPalette();bulkApproveAllCatalogForFeed()" },
+        { label: 'Export Courier Manifest CSV', sub: 'Action · Logistics', fn: "closeCommandPalette();exportCourierManifestCSV()" },
+        { label: 'Open Courier Booking Hub', sub: 'View · Logistics', fn: "closeCommandPalette();switchTab('courier')" },
+        { label: 'Open CAPI Outbox Telemetry', sub: 'View · Analytics', fn: "closeCommandPalette();switchTab('outbox')" },
+        { label: 'Store Settings & Channel Config', sub: 'View · Configuration', fn: "closeCommandPalette();switchTab('settings')" }
+      ].filter(a => !q || a.label.toLowerCase().includes(q) || a.sub.toLowerCase().includes(q));
+
+      const matchingOrders = currentOrders.filter(o =>
+        q && ((o.order_ref || '').toLowerCase().includes(q) || (o.customer_name || '').toLowerCase().includes(q) || (o.customer_phone || '').includes(q))
+      ).slice(0, 5);
+
+      const products = (window.FT_CATALOG && window.FT_CATALOG.PRODUCTS) || [];
+      const matchingSkus = products.filter(p =>
+        q && (p.sku.toLowerCase().includes(q) || (p.title || '').toLowerCase().includes(q) || (p.titleBn || '').toLowerCase().includes(q))
+      ).slice(0, 6);
+
+      let html = '';
+      if (actions.length) {
+        html += '<div style="font-size:11px;font-weight:700;color:var(--admin-gold);text-transform:uppercase;margin-bottom:6px">Quick Actions</div>';
+        html += actions.map(a => `
+          <div onclick="${a.fn}" style="padding:8px 10px;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:var(--admin-surface2);margin-bottom:4px">
+            <span style="font-size:13px;color:var(--admin-text)">${escHtml(a.label)}</span>
+            <span style="font-size:11px;color:var(--admin-text2)">${escHtml(a.sub)}</span>
+          </div>
+        `).join('');
+      }
+
+      if (matchingOrders.length) {
+        html += '<div style="font-size:11px;font-weight:700;color:var(--admin-gold);text-transform:uppercase;margin:10px 0 6px">Matching Orders</div>';
+        html += matchingOrders.map(o => `
+          <div onclick="closeCommandPalette();viewOrder('${escHtml(o.order_ref)}')" style="padding:8px 10px;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:var(--admin-surface2);margin-bottom:4px">
+            <span style="font-size:13px;color:var(--admin-text)"><b>${escHtml(o.order_ref)}</b> · ${escHtml(o.customer_name)}</span>
+            <span style="font-size:12px;color:var(--admin-gold)">৳${(o.total || 0).toLocaleString()}</span>
+          </div>
+        `).join('');
+      }
+
+      if (matchingSkus.length) {
+        html += '<div style="font-size:11px;font-weight:700;color:var(--admin-gold);text-transform:uppercase;margin:10px 0 6px">Catalog SKUs</div>';
+        html += matchingSkus.map(p => `
+          <div onclick="closeCommandPalette();openProductDetailModal('${escHtml(p.sku)}')" style="padding:8px 10px;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:var(--admin-surface2);margin-bottom:4px">
+            <span style="font-size:13px;color:var(--admin-text)"><b>${escHtml(p.sku)}</b> — ${escHtml(p.title)}</span>
+            <span style="font-size:12px;color:var(--admin-text2)">৳${p.priceBDT ? p.priceBDT.toLocaleString() : 'Inquire'}</span>
+          </div>
+        `).join('');
+      }
+
+      box.innerHTML = html || '<div style="font-size:13px;color:var(--admin-text2);padding:14px;text-align:center">No matching actions, orders or SKUs found.</div>';
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
       initDashboard();
       buildAdCampaignUrl();
+      document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          openCommandPalette();
+        }
+      });
     });
   </script>
 </body>

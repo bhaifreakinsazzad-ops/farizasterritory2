@@ -10,7 +10,7 @@
 - [ ] **Return, Exchange & Cancellation Policy**: Confirm unboxing video / return window rules displayed to COD buyers before confirmation.
 
 ## 2. Commercial Catalog Truth (All 53 SKUs)
-Use **Admin ➔ Catalog & Stock** (or Supabase `public.products`) to verify and mark `stock_verified = true` and `price_review = false` per SKU before enabling paid Meta catalog ads:
+Use **[docs/SELLER_53_SKU_LEDGER.csv](SELLER_53_SKU_LEDGER.csv)** (bulk spreadsheet -> run `node scripts/apply_seller_ledger.js` to produce `supabase/04_seller_approvals.sql`) or **Admin ➔ Product Catalog** to verify `stock_verified = true`, enter verified `stock_count`, set `price_review = false` (`approved_at` recorded automatically) per SKU before enabling paid Meta catalog ads:
 
 ### Pillar I — Fashion Three-Piece Dresses (18 SKUs)
 Source prices (`1,650–2,450 BDT`) are provisional catalog reference prices and require confirmation:

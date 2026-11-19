@@ -170,16 +170,22 @@
       return { valid: false, message: 'Unable to validate coupon right now.' };
     },
 
-    // Live Public Catalog Overrides (price & availability)
-    async getProducts() {
+    // Full Live Public Catalog (collections + merged SKUs including CMS additions)
+    async getCatalog() {
       try {
         const resp = await fetch('/api/catalog', { credentials: 'same-origin' });
         if (!resp.ok) return null;
         const json = await resp.json();
-        return json && Array.isArray(json.products) ? json.products : null;
+        return json && json.ok ? json : null;
       } catch (_) {
         return null;
       }
+    },
+
+    // Live Public Catalog Overrides (price & availability)
+    async getProducts() {
+      const cat = await this.getCatalog();
+      return cat && Array.isArray(cat.products) ? cat.products : null;
     },
 
     // Public Store Settings

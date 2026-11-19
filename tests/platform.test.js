@@ -33,14 +33,28 @@ function createInMemoryStore(options = {}) {
   const configured = options.configured !== false;
   const orders = new Map();
   const idempotencyIndex = new Map();
+  const collections = new Map();
+  const productAssets = new Map();
   const productOverrides = new Map(Object.entries(options.productOverrides || {}));
+  const auditLogs = [];
+  const capiOutbox = new Map();
+  const staffUsers = new Map([
+    [
+      '11111111-1111-1111-1111-111111111111',
+      { user_id: '11111111-1111-1111-1111-111111111111', email: 'faria@farizasterritory.com', full_name: 'Faria Owner', role: 'admin', is_active: true }
+    ],
+    [
+      '22222222-2222-2222-2222-222222222222',
+      { user_id: '22222222-2222-2222-2222-222222222222', email: 'staff@farizasterritory.com', full_name: 'Order Operator', role: 'staff', is_active: true }
+    ]
+  ]);
   const coupons = new Map(
     commerce.DEFAULT_COUPONS.map(c => [c.code, Object.assign({}, c)])
   );
   let storeSettings = Object.assign({
     id: 'default',
     store_name: "Fariza's Territory",
-    whatsapp_number: '8801700000000',
+    whatsapp_number: '',
     messenger_username: 'farizasterritory143',
     facebook_url: 'https://www.facebook.com/farizasterritory143',
     meta_pixel_id: '1657670575734647',
@@ -70,7 +84,13 @@ function createInMemoryStore(options = {}) {
       if (token === 'valid-admin-jwt') {
         return {
           ok: true,
-          user: { id: '11111111-1111-1111-1111-111111111111', email: 'faria@farizasterritory.com', role: 'admin' }
+          user: { id: '11111111-1111-1111-1111-111111111111', email: 'faria@farizasterritory.com', full_name: 'Faria Owner', role: 'admin' }
+        };
+      }
+      if (token === 'valid-staff-jwt') {
+        return {
+          ok: true,
+          user: { id: '22222222-2222-2222-2222-222222222222', email: 'staff@farizasterritory.com', full_name: 'Order Operator', role: 'staff' }
         };
       }
       if (token === 'non-admin-jwt') {
@@ -86,15 +106,59 @@ function createInMemoryStore(options = {}) {
       storeSettings = Object.assign({}, storeSettings, patch);
       return { ok: true, data: Object.assign({}, storeSettings) };
     },
+    async listCollections() {
+      return Array.from(collections.values());
+    },
+    async upsertCollection(col) {
+      if (!configured) return { ok: false, status: 503, error: 'Database unconfigured' };
+      const slug = String(col.slug || '').trim().toLowerCase();
+      const saved = Object.assign({ is_active: true, sort_order: 99 }, col, { slug });
+      collections.set(slug, saved);
+      return { ok: true, data: Object.assign({}, saved) };
+    },
     async listProducts() {
       return Array.from(productOverrides.entries()).map(([sku, row]) => Object.assign({ sku }, row));
     },
-    async updateProduct(sku, updates) {
+    async createProduct(prod, actorEmail) {
+      if (!configured) return { ok: false, status: 503, error: 'Database unconfigured' };
+      const sku = String(prod.sku || '').trim().toUpperCase();
+      if (productOverrides.has(sku)) return { ok: false, status: 409, error: `SKU ${sku} exists.` };
+      const saved = Object.assign(
+        { reserved_count: 0, is_available: true, is_archived: false, approved_at: !prod.price_review && prod.stock_verified ? new Date().toISOString() : null, approved_by: actorEmail },
+        prod,
+        { sku }
+      );
+      productOverrides.set(sku, saved);
+      return { ok: true, data: Object.assign({}, saved) };
+    },
+    async updateProduct(sku, updates, actorEmail) {
       if (!configured) return { ok: false, status: 503, error: 'Database unconfigured' };
       const existing = productOverrides.get(sku) || { sku };
-      const merged = Object.assign({}, existing, updates, { sku });
+      const nextPriceReview = updates.price_review !== undefined ? updates.price_review : existing.price_review;
+      const nextStockVerified = updates.stock_verified !== undefined ? updates.stock_verified : existing.stock_verified;
+      const extra = {};
+      if (!nextPriceReview && nextStockVerified && !existing.approved_at) {
+        extra.approved_at = new Date().toISOString();
+        extra.approved_by = actorEmail || 'admin';
+      } else if (updates.price_review === true || updates.stock_verified === false) {
+        extra.approved_at = null;
+      }
+      const merged = Object.assign({}, existing, updates, extra, { sku });
       productOverrides.set(sku, merged);
-      return { ok: true, data: merged };
+      return { ok: true, data: Object.assign({}, merged), previous: Object.assign({}, existing) };
+    },
+    async listProductAssets() {
+      return Array.from(productAssets.values());
+    },
+    async upsertProductAsset(asset) {
+      const key = `${asset.sku}:${asset.asset_key}`;
+      const saved = Object.assign({}, asset);
+      productAssets.set(key, saved);
+      const p = productOverrides.get(asset.sku);
+      if (p && asset.asset_key === 'main') {
+        p.main_image = asset.storage_path;
+      }
+      return { ok: true, data: saved };
     },
     async getCouponByCode(code) {
       const upper = String(code || '').trim().toUpperCase();
@@ -117,7 +181,33 @@ function createInMemoryStore(options = {}) {
         const existingRef = idempotencyIndex.get(orderRecord.idempotency_key);
         return { ok: true, idempotent: true, data: Object.assign({}, orders.get(existingRef)) };
       }
-      const copy = Object.assign({}, orderRecord);
+      // Atomic check & reservation simulation for DB products with tracked stock
+      let reservedAll = true;
+      for (const item of orderRecord.items || []) {
+        const row = productOverrides.get(item.sku);
+        if (row) {
+          if (row.is_available === false || row.is_archived === true) {
+            return { ok: false, status: 409, error: `Product ${item.sku} unavailable.` };
+          }
+          const avail = Math.max(0, Number(row.stock_count ?? 0) - Number(row.reserved_count || 0));
+          if (row.stock_verified === true && avail < item.qty) {
+            return { ok: false, status: 409, error: `Insufficient verified stock for ${item.sku}.` };
+          }
+          if (Number(row.stock_count || 0) > 0 && avail < item.qty) {
+            return { ok: false, status: 409, error: `Insufficient stock for ${item.sku}.` };
+          }
+          if (!row.stock_verified && Number(row.stock_count || 0) <= 0) reservedAll = false;
+        } else {
+          reservedAll = false;
+        }
+      }
+      for (const item of orderRecord.items || []) {
+        const row = productOverrides.get(item.sku);
+        if (row && (row.stock_verified === true || Number(row.stock_count || 0) > 0)) {
+          row.reserved_count = Number(row.reserved_count || 0) + Number(item.qty || 1);
+        }
+      }
+      const copy = Object.assign({ inventory_state: reservedAll ? 'reserved' : 'none' }, orderRecord);
       orders.set(copy.order_ref, copy);
       if (copy.idempotency_key) {
         idempotencyIndex.set(copy.idempotency_key, copy.order_ref);
@@ -141,6 +231,100 @@ function createInMemoryStore(options = {}) {
       const updated = Object.assign({}, existing, patch, { updated_at: new Date().toISOString() });
       orders.set(key, updated);
       return { ok: true, data: Object.assign({}, updated) };
+    },
+    async transitionOrder(orderRef, patch) {
+      const key = String(orderRef || '').trim().toUpperCase();
+      const existing = orders.get(key);
+      if (!existing) return { ok: false, status: 404, error: 'Order not found' };
+      const nextStatus = patch.status || existing.status;
+      let invState = existing.inventory_state || 'none';
+      if ((nextStatus === 'shipped' || nextStatus === 'delivered') && invState === 'reserved') {
+        for (const it of existing.items || []) {
+          const row = productOverrides.get(it.sku);
+          if (row) {
+            row.stock_count = Math.max(0, Number(row.stock_count || 0) - Number(it.qty || 1));
+            row.reserved_count = Math.max(0, Number(row.reserved_count || 0) - Number(it.qty || 1));
+            if (row.stock_count === 0) row.is_available = false;
+          }
+        }
+        invState = 'deducted';
+      } else if (nextStatus === 'cancelled' && invState === 'reserved') {
+        for (const it of existing.items || []) {
+          const row = productOverrides.get(it.sku);
+          if (row) {
+            row.reserved_count = Math.max(0, Number(row.reserved_count || 0) - Number(it.qty || 1));
+          }
+        }
+        invState = 'released';
+      }
+      const updated = Object.assign({}, existing, patch, { inventory_state: invState, updated_at: new Date().toISOString() });
+      orders.set(key, updated);
+      return { ok: true, data: Object.assign({}, updated) };
+    },
+    async listStaffUsers() {
+      return { ok: true, data: Array.from(staffUsers.values()) };
+    },
+    async upsertStaffUser(staff) {
+      const saved = Object.assign({}, staff, { updated_at: new Date().toISOString() });
+      staffUsers.set(saved.user_id, saved);
+      return { ok: true, data: saved };
+    },
+    async recordAuditLog(entry) {
+      const rec = Object.assign({ id: auditLogs.length + 1, created_at: new Date().toISOString() }, entry);
+      auditLogs.unshift(rec);
+      return { ok: true, data: rec };
+    },
+    async listAuditLogs(limit = 100) {
+      return { ok: true, data: auditLogs.slice(0, limit) };
+    },
+    async enqueueCapiOutboxEvent(evt) {
+      if (capiOutbox.has(evt.event_id)) {
+        return { ok: true, created: false, data: Object.assign({}, capiOutbox.get(evt.event_id)) };
+      }
+      const row = Object.assign({ status: 'pending', attempts: 0, max_attempts: 5, next_retry_at: new Date().toISOString(), last_error: null, fbtrace_id: null, sent_at: null }, evt);
+      capiOutbox.set(evt.event_id, row);
+      return { ok: true, created: true, data: Object.assign({}, row) };
+    },
+    async claimDueCapiOutboxEvents(limit = 10) {
+      const now = Date.now();
+      const due = Array.from(capiOutbox.values()).filter(
+        e => ['pending', 'failed'].includes(e.status) && Number(e.attempts) < Number(e.max_attempts || 5) && Date.parse(e.next_retry_at || 0) <= now
+      ).slice(0, limit);
+      due.forEach(e => { e.status = 'processing'; });
+      return { ok: true, data: due.map(d => Object.assign({}, d)) };
+    },
+    async markCapiOutboxResult(eventId, outcome) {
+      const cur = capiOutbox.get(eventId);
+      if (!cur) return { ok: false, status: 404 };
+      if (outcome.delivered && outcome.mode === 'live_production') {
+        cur.status = 'sent';
+        cur.attempts += 1;
+        cur.sent_at = new Date().toISOString();
+        cur.fbtrace_id = outcome.fbtrace_id || null;
+        cur.last_error = null;
+        const ord = orders.get(cur.order_ref);
+        if (ord) ord.purchase_capi_sent_at = cur.sent_at;
+      } else if (outcome.mode === 'preview_no_token') {
+        cur.status = 'pending';
+        cur.last_error = 'Preview mode (META_CAPI_ACCESS_TOKEN not configured).';
+      } else {
+        cur.attempts += 1;
+        cur.status = cur.attempts >= (cur.max_attempts || 5) ? 'dead' : 'failed';
+        cur.last_error = outcome.error || 'Error';
+        cur.next_retry_at = new Date(Date.now() - 1000).toISOString();
+      }
+      return { ok: true, data: Object.assign({}, cur) };
+    },
+    async listCapiOutbox(limit = 100) {
+      return { ok: true, data: Array.from(capiOutbox.values()).slice(0, limit) };
+    },
+    async resetCapiOutboxForRetry(eventId) {
+      const cur = capiOutbox.get(eventId);
+      if (!cur) return { ok: false, status: 404, error: 'Not found' };
+      if (cur.status === 'sent') return { ok: true, alreadySent: true, data: cur };
+      cur.status = 'pending';
+      cur.next_retry_at = new Date().toISOString();
+      return { ok: true, data: Object.assign({}, cur) };
     }
   };
 }
@@ -372,7 +556,15 @@ test('Admin APIs enforce 401/403 RBAC, valid transitions, and idempotent Purchas
     capiCalls.push({ params, opts });
     return {
       status: 200,
-      body: { success: true, mode: 'mock_test', event_name: params.eventName, event_id: params.eventId }
+      body: {
+        success: true,
+        delivered: true,
+        mode: 'live_production',
+        events_received: 1,
+        fbtrace_id: 'TRACE_MOCK_200',
+        event_name: params.eventName,
+        event_id: params.eventId
+      }
     };
   };
 
@@ -560,4 +752,419 @@ test('Three.js collection card 3D parallax module is wired cleanly without Anime
   const tiltMatch = animeJs.match(/initCardTilt\s*\(\)\s*\{[\s\S]*?const cards\s*=\s*document\.querySelectorAll\(([^)]+)\)/);
   assert.ok(tiltMatch, 'initCardTilt selector found');
   assert.ok(!tiltMatch[1].includes('.col-card'), 'animePolish initCardTilt must not compete with Three.js on .col-card');
+
+  // Verify Anime.js staggered entrance for collection cards & dynamic product counts on the collections page
+  assert.ok(animeJs.includes('animateCollectionsEntrance'), 'animePolish defines animateCollectionsEntrance');
+  assert.ok(animeJs.includes('anime.stagger'), 'animePolish uses anime.stagger for staggered entrance');
+  assert.ok(appJs.includes('computeDynamicCollectionStats'), 'app.js defines computeDynamicCollectionStats');
+  assert.ok(appJs.includes('fetchAndSyncCollectionCounts'), 'app.js fetches and syncs dynamic collection counts');
+  assert.ok(appJs.includes('collections-page-grid'), 'pageCollections renders #collections-page-grid');
+  assert.ok(appJs.includes('Shop all ${stats.allCount} pieces'), 'pageCollections displays consistent Shop all 53 pieces CTA');
+});
+
+// ===========================================================================
+// 8. Owner-Admin vs Staff RBAC & Sensitive Operation Audit Trail (SEC-01)
+// ===========================================================================
+test('Staff role receives 200 on order ops and 403 on owner-only settings/pricing/CMS/CAPI endpoints while admin actions log audit trail', async () => {
+  const store = createInMemoryStore({ configured: true });
+  const app = createApp({ store });
+  const { server, baseUrl } = await startTestServer(app);
+  try {
+    // Staff can read orders & catalog
+    const staffOrders = await fetch(`${baseUrl}/api/admin/orders`, {
+      headers: { Authorization: 'Bearer valid-staff-jwt' }
+    });
+    assert.equal(staffOrders.status, 200);
+
+    // Staff gets 403 on sensitive owner-only mutations
+    const forbiddenChecks = [
+      fetch(`${baseUrl}/api/admin/settings`, {
+        method: 'PUT',
+        headers: { Authorization: 'Bearer valid-staff-jwt', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ delivery_fee_dhaka: 50 })
+      }),
+      fetch(`${baseUrl}/api/admin/coupons`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer valid-staff-jwt', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: 'HACK50', discount_type: 'percentage', discount_value: 50 })
+      }),
+      fetch(`${baseUrl}/api/admin/products/CAT-001`, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer valid-staff-jwt', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ price_bdt: 1 })
+      }),
+      fetch(`${baseUrl}/api/admin/capi-test`, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer valid-staff-jwt', 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      }),
+      fetch(`${baseUrl}/api/admin/staff`, {
+        headers: { Authorization: 'Bearer valid-staff-jwt' }
+      }),
+      fetch(`${baseUrl}/api/admin/audit-logs`, {
+        headers: { Authorization: 'Bearer valid-staff-jwt' }
+      })
+    ];
+    for (const resPromise of forbiddenChecks) {
+      const r = await resPromise;
+      assert.equal(r.status, 403);
+    }
+
+    // Owner admin succeeds and records audit trail
+    const adminPut = await fetch(`${baseUrl}/api/admin/settings`, {
+      method: 'PUT',
+      headers: { Authorization: 'Bearer valid-admin-jwt', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ promo_text: 'Eid Updated Banner' })
+    });
+    assert.equal(adminPut.status, 200);
+
+    const logsRes = await fetch(`${baseUrl}/api/admin/audit-logs`, {
+      headers: { Authorization: 'Bearer valid-admin-jwt' }
+    });
+    assert.equal(logsRes.status, 200);
+    const logsBody = await logsRes.json();
+    assert.ok(logsBody.logs.some(l => l.action === 'settings.update' && l.actor_role === 'admin'));
+  } finally {
+    await closeServer(server);
+  }
+});
+
+// ===========================================================================
+// 9. Durable CAPI Outbox: Preview Never Marked Sent + Meta 500 Retry -> 200 (ADS-01/02)
+// ===========================================================================
+test('CAPI outbox does not mark preview_no_token as sent and retries Meta 500 failure to live 200 without duplicating event_id', async () => {
+  let attemptMode = 'preview';
+  const store = createInMemoryStore({ configured: true });
+  const dynamicSender = async (params) => {
+    if (attemptMode === 'preview') {
+      return { status: 200, body: { success: true, delivered: false, mode: 'preview_no_token', event_id: params.eventId } };
+    }
+    if (attemptMode === 'fail500') {
+      return { status: 500, body: { success: false, delivered: false, mode: 'live_production', error: 'Graph temporary error', event_id: params.eventId } };
+    }
+    return { status: 200, body: { success: true, delivered: true, mode: 'live_production', events_received: 1, fbtrace_id: 'TRACE_OK', event_id: params.eventId } };
+  };
+
+  const app = createApp({ store, capiSender: dynamicSender });
+  const { server, baseUrl } = await startTestServer(app);
+  try {
+    const order = await (await fetch(`${baseUrl}/api/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer_name: 'Nadia Islam',
+        customer_phone: '01711223344',
+        customer_address: 'Banani Road 11, Dhaka',
+        items: [{ sku: 'CAT-001', qty: 1 }]
+      })
+    })).json();
+    const ref = order.order_ref;
+
+    // 1) Confirm without live token (preview_no_token): purchase_capi_sent_at MUST remain null
+    const confirmPreview = await (await fetch(`${baseUrl}/api/admin/orders/${ref}`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer valid-admin-jwt', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'confirmed' })
+    })).json();
+    assert.equal(confirmPreview.order.purchase_capi_sent_at, undefined);
+    assert.equal(confirmPreview.capi_outbox.status, 'pending');
+
+    // 2) Process under Graph 500 -> marks failed (never sent)
+    attemptMode = 'fail500';
+    await app.processCapiOutbox(5, baseUrl);
+    let outboxRes = await (await fetch(`${baseUrl}/api/admin/capi-outbox`, {
+      headers: { Authorization: 'Bearer valid-admin-jwt' }
+    })).json();
+    assert.equal(outboxRes.events[0].status, 'failed');
+
+    // 3) Retry via operator endpoint under Meta 200 -> marks sent + updates order purchase_capi_sent_at
+    attemptMode = 'live';
+    const retryRes = await (await fetch(`${baseUrl}/api/admin/capi-outbox/${encodeURIComponent(`pur_${ref}`)}/retry`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer valid-admin-jwt', 'Content-Type': 'application/json' },
+      body: '{}'
+    })).json();
+    assert.equal(retryRes.event.status, 'sent');
+    assert.equal(retryRes.event.event_id, `pur_${ref}`);
+
+    const orderAfter = await store.getOrderByRef(ref);
+    assert.ok(orderAfter.data.purchase_capi_sent_at);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+// ===========================================================================
+// 10. Atomic Inventory Reservation, Oversell 409, Deduction & Cancel Restock (INV-01)
+// ===========================================================================
+test('Atomic inventory reserves on order, blocks oversell with 409, deducts on shipment, and restocks on cancellation', async () => {
+  const store = createInMemoryStore({
+    configured: true,
+    productOverrides: {
+      'CAT-001': { price_bdt: 2350, is_available: true, stock_count: 2, reserved_count: 0, stock_verified: true, price_review: false },
+      'CAT-002': { price_bdt: 2150, is_available: true, stock_count: 2, reserved_count: 0, stock_verified: true, price_review: false }
+    }
+  });
+  const app = createApp({ store });
+  const { server, baseUrl } = await startTestServer(app);
+  try {
+    // Reserve all 2 units of CAT-001
+    const o1Res = await fetch(`${baseUrl}/api/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer_name: 'Buyer One',
+        customer_phone: '01722334455',
+        customer_address: 'Mirpur 10, Dhaka',
+        items: [{ sku: 'CAT-001', qty: 2 }]
+      })
+    });
+    assert.equal(o1Res.status, 201);
+    const o1 = await o1Res.json();
+
+    // Oversell attempt returns 409 Conflict
+    const oversell = await fetch(`${baseUrl}/api/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer_name: 'Buyer Two',
+        customer_phone: '01822334455',
+        customer_address: 'Gulshan 1, Dhaka',
+        items: [{ sku: 'CAT-001', qty: 1 }]
+      })
+    });
+    assert.equal(oversell.status, 409);
+
+    // Cancel o1 -> releases reservation back so 2 units can be ordered again
+    await fetch(`${baseUrl}/api/admin/orders/${o1.order_ref}`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer valid-admin-jwt', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'cancelled' })
+    });
+
+    const o2Res = await fetch(`${baseUrl}/api/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer_name: 'Buyer Three',
+        customer_phone: '01922334455',
+        customer_address: 'Uttara Sector 7, Dhaka',
+        items: [{ sku: 'CAT-002', qty: 2 }]
+      })
+    });
+    assert.equal(o2Res.status, 201);
+    const o2 = await o2Res.json();
+
+    // Confirm then ship o2 -> deducts stock permanently down to 0
+    const confirmO2 = await fetch(`${baseUrl}/api/admin/orders/${o2.order_ref}`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer valid-admin-jwt', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'confirmed' })
+    });
+    assert.equal(confirmO2.status, 200);
+    const shipO2 = await fetch(`${baseUrl}/api/admin/orders/${o2.order_ref}`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer valid-admin-jwt', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'shipped', tracking_number: 'SF-999' })
+    });
+    assert.equal(shipO2.status, 200);
+
+    const catAfter = await (await fetch(`${baseUrl}/api/catalog`)).json();
+    const cat1 = catAfter.products.find(p => p.sku === 'CAT-001');
+    const cat2 = catAfter.products.find(p => p.sku === 'CAT-002');
+    assert.equal(cat1.available_stock, 2);
+    assert.equal(cat2.stock_count, 0);
+    assert.equal(cat2.is_available, false);
+  } finally {
+    await closeServer(server);
+  }
+});
+
+// ===========================================================================
+// 11. Owner CMS (Collection + Product + Media + Archive), Vendor Self-Hosting & Internal Path Blocking
+// ===========================================================================
+test('Owner CMS creates collection/product/media reflected in catalog & sitemap, archive hides SKU, and internal repo files return 404', async () => {
+  const store = createInMemoryStore({ configured: true });
+  const app = createApp({ store });
+  const { server, baseUrl } = await startTestServer(app);
+  const uploadDir = path.join(__dirname, '..', 'assets', 'uploads', 'CAT-099');
+  try {
+    // Self-hosted @supabase/supabase-js UMD bundle returns 200
+    const vendorRes = await fetch(`${baseUrl}/vendor/supabase.js`);
+    assert.equal(vendorRes.status, 200);
+
+    // Internal repo files return 404
+    for (const p of ['/docs/DEPLOYMENT_AND_ROLLBACK.md', '/supabase/seed.sql', '/lib/supabaseServer.js', '/package.json', '/.env']) {
+      const blocked = await fetch(`${baseUrl}${p}`);
+      assert.equal(blocked.status, 404, `Expected ${p} to return 404`);
+    }
+
+    // Create collection
+    const colRes = await fetch(`${baseUrl}/api/admin/collections`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer valid-admin-jwt', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug: 'eid-capsule-2026', name: 'Eid Capsule 2026', name_bn: 'ঈদ ক্যাপসুল ২০২৬' })
+    });
+    assert.equal(colRes.status, 201);
+
+    // Create product
+    const prodRes = await fetch(`${baseUrl}/api/admin/products`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer valid-admin-jwt', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sku: 'CAT-099',
+        collection_slug: 'eid-capsule-2026',
+        title: 'Jamuna Royal Muslin',
+        price_bdt: 3400,
+        stock_count: 6,
+        stock_verified: true,
+        price_review: false,
+        selling_unit: '3-Piece Set'
+      })
+    });
+    assert.equal(prodRes.status, 201);
+
+    // Upload valid 1x1 PNG image (valid magic bytes)
+    const tinyPngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const mediaRes = await fetch(`${baseUrl}/api/admin/products/CAT-099/media`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer valid-admin-jwt', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ asset_key: 'main', data_url: `data:image/png;base64,${tinyPngBase64}` })
+    });
+    assert.equal(mediaRes.status, 201);
+    const mediaBody = await mediaRes.json();
+    assert.ok(mediaBody.url.startsWith('/assets/uploads/CAT-099/main-'));
+
+    // Reject spoofed executable masquerading as PNG
+    const badMedia = await fetch(`${baseUrl}/api/admin/products/CAT-099/media`, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer valid-admin-jwt', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ asset_key: 'main', data_url: `data:image/png;base64,${Buffer.from('<script>alert(1)</script>').toString('base64')}` })
+    });
+    assert.equal(badMedia.status, 400);
+
+    // Appears in public catalog, SSR route with og:url, and sitemap.xml
+    const pubCat = await (await fetch(`${baseUrl}/api/catalog`)).json();
+    assert.ok(pubCat.products.some(p => p.sku === 'CAT-099' && p.feed_eligible === true));
+    const ssrHtml = await (await fetch(`${baseUrl}/products/CAT-099`)).text();
+    assert.ok(ssrHtml.includes('og:url') && ssrHtml.includes('/products/CAT-099'));
+    const sitemap = await (await fetch(`${baseUrl}/sitemap.xml`)).text();
+    assert.ok(sitemap.includes('/products/CAT-099') && sitemap.includes('/collections/eid-capsule-2026'));
+
+    // Archiving removes from public catalog & returns 404 on /products/CAT-099
+    await fetch(`${baseUrl}/api/admin/products/CAT-099`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer valid-admin-jwt', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_archived: true })
+    });
+    const archivedSsr = await fetch(`${baseUrl}/products/CAT-099`);
+    assert.equal(archivedSsr.status, 404);
+  } finally {
+    fs.rmSync(uploadDir, { recursive: true, force: true });
+    await closeServer(server);
+  }
+});
+
+// ===========================================================================
+// 12. Canonical .env.example Parser, Secret Leak Guard & Production CAPI Guard
+// ===========================================================================
+test('Environment parser, service_role leak guard, and production META_TEST_EVENT_CODE guard operate securely', async () => {
+  const { parseDotEnvContent, getSupabaseConfig, isServiceRoleJwt } = require('../lib/supabaseServer.js');
+  const rootDir = path.join(__dirname, '..');
+
+  // 1. Parse both /.env.example and /public/assets/aistudio/.env_ae6e09f3.example (CRLF)
+  const rootEnvRaw = fs.readFileSync(path.join(rootDir, '.env.example'), 'utf8');
+  const parsedRootEnv = parseDotEnvContent(rootEnvRaw);
+  assert.equal(parsedRootEnv.PORT, '3000');
+  assert.equal(parsedRootEnv.NODE_ENV, 'production');
+  assert.equal(parsedRootEnv.PUBLIC_SITE_URL, 'https://farizasterritory.com');
+  assert.equal(parsedRootEnv.ALLOWED_ORIGINS, 'https://farizasterritory.com');
+  assert.equal(parsedRootEnv.SUPABASE_URL, 'https://vjbhrdclcnxevunskodm.supabase.co');
+  assert.equal(parsedRootEnv.META_DATASET_ID, '1657670575734647');
+  assert.equal(parsedRootEnv.META_PIXEL_ID, '1657670575734647');
+  assert.equal(parsedRootEnv.SUPABASE_SERVICE_ROLE_KEY, '');
+  assert.equal(parsedRootEnv.META_CAPI_ACCESS_TOKEN, '');
+  assert.equal(parsedRootEnv.META_TEST_EVENT_CODE, '');
+
+  const attachedEnvPath = path.join(rootDir, 'public/assets/aistudio/.env_ae6e09f3.example');
+  if (fs.existsSync(attachedEnvPath)) {
+    const attachedParsed = parseDotEnvContent(fs.readFileSync(attachedEnvPath, 'utf8'));
+    assert.deepEqual(attachedParsed, parsedRootEnv);
+  }
+
+  // 2. Service role JWT leak guard prevents accidental exposure via SUPABASE_ANON_KEY
+  const fakeServiceRolePayload = Buffer.from(JSON.stringify({ role: 'service_role', iss: 'supabase' })).toString('base64url');
+  const fakeServiceRoleJwt = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${fakeServiceRolePayload}.sig`;
+  assert.equal(isServiceRoleJwt(fakeServiceRoleJwt), true);
+
+  const fakeAnonPayload = Buffer.from(JSON.stringify({ role: 'anon', iss: 'supabase' })).toString('base64url');
+  const fakeAnonJwt = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${fakeAnonPayload}.sig`;
+  assert.equal(isServiceRoleJwt(fakeAnonJwt), false);
+
+  const prevAnon = process.env.SUPABASE_ANON_KEY;
+  const prevService = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const prevNodeEnv = process.env.NODE_ENV;
+  const prevTestCode = process.env.META_TEST_EVENT_CODE;
+
+  try {
+    process.env.SUPABASE_ANON_KEY = fakeServiceRoleJwt;
+    process.env.SUPABASE_SERVICE_ROLE_KEY = fakeServiceRoleJwt;
+    const guardedCfg = getSupabaseConfig();
+    assert.equal(guardedCfg.anonKey, '', 'anonKey must be suppressed if set to a service_role token');
+    assert.equal(guardedCfg.anonKeySuppressed, true);
+    assert.equal(guardedCfg.isAdminConfigured, true);
+    assert.equal(guardedCfg.isAnonConfigured, false);
+
+    // 3. In NODE_ENV=production, stray META_TEST_EVENT_CODE is suppressed on live events but allowed on admin diagnostics
+    process.env.NODE_ENV = 'production';
+    process.env.META_TEST_EVENT_CODE = 'TEST99999';
+
+    const liveBuilt = capiHandler.buildCapiPayload({ eventName: 'Lead' }, { allowTestCode: false });
+    assert.equal(liveBuilt.requestedTestCode, null);
+    assert.equal(liveBuilt.payload.test_event_code, undefined);
+
+    const adminTestBuilt = capiHandler.buildCapiPayload({ eventName: 'Lead' }, { allowTestCode: true });
+    assert.equal(adminTestBuilt.requestedTestCode, 'TEST99999');
+    assert.equal(adminTestBuilt.payload.test_event_code, 'TEST99999');
+  } finally {
+    if (prevAnon === undefined) delete process.env.SUPABASE_ANON_KEY;
+    else process.env.SUPABASE_ANON_KEY = prevAnon;
+    if (prevService === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = prevService;
+    if (prevNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = prevNodeEnv;
+    if (prevTestCode === undefined) delete process.env.META_TEST_EVENT_CODE;
+    else process.env.META_TEST_EVENT_CODE = prevTestCode;
+  }
+});
+
+// ===========================================================================
+// 13. 3D Admin Cockpit, Three.js, ThreeUI.js, Anime.js & Motion.dev Verification
+// ===========================================================================
+test('Admin Cockpit integrates Three.js, ThreeUI.js, Anime.js, Motion.dev, and complete store operations', () => {
+  const rootDir = path.join(__dirname, '..');
+  const adminHtml = fs.readFileSync(path.join(rootDir, 'admin.html'), 'utf8');
+
+  // Verify required libraries are loaded in admin.html
+  assert.ok(adminHtml.includes('three.min.js'), 'admin.html must load Three.js');
+  assert.ok(adminHtml.includes('/assets/js/threeui.js'), 'admin.html must load ThreeUI.js');
+  assert.ok(adminHtml.includes('/assets/js/threeAdminCockpit.js'), 'admin.html must load threeAdminCockpit.js');
+  assert.ok(adminHtml.includes('anime.min.js'), 'admin.html must load Anime.js');
+  assert.ok(adminHtml.includes('motion@'), 'admin.html must load Motion.dev');
+
+  // Verify key cockpit operational canvases and modules exist
+  assert.ok(adminHtml.includes('id="cockpit-3d-canvas"'), 'admin.html must include the 3D spatial cockpit canvas');
+  assert.ok(adminHtml.includes('id="sku-3d-inspector-canvas"'), 'admin.html must include the 3D SKU inspector turntable canvas');
+  assert.ok(adminHtml.includes('id="cmd-palette-modal"'), 'admin.html must include the Command Palette');
+  assert.ok(adminHtml.includes('bulkApproveAllCatalogForFeed'), 'admin.html must support 1-click bulk approval for all 53 SKUs');
+  assert.ok(adminHtml.includes('exportCourierManifestCSV'), 'admin.html must support Courier Manifest CSV export');
+
+  // Verify ThreeUI and FT_COCKPIT_3D modules load cleanly in Node
+  const threeUiMod = require('../assets/js/threeui.js');
+  const cockpit3dMod = require('../assets/js/threeAdminCockpit.js');
+  assert.equal(typeof threeUiMod.SpatialCanvasPanel, 'function');
+  assert.equal(typeof threeUiMod.SpatialDialGauge, 'function');
+  assert.equal(typeof threeUiMod.createCompositePillar, 'function');
+  assert.equal(typeof cockpit3dMod.AdminCockpit3D, 'function');
+  assert.equal(typeof cockpit3dMod.SkuInspector3D, 'function');
 });

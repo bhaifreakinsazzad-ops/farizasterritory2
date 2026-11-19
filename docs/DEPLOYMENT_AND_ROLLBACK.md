@@ -19,14 +19,13 @@ Contradictory static catch-all host configurations (`vercel.json`, `netlify.toml
 
 1. Open [Supabase SQL Editor](https://supabase.com/dashboard/project/vjbhrdclcnxevunskodm/sql).
 2. If initializing a fresh database, execute `supabase/migrations/01_initial_schema.sql` first.
-3. Execute **`supabase/migrations/02_security_hardening.sql`**:
-   - Creates `public.staff_users` for DB-backed admin/staff RBAC.
-   - Adds `idempotency_key` (with unique partial index), `purchase_capi_sent_at`, `purchase_capi_event_id`, `attribution`, `stock_count`, `stock_verified`, and `price_review`.
-   - Removes legacy plaintext `store_settings.admin_pin`.
-   - Drops insecure `FOR SELECT USING (true)` on `orders` and `FOR ALL USING (true)` policies; enforces least-privilege RLS where PII and admin writes are denied to `anon`/`authenticated` non-staff sessions.
-   - Reconciles `free_delivery_threshold` to `3000`.
-4. Execute **`supabase/seed.sql`** to upsert collections, SKUs (without overwriting existing live `price_bdt` or `stock_verified`), and coupons (`FIRST25`, `FARIZA200`, `FREESHIP`).
-5. Execute **`supabase/tests/rls_security.test.sql`** (verify all allow/deny RLS assertions pass inside a transaction block).
+3. Execute **`supabase/migrations/02_security_hardening.sql`** followed by **`supabase/migrations/03_handover_reconciliation.sql`**:
+   - Adds `public.staff_users` (`full_name`, `role`, `is_active`) and non-exposed `private.is_staff_member()` / `private.is_super_admin()` RBAC helpers without recursive RLS.
+   - Reconciles pre-existing unapproved rows (`approved_at IS NULL`), removes plaintext `admin_pin`, drops insecure policies, and reconciles `free_delivery_threshold` to `3000`.
+   - Adds `public.audit_logs`, `public.capi_outbox` (`SKIP LOCKED` retry queue), `reserved_count` atomic stock RPCs (`ft_create_order_atomic`, `ft_transition_order_inventory`), and CMS columns.
+4. Execute **`supabase/seed.sql`** to upsert collections, SKUs (without overwriting signed `price_bdt` / `stock_verified` / `approved_at`), and coupons (`FIRST25`, `FARIZA200`, `FREESHIP`).
+5. Apply the seller-signed 53-SKU approval CSV (`node scripts/apply_seller_ledger.js` -> outputs `supabase/04_seller_approvals.sql`) once the client fills `docs/SELLER_53_SKU_LEDGER.csv`.
+6. Execute **`supabase/tests/rls_security.test.sql`** (verify all DB-01/DB-02/DB-03 and simulated JWT role checks pass inside a transaction block).
 6. **Provision First Admin Staff User**:
    - In Supabase Dashboard ➔ **Authentication ➔ Users**, create the owner/admin user email + strong password (enable MFA/2FA for owner accounts).
    - Copy the user's UUID and insert into `public.staff_users`:
@@ -69,6 +68,7 @@ Run locally and in GitHub Actions (`.github/workflows/ci.yml`):
 npm ci
 npm run lint
 npm test
+npm run test:e2e
 npm audit --audit-level=high
 ```
 
@@ -85,8 +85,8 @@ Verify live endpoints after starting `npm start`:
 ## 5. Emergency Rollback Strategy
 
 ### Database Migration Rollback
-If `02_security_hardening.sql` introduces a compatibility issue while staging:
-1. Run `supabase/migrations/02_security_hardening_rollback.sql` inside the Supabase SQL Editor (Note: never blindly roll back to insecure public PII policies in live production; prefer pausing traffic via maintenance mode / revoking `anon` table grants if needed).
+If `02_security_hardening.sql` or `03_handover_reconciliation.sql` introduces a compatibility issue while staging:
+1. Run `supabase/migrations/03_handover_reconciliation_rollback.sql` first, and if rolling back `02`, run `supabase/migrations/02_security_hardening_rollback.sql` inside the Supabase SQL Editor (Note: never roll back to insecure public PII policies on a live public domain; pause traffic or keep `orders` `SELECT` restricted to `service_role`).
 2. Re-check `supabase/tests/rls_security.test.sql` after any schema intervention.
 
 ### Application / Marketing Emergency Freeze

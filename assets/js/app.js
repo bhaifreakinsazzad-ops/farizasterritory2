@@ -8,14 +8,36 @@
   'use strict';
 
   const CONFIG = window.FT_CONFIG || {};
-  const COLLECTIONS = window.FT_CATALOG ? window.FT_CATALOG.COLLECTIONS : [];
-  const PRODUCTS = window.FT_CATALOG ? window.FT_CATALOG.PRODUCTS : [];
-  const KEYS = window.FT_CATALOG ? window.FT_CATALOG.KEYS : [];
-  const KEY_META = window.FT_CATALOG ? window.FT_CATALOG.KEY_META : {};
-  const PHOTO_KEYS = window.FT_CATALOG ? window.FT_CATALOG.PHOTO_KEYS : [];
-  const VERIFIED_CATALOG = window.FT_CATALOG ? window.FT_CATALOG.VERIFIED_CATALOG : {};
-  const bySku = sku => (window.FT_CATALOG && window.FT_CATALOG.PRODUCTS_BY_SKU[sku]) || PRODUCTS[0];
-  const colById = id => COLLECTIONS.find(c => c.id === id || c.id === String(id).padStart(2, '0') || c.slug === id) || { name: 'Collection', short: 'Collection', acc: '#8E3B66' };
+  const CATALOG_REF = window.FT_CATALOG || { COLLECTIONS: [], PRODUCTS: [], PRODUCTS_BY_SKU: {} };
+  const COLLECTIONS = CATALOG_REF.COLLECTIONS || [];
+  const PRODUCTS = CATALOG_REF.PRODUCTS || [];
+  const KEYS = CATALOG_REF.KEYS || [];
+  const KEY_META = CATALOG_REF.KEY_META || {};
+  const PHOTO_KEYS = CATALOG_REF.PHOTO_KEYS || [];
+  const VERIFIED_CATALOG = CATALOG_REF.VERIFIED_CATALOG || {};
+  const bySku = sku => (CATALOG_REF.PRODUCTS_BY_SKU && CATALOG_REF.PRODUCTS_BY_SKU[sku]) || PRODUCTS.find(x => x.sku === sku) || PRODUCTS[0];
+  const colById = id => COLLECTIONS.find(c => c.id === id || c.id === String(id).padStart(2, '0') || c.slug === id) || { name: 'Collection', short: 'Collection', acc: '#8E3B66', slug: id };
+
+  function isProductOutOfStock(p) {
+    if (!p || p.is_archived === true || p.is_available === false) return true;
+    if (p.stock_verified === true) {
+      const avail = p.available_stock !== undefined ? Number(p.available_stock) : Math.max(0, Number(p.stock_count ?? 0) - Number(p.reserved_count || 0));
+      return avail <= 0;
+    }
+    return false;
+  }
+
+  function stockBadgeHtml(p) {
+    if (!p) return '';
+    if (isProductOutOfStock(p)) {
+      return `<span class="stock-badge oos">${isBn() ? 'স্টক নেই' : 'Out of stock'}</span>`;
+    }
+    if (p.stock_verified === true) {
+      const avail = p.available_stock !== undefined ? Number(p.available_stock) : Math.max(0, Number(p.stock_count ?? 0) - Number(p.reserved_count || 0));
+      return `<span class="stock-badge verified">${isBn() ? `ভেরিফাইড স্টক (${avail})` : `Verified stock (${avail})`}</span>`;
+    }
+    return `<span class="stock-badge unverified">${isBn() ? 'ম্যানুয়াল স্টক কনফার্মেশন বাকি' : 'Pending manual stock confirmation'}</span>`;
+  }
 
   const priceText = p => {
   if (!p) return 'Inquire for price';
@@ -116,7 +138,7 @@ function syncLangUI(){
   }
   document.documentElement.lang = isBn() ? "bn" : "en";
   const navMap = isBn()
-    ? { home:"হোম", shop:"শপ (৫৩)", collections:"কালেকশন", lookbook:"লুকবুক", about:"আমাদের গল্প", contact:"যোগাযোগ", track:"অর্ডার ট্র্যাক" }
+    ? { home:"হোম", shop:"শপ", collections:"কালেকশন", lookbook:"লুকবুক", about:"আমাদের গল্প", contact:"যোগাযোগ", track:"অর্ডার ট্র্যাক" }
     : { home:"Home", shop:"Shop", collections:"Collections", lookbook:"Lookbook", about:"About", contact:"Contact", track:"Track Order" };
   Object.keys(navMap).forEach(k=>{
     const el = document.querySelector(`[data-nav="${k}"]`);
@@ -200,7 +222,6 @@ function tileInner(p,mini){
 }
 function ph(p,key,opts){
   opts=opts||{};
-  const a=p.assets ? p.assets[key] : null;
   const meta=KEY_META[key] || { label: key, ratio: "r45", auth: "source" };
   const ratio=opts.ratio||meta.ratio||"r45";
   const mini=opts.mini?" ph--mini":"";
@@ -208,8 +229,13 @@ function ph(p,key,opts){
   const w=opts.w||800;
   const src = assetSrc(p, key, w);
   const hasAsset = !!src;
+  const dims = ratio === "r11" ? [1000, 1000] : ratio === "r169" ? [1600, 900] : ratio === "r916" ? [900, 1600] : [800, 1000];
+  const mw = opts.mini ? 200 : dims[0];
+  const mh = opts.mini ? 200 : dims[1];
+  const loadAttr = opts.eager ? 'loading="eager"' : 'loading="lazy"';
+  const fpAttr = (opts.eager && opts.fetchPriority) ? ` fetchpriority="${opts.fetchPriority}"` : '';
   const tag=opts.tag?`<span class="ph-tag${key==="aiStylingPreview"?" ai":""}">${key==="aiStylingPreview"?"AI illustration":esc(opts.tagText||meta.label)}</span>`:"";
-  const img=hasAsset?`<img class="ph-img ok" data-ft="${p.sku}:${key}" src="${src}" alt="${esc(p.title)} — ${esc(meta.label)} (${p.sku})" loading="${opts.eager?"eager":"lazy"}" decoding="async">`:"";
+  const img=hasAsset?`<img class="ph-img ok" data-ft="${p.sku}:${key}" src="${src}" alt="${esc(p.title)} — ${esc(meta.label)} (${p.sku})" width="${mw}" height="${mh}" ${loadAttr}${fpAttr} decoding="async">`:"";
   return `<div class="ph ${ratio}${mini}${contain}" data-ph="${p.sku}:${key}" style="--acc:${p.accent}">${tileInner(p,opts.mini)}${img}${tag}</div>`;
 }
 function setAssetStatus(sku,key,st){
@@ -270,6 +296,10 @@ function syncCommerce(){
 }
 function addToBag(sku,qty,quiet){
   const prod = bySku(sku);
+  if(isProductOutOfStock(prod)){
+    toast(isBn() ? `${prod.titleBn || prod.title} বর্তমানে স্টক আউট রয়েছে` : `${prod.title} is currently out of stock`,{icon:"alert"});
+    return false;
+  }
   if(window.FT_ANALYTICS && prod){
     window.FT_ANALYTICS.trackAddToCart(prod, qty||1);
   }
@@ -287,10 +317,11 @@ function addToBag(sku,qty,quiet){
       if(srcEl) window.FT_ANIME.flyToBag(srcEl);
     }
   }
+  return true;
 }
 function buyNow(sku,qty){
   qty = qty || 1;
-  addToBag(sku, qty, true);
+  if(!addToBag(sku, qty, true)) return;
   closeQuickView();
   closeDrawer();
   location.hash = "#/inquiry";
@@ -326,22 +357,45 @@ function toast(msg,opts){
   if(opts.action) el.querySelector(".t-act").addEventListener("click",()=>{opts.onAction&&opts.onAction();kill();});
   setTimeout(kill,4600);
 }
+/* ================= FOCUS & OVERLAY GUARDS ================= */
+let lastOverlayTrigger = null;
+function setPageShellInert(flag){
+  ["#site-top","#app","footer"].forEach(sel=>{
+    const el=$(sel);
+    if(el) el.inert = !!flag;
+  });
+}
 /* ================= DRAWERS ================= */
 function openDrawer(kind){
   closeSearch(); closeMenu();
+  lastOverlayTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   state.drawer=kind;
   $("#scrim").classList.add("show");
-  $("#drawer-bag").classList.toggle("open",kind==="bag");
-  $("#drawer-wish").classList.toggle("open",kind==="wish");
-  $("#drawer-"+kind).setAttribute("aria-hidden","false");
+  const bagDr=$("#drawer-bag"), wishDr=$("#drawer-wish");
+  bagDr.classList.toggle("open",kind==="bag");
+  wishDr.classList.toggle("open",kind==="wish");
+  bagDr.inert = kind !== "bag";
+  wishDr.inert = kind !== "wish";
+  bagDr.setAttribute("aria-hidden", kind === "bag" ? "false" : "true");
+  wishDr.setAttribute("aria-hidden", kind === "wish" ? "false" : "true");
+  setPageShellInert(true);
   document.body.style.overflow="hidden";
   kind==="bag"?renderBagDrawer():renderWishDrawer();
+  const activeDr = $("#drawer-"+kind);
+  const closeBtn = activeDr && activeDr.querySelector('[data-act="drawer-close"]');
+  if(closeBtn) setTimeout(()=>closeBtn.focus(),40);
 }
 function closeDrawer(){
+  const wasOpen = Boolean(state.drawer);
   state.drawer=null;
   $("#scrim").classList.remove("show");
-  $$(".drawer").forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true");});
+  $$(".drawer").forEach(d=>{d.classList.remove("open");d.setAttribute("aria-hidden","true");d.inert=true;});
+  setPageShellInert(false);
   document.body.style.overflow="";
+  if(wasOpen && lastOverlayTrigger && typeof lastOverlayTrigger.focus === "function"){
+    lastOverlayTrigger.focus();
+    lastOverlayTrigger = null;
+  }
 }
 function lineItem(it,withQty){
   const p=bySku(it.sku);
@@ -375,15 +429,26 @@ function renderWishDrawer(){
 /* ================= SEARCH ================= */
 function openSearch(){
   closeDrawer();closeMenu();
-  $("#search-ov").classList.add("open");$("#search-ov").setAttribute("aria-hidden","false");
+  lastOverlayTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const ov=$("#search-ov");
+  ov.inert = false;
+  ov.classList.add("open");ov.setAttribute("aria-hidden","false");
+  setPageShellInert(true);
   document.body.style.overflow="hidden";
   state.searchSel=0;renderSearch("");
   setTimeout(()=>$("#search-q").focus(),120);
 }
 function closeSearch(){
-  $("#search-ov").classList.remove("open");$("#search-ov").setAttribute("aria-hidden","true");
-  if(!state.drawer)document.body.style.overflow="";
+  const ov=$("#search-ov");
+  const wasOpen = ov && ov.classList.contains("open");
+  ov.classList.remove("open");ov.setAttribute("aria-hidden","true");
+  ov.inert = true;
+  if(!state.drawer){setPageShellInert(false);document.body.style.overflow="";}
   $("#search-q").value="";
+  if(wasOpen && lastOverlayTrigger && typeof lastOverlayTrigger.focus === "function"){
+    lastOverlayTrigger.focus();
+    lastOverlayTrigger = null;
+  }
 }
 function renderSearch(q){
   q=q.trim().toLowerCase();
@@ -405,21 +470,43 @@ function renderSearch(q){
   bindImages($("#search-ov"));
 }
 /* ================= MENU ================= */
-function openMenu(){$("#mmenu").classList.add("open");$("#mmenu").setAttribute("aria-hidden","false");document.body.style.overflow="hidden";$(".menu-btn").setAttribute("aria-expanded","true");}
-function closeMenu(){$("#mmenu").classList.remove("open");$("#mmenu").setAttribute("aria-hidden","true");if(!state.drawer)document.body.style.overflow="";$(".menu-btn").setAttribute("aria-expanded","false");}
+function openMenu(){
+  lastOverlayTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const mm=$("#mmenu");
+  mm.inert = false;
+  mm.classList.add("open");mm.setAttribute("aria-hidden","false");
+  setPageShellInert(true);
+  document.body.style.overflow="hidden";
+  $(".menu-btn").setAttribute("aria-expanded","true");
+  const closeBtn = mm.querySelector('[data-act="menu-close"]');
+  if(closeBtn) setTimeout(()=>closeBtn.focus(),40);
+}
+function closeMenu(){
+  const mm=$("#mmenu");
+  const wasOpen = mm && mm.classList.contains("open");
+  mm.classList.remove("open");mm.setAttribute("aria-hidden","true");
+  mm.inert = true;
+  if(!state.drawer){setPageShellInert(false);document.body.style.overflow="";}
+  $(".menu-btn").setAttribute("aria-expanded","false");
+  if(wasOpen && lastOverlayTrigger && typeof lastOverlayTrigger.focus === "function"){
+    lastOverlayTrigger.focus();
+    lastOverlayTrigger = null;
+  }
+}
 /* ================= SHARED TEMPLATES ================= */
 function pcard(p,i){
   const unitStr = tUnit(p);
   const cautionStr = tCaution(p);
   const unitBadge = unitStr ? `<span class="unit-badge" title="${esc(cautionStr)}">${esc(unitStr)}</span>` : '';
   const isCaution = !!cautionStr;
-  const outBadge = p.is_available === false ? `<span class="tag warn" style="font-size:10px;padding:2px 7px">Out of stock</span>` : '';
-  const overlayLabel = (p.colId==="01"||p.col==="01") ? "Label unverified" : (p.is_available === false ? "Out of stock" : "");
+  const oos = isProductOutOfStock(p);
+  const outBadge = oos ? `<span class="stock-badge oos" style="font-size:10px;padding:2px 7px">${isBn() ? 'স্টক নেই' : 'Out of stock'}</span>` : '';
+  const overlayLabel = (p.colId==="01"||p.col==="01") ? "Label unverified" : (oos ? "Out of stock" : "");
   const primaryTitle = tProdTitle(p);
   const subTitle = tProdSubTitle(p);
   return `<article class="pcard" data-reveal style="--d:${(i%4)*.07}s;--pc-acc:${p.accent}">
     <div class="pc-actions">
-      <button data-act="bag-add" data-sku="${p.sku}" aria-label="Add ${esc(p.title)} to inquiry bag" title="Add to bag">${IC.bag}</button>
+      <button data-act="bag-add" data-sku="${p.sku}" aria-label="Add ${esc(p.title)} to inquiry bag" title="Add to bag"${oos ? ' disabled' : ''}>${IC.bag}</button>
       <button data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" class="${inWish(p.sku)?"on":""}" aria-pressed="${inWish(p.sku)}" aria-label="Save ${esc(p.title)} to wishlist" title="Wishlist">${IC.heart}</button>
       <button data-act="quick-view" data-sku="${p.sku}" aria-label="Quick view of ${esc(p.title)}" title="Quick view">${IC.zoom}</button>
     </div>
@@ -433,12 +520,12 @@ function pcard(p,i){
       ${subTitle ? `<div class="tiny${isBn()?'':' bn'}" style="color:var(--chestnut)">${esc(subTitle)}</div>` : ''}
       <div class="pc-meta">
         <span class="pc-sku">${p.sku}</span>
-        <span class="pc-price">${priceText(p)}${p.priceStatus === 'suggested' ? ' <span class="tiny">· প্রাক্কলিত</span>' : ''}</span>
+        <span class="pc-price">${priceText(p)}${(p.price_review || p.priceStatus === 'suggested') ? ' <span class="tiny">· Provisional</span>' : ''}</span>
       </div>
       ${isCaution ? `<div class="tiny pc-caution">* ${esc(cautionStr)}</div>` : ''}
       <div style="display:flex;gap:6px;margin-top:8px">
-        <button type="button" class="btn btn-line btn-sm" style="flex:1;padding:7px 10px;font-size:11.5px;justify-content:center" data-act="bag-add" data-sku="${p.sku}">${IC.bag}<span>${isBn()?'ব্যাগে যোগ':'Add to Bag'}</span></button>
-        <button type="button" class="btn btn-buynow btn-sm" style="flex:1;padding:7px 10px;font-size:11.5px;justify-content:center" data-act="buynow" data-sku="${p.sku}"><span>${isBn()?'অর্ডার (COD)':'Order COD'}</span>${IC.arrow}</button>
+        <button type="button" class="btn btn-line btn-sm" style="flex:1;padding:7px 10px;font-size:11.5px;justify-content:center" data-act="bag-add" data-sku="${p.sku}"${oos ? ' disabled' : ''}>${IC.bag}<span>${oos ? (isBn()?'স্টক নেই':'Out of Stock') : (isBn()?'ব্যাগে যোগ':'Add to Bag')}</span></button>
+        <button type="button" class="btn btn-buynow btn-sm" style="flex:1;padding:7px 10px;font-size:11.5px;justify-content:center" data-act="buynow" data-sku="${p.sku}"${oos ? ' disabled' : ''}><span>${isBn()?'অর্ডার (COD)':'Order COD'}</span>${IC.arrow}</button>
       </div>
     </div>
   </article>`;
@@ -512,21 +599,25 @@ function pageHome(){
     <div class="container">
       <div class="sec-head">
         <div><span class="overline" data-reveal>Eight houses of craft</span><h2 class="h-sec kinetic-title" data-reveal style="--d:.08s">The Collections</h2></div>
-        <a class="btn btn-line" href="#/collections" data-reveal style="--d:.14s"><span>View all 8 collections</span>${IC.arrow}</a>
+        <div style="display:flex;gap:10px;flex-wrap:wrap" data-reveal style="--d:.14s">
+          <a class="btn btn-line" href="#/collections"><span>View all 8 collections</span>${IC.arrow}</a>
+          <a class="btn btn-ink" href="#/shop" data-shop-all-cta><span>Shop all ${PRODUCTS.length} pieces</span>${IC.arrow}</a>
+        </div>
       </div>
       <div class="col-grid-8">
         ${COLLECTIONS.map((c,i)=>{
           const items=PRODUCTS.filter(p=>p.colId===c.id || p.col===c.id);
-          return `<article class="col-card" data-reveal style="--d:${(i%4)*.08}s;--acc:${c.acc}">
+          const colCount=items.length;
+          return `<article class="col-card" data-col-id="${c.id}" data-reveal style="--d:${(i%4)*.08}s;--acc:${c.acc}">
             <div class="cc-num">
               <span>N° ${c.id}</span>
               <span class="tag tiny" style="background:color-mix(in srgb,${c.acc} 15%,transparent);color:var(--ink)">${esc(c.pillar)}</span>
             </div>
             <h3 class="cc-name">${esc(c.name)}</h3>
             ${c.nameBn ? `<div class="tiny bn col-card-bn" style="color:var(--chestnut)">${esc(c.nameBn)}</div>` : ''}
-            <span class="cc-count">${c.count} piece${c.count>1?"s":""}${c.id==="01"?" · label unverified":""}</span>
+            <span class="cc-count" data-col-count="${c.id}">${colCount} piece${colCount===1?"":"s"}${c.id==="01"?" · label unverified":""}</span>
             <div class="cc-thumbs">${items.slice(0,3).map(p=>ph(p,"main",{mini:true,w:200,dot:false})).join("")}</div>
-            <a class="cc-go" href="#/shop?c=${c.id}">Explore collection ${IC.arrow}</a>
+            <a class="cc-go" href="#/shop?c=${c.id}" data-col-explore="${c.id}"><span data-col-explore-label="${c.id}">Explore ${colCount} piece${colCount===1?"":"s"}</span> ${IC.arrow}</a>
           </article>`;
         }).join("")}
       </div>
@@ -635,11 +726,13 @@ function stageList(){
 }
 function buildStage(){
   const stage=$("#stage"); if(!stage)return;
-  state.stage.list=stageList(); state.stage.idx=Math.min(state.stage.idx,state.stage.list.length-1);
+  state.stage.list=stageList(); state.stage.idx=Math.min(state.stage.idx,Math.max(0, state.stage.list.length-1));
   stage.innerHTML=state.stage.list.map((sku,i)=>{
     const p=bySku(sku);
+    const isFocused = i === state.stage.idx;
+    const isEager = i < 4;
     return `<article class="s-card off" data-i="${i}" data-sku="${sku}" role="option" aria-selected="false" aria-label="${esc(p.title)} — ${p.sku}">
-      ${ph(p,"main",{w:800,eager:i<5,tag:true,tagText:p.sku})}
+      ${ph(p,"main",{w:800,eager:isEager,fetchPriority:isEager?(isFocused?'high':'low'):undefined,tag:true,tagText:p.sku})}
       <button class="hot" style="left:32%;top:36%" data-act="hot" data-sku="${sku}" data-key="detailA" data-x="32" data-y="36" aria-label="Fabric close-up hotspot">${IC.plus}</button>
       <button class="hot" style="left:68%;top:64%" data-act="hot" data-sku="${sku}" data-key="detailB" data-x="68" data-y="64" aria-label="Border detail hotspot">${IC.plus}</button>
       <span class="s-plate">${p.sku} · TAP FOR DETAILS</span>
@@ -845,32 +938,118 @@ function renderShopGrid(){
   $$('[data-act="shop-pillar"]').forEach(ch=>ch.classList.toggle("on",ch.dataset.pillar===state.shop.pillar));
   $$('[data-act="shop-col"]').forEach(ch=>ch.classList.toggle("on",ch.dataset.col===state.shop.c));
 }
-/* ================= COLLECTIONS PAGE ================= */
+/* ================= COLLECTIONS PAGE & DYNAMIC COUNTS ================= */
+function computeDynamicCollectionStats(productsSource){
+  const list = Array.isArray(productsSource) ? productsSource : PRODUCTS;
+  const byColId = {};
+  COLLECTIONS.forEach(c => {
+    const items = list.filter(p => (p.colId === c.id || p.col === c.id));
+    const availableCount = items.filter(p => p.is_available !== false).length;
+    c.count = items.length;
+    byColId[c.id] = {
+      id: c.id,
+      items,
+      count: items.length,
+      availableCount
+    };
+  });
+  return {
+    allCount: list.length,
+    fashionCount: list.filter(p => p.superCategory === "Fashion").length,
+    accessoriesCount: list.filter(p => p.superCategory === "Accessories").length,
+    collectionsCount: COLLECTIONS.length,
+    byColId
+  };
+}
+
+function updateCollectionCountDomNodes(stats){
+  const st = stats || computeDynamicCollectionStats(PRODUCTS);
+  $$("[data-collections-total]").forEach(el => { el.textContent = String(st.allCount); });
+  $$("[data-collections-fashion]").forEach(el => { el.textContent = String(st.fashionCount); });
+  $$("[data-collections-accessories]").forEach(el => { el.textContent = String(st.accessoriesCount); });
+  $$("[data-shop-all-cta]").forEach(el => {
+    const span = el.querySelector("span");
+    if (span) span.textContent = `Shop all ${st.allCount} pieces`;
+  });
+  COLLECTIONS.forEach(c => {
+    const info = st.byColId[c.id] || { count: 0, availableCount: 0 };
+    const colCount = info.count;
+    $$(`[data-col-count="${c.id}"]`).forEach(el => {
+      const suffix = c.id === "01" ? " · label unverified" : "";
+      if (el.dataset.detailed === "1") {
+        el.textContent = `${colCount} piece${colCount===1?"":"s"} (${info.availableCount} available)${suffix}`;
+      } else {
+        el.textContent = `${colCount} piece${colCount===1?"":"s"}${suffix}`;
+      }
+    });
+    $$(`[data-col-explore-label="${c.id}"]`).forEach(el => {
+      el.textContent = `Explore ${colCount} piece${colCount===1?"":"s"}`;
+    });
+  });
+}
+
+function fetchAndSyncCollectionCounts(){
+  const stats = computeDynamicCollectionStats(PRODUCTS);
+  updateCollectionCountDomNodes(stats);
+
+  const fetcher = (window.FT_SUPABASE && typeof window.FT_SUPABASE.getCatalog === "function")
+    ? window.FT_SUPABASE.getCatalog()
+    : fetch("/api/catalog", { credentials: "same-origin" })
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null);
+
+  return Promise.resolve(fetcher).then(liveCatalog => {
+    if (liveCatalog && Array.isArray(liveCatalog.products) && liveCatalog.products.length) {
+      applyLiveCatalog(liveCatalog);
+    }
+    const updatedStats = computeDynamicCollectionStats(PRODUCTS);
+    updateCollectionCountDomNodes(updatedStats);
+    return updatedStats;
+  }).catch(() => stats);
+}
+
 function pageCollections(){
+  const stats = computeDynamicCollectionStats(PRODUCTS);
   return `
   <div class="page-head"><div class="container">
-    <span class="overline" data-reveal>Eight houses of craft</span>
-    <h1 class="h-display kinetic-title" data-reveal style="--d:.06s;margin-top:12px">The Collections</h1>
-    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">53 verified pieces across 8 collections — 5 boutique fashion houses and 3 artisan accessory workshops based in Mirpur, Dhaka.</p>
+    <span class="overline" data-reveal>Eight houses of craft · <span data-collections-total>${stats.allCount}</span> pieces live</span>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-top:12px">
+      <h1 class="h-display kinetic-title" data-reveal style="--d:.06s">The Collections</h1>
+      <div class="collections-summary-bar" data-reveal style="--d:.1s">
+        <a class="chip on" href="#/shop">All <span class="n" data-collections-total>${stats.allCount}</span></a>
+        <a class="chip" href="#/fashion">Fashion <span class="n" data-collections-fashion>${stats.fashionCount}</span></a>
+        <a class="chip" href="#/accessories">Accessories <span class="n" data-collections-accessories>${stats.accessoriesCount}</span></a>
+        <a class="btn btn-ink btn-sm" href="#/shop" data-shop-all-cta><span>Shop all ${stats.allCount} pieces</span>${IC.arrow}</a>
+      </div>
+    </div>
+    <p class="lede" data-reveal style="--d:.12s;margin-top:12px"><span data-collections-total>${stats.allCount}</span> verified pieces across ${stats.collectionsCount} collections — <span data-collections-fashion>${stats.fashionCount}</span> boutique fashion three-piece garments and <span data-collections-accessories>${stats.accessoriesCount}</span> artisan accessories handcrafted in Mirpur, Dhaka.</p>
   </div></div>
   <div class="page-body"><div class="container">
-    ${COLLECTIONS.map((c,i)=>{
-      const items=PRODUCTS.filter(p=>p.col===c.id || p.colId===c.id);
-      return `<div class="crow" data-reveal style="--d:${i*.06}s;--acc:${c.acc}">
-        <div class="crow-num">${c.id}</div>
-        <div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <h2 class="crow-name">${esc(c.name)}</h2>
+    <div class="col-grid-8 collections-page-grid" id="collections-page-grid">
+      ${COLLECTIONS.map((c)=>{
+        const info = stats.byColId[c.id] || { items: [], count: 0, availableCount: 0 };
+        const items = info.items;
+        const colCount = info.count;
+        const availCount = info.availableCount;
+        return `<article class="col-card crow-card" data-col-id="${c.id}" data-anime-stagger="1" style="--acc:${c.acc}">
+          <div class="cc-num">
+            <span>N° ${c.id}</span>
             <span class="tag tiny" style="background:color-mix(in srgb,${c.acc} 15%,transparent);color:var(--ink)">${esc(c.pillar)}</span>
           </div>
-          ${c.nameBn ? `<div class="tiny bn" style="color:var(--chestnut);margin:2px 0 6px">${esc(c.nameBn)}</div>` : ''}
-          <p class="crow-note">${esc(c.note)}</p>
-          <span class="tiny" style="display:block;margin-top:6px">${c.count} verified piece${c.count>1?"s":""}</span>
-        </div>
-        <div class="crow-thumbs">${items.slice(0,3).map(p=>ph(p,"main",{mini:true,w:240,dot:false})).join("")}</div>
-        <a class="btn btn-ink" href="#/shop?c=${c.id}"><span>Explore ${c.count}</span>${IC.arrow}</a>
-      </div>`;}).join("")}
+          <h2 class="cc-name crow-name">${esc(c.name)}</h2>
+          ${c.nameBn ? `<div class="tiny bn col-card-bn" style="color:var(--chestnut)">${esc(c.nameBn)}</div>` : ''}
+          <p class="crow-note cc-note">${esc(c.note)}</p>
+          <span class="cc-count" data-col-count="${c.id}" data-detailed="1">${colCount} piece${colCount===1?"":"s"} (${availCount} available)${c.id==="01"?" · label unverified":""}</span>
+          <div class="cc-thumbs">${items.slice(0,3).map(p=>ph(p,"main",{mini:true,w:240,dot:false})).join("")}</div>
+          <a class="cc-go" href="#/shop?c=${c.id}" data-col-explore="${c.id}"><span data-col-explore-label="${c.id}">Explore ${colCount} piece${colCount===1?"":"s"}</span> ${IC.arrow}</a>
+        </article>`;
+      }).join("")}
+    </div>
     <div style="margin-top:36px">${offerNote()}</div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px" data-reveal>
+      <a class="btn btn-ink" href="#/shop" data-shop-all-cta><span>Shop all ${stats.allCount} pieces</span>${IC.arrow}</a>
+      ${messengerBtn("Inquire about a collection")}
+    </div>
   </div></div>`;
 }
 /* ================= PRODUCT PAGE ================= */
@@ -904,19 +1083,25 @@ function pageProduct(sku){
         </div>
       </div>
       <div class="prod-info" data-reveal style="--d:.1s">
-        <span class="tag" style="background:color-mix(in srgb,${p.accent} 16%,var(--cream3));color:var(--ink2)">${esc(p.collection.name)}</span>
-        ${(p.colId==="01"||p.col==="01")?`<span class="tag warn" style="margin-left:6px">Seller label · unverified</span>`:""}
-        ${p.is_available===false?`<span class="tag warn" style="margin-left:6px">Currently out of stock · Inquire</span>`:""}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+          <span class="tag" style="background:color-mix(in srgb,${p.accent} 16%,var(--cream3));color:var(--ink2)">${esc(p.collection ? p.collection.name : '')}</span>
+          ${(p.colId==="01"||p.col==="01")?`<span class="tag warn">Seller label · unverified</span>`:""}
+          ${stockBadgeHtml(p)}
+        </div>
         <h1 class="pi-title${isBn()?' bn':''}">${esc(tProdTitle(p))}</h1>
         ${tProdSubTitle(p) ? `<div class="${isBn()?'':'bn'}" style="color:var(--chestnut);font-size:15px;margin:2px 0 4px">${esc(tProdSubTitle(p))}</div>` : ''}
-        <span class="pp-sku">${p.sku} · ${esc(p.slug)}</span>
-        <div class="pi-price"><b>${priceText(p)}</b><span class="tiny">${p.priceStatus === 'suggested' ? 'Provisional reference · confirm with seller' : 'Boutique catalog price · Cash on Delivery'}</span></div>
+        <span class="pp-sku">${p.sku} · ${esc(p.slug || p.sku.toLowerCase())}</span>
+        ${(p.unitBn || p.unit) ? `<div class="unit-callout">${IC.tag}<span><b>${isBn()?'বিক্রয় একক:':'Selling Unit:'}</b> ${esc(tUnit(p))}</span></div>` : ''}
+        <div class="pi-price"><b>${priceText(p)}</b><span class="tiny">${(p.price_review || p.priceStatus === 'suggested') ? 'Provisional reference · confirm with seller' : 'Boutique catalog price · Cash on Delivery'}</span></div>
         <p class="small${isBn()?' bn':''}" style="margin-bottom:16px">${esc(tProdDesc(p) || "Listed BDT prices come from the official boutique catalog and are confirmed before courier dispatch. First-order offer up to 25%* and free delivery* as advertised.")}</p>
-        <div class="pi-buy" style="flex-wrap:wrap">
-          <span class="qty" aria-label="Quantity"><button data-act="piq-dec" aria-label="Decrease quantity">${IC.minus}</button><output id="pi-qty">1</output><button data-act="piq-inc" aria-label="Increase quantity">${IC.plus}</button></span>
-          <button class="btn btn-ink" data-act="bag-add-qty" data-sku="${p.sku}">${IC.bag}<span>${isBn()?'ব্যাগে যোগ করুন':'Add to inquiry bag'}</span></button>
-          <button class="btn btn-buynow" data-act="buynow-qty" data-sku="${p.sku}"><span>${isBn()?'অর্ডার করুন (COD)':'Order Now (COD)'}</span>${IC.arrow}</button>
-        </div>
+        ${(() => {
+          const oos = isProductOutOfStock(p);
+          return `<div class="pi-buy" style="flex-wrap:wrap">
+            <span class="qty" aria-label="Quantity"><button data-act="piq-dec" aria-label="Decrease quantity"${oos ? ' disabled' : ''}>${IC.minus}</button><output id="pi-qty">1</output><button data-act="piq-inc" aria-label="Increase quantity"${oos ? ' disabled' : ''}>${IC.plus}</button></span>
+            <button class="btn btn-ink" data-act="bag-add-qty" data-sku="${p.sku}"${oos ? ' disabled' : ''}>${IC.bag}<span>${oos ? (isBn()?'স্টক নেই':'Out of stock') : (isBn()?'ব্যাগে যোগ করুন':'Add to inquiry bag')}</span></button>
+            <button class="btn btn-buynow" data-act="buynow-qty" data-sku="${p.sku}"${oos ? ' disabled' : ''}><span>${oos ? (isBn()?'স্টক শেষ':'Unavailable') : (isBn()?'অর্ডার করুন (COD)':'Order Now (COD)')}</span>${IC.arrow}</button>
+          </div>`;
+        })()}
         <div class="pi-buy" style="flex-wrap:wrap">
           ${messengerBtn("Ask on Messenger",p.sku)}
           ${isRealWhatsapp() ? `<button type="button" data-act="wa" data-sku="${p.sku}" class="btn btn-line" style="display:inline-flex;align-items:center;gap:8px">${IC.wa}<span>WhatsApp Inquiry</span></button>` : ''}
@@ -1142,52 +1327,86 @@ function pageInquiry(){
   }
   return `
   <div class="page-head"><div class="container">
-    <span class="overline" data-reveal>Checkout · inquiry-based</span>
-    <h1 class="h-display" data-reveal style="--d:.06s;margin-top:12px">Order Inquiry</h1>
-    <p class="lede" data-reveal style="--d:.12s;margin-top:10px">No payment is taken online. Prepare your inquiry with delivery details & voucher codes, then send it via WhatsApp or Messenger — we confirm sizing and courier dispatch personally.</p>
+    <span class="overline" data-reveal>${isBn() ? 'চেকআউট · ক্যাশ অন ডেলিভারি' : 'Checkout · inquiry-based COD'}</span>
+    <h1 class="h-display${isBn() ? ' bn' : ''}" data-reveal style="--d:.06s;margin-top:12px">${isBn() ? 'অর্ডার ইনকোয়ারি' : 'Order Inquiry'}</h1>
+    <p class="lede${isBn() ? ' bn' : ''}" data-reveal style="--d:.12s;margin-top:10px">${isBn() ? 'অনলাইনে কোনো অগ্রিম পেমেন্ট নেওয়া হয় না। ডেলিভারির তথ্য দিন — আমরা কনফার্ম করে কুরিয়ারের মাধ্যমে পাঠিয়ে দেবো।' : 'No payment is taken online. Prepare your COD order with delivery details & voucher codes — seller confirms sizing, stock, and courier dispatch before shipping.'}</p>
   </div></div>
   <div class="page-body"><div class="container"><div id="inq-wrap">
     <div class="two-col">
       <form class="panel" data-form="inquiry" data-reveal novalidate>
-        <span class="overline" style="margin-bottom:18px">Customer & Delivery Details</span>
-        <div class="field" data-f="name"><label for="f-name">Full name *</label><input id="f-name" name="name" autocomplete="name" placeholder="e.g. Fariza Rahman"><span class="f-err">Please enter your name.</span></div>
-        <div class="field" data-f="phone"><label for="f-phone">Phone / WhatsApp contact *</label><input id="f-phone" name="phone" inputmode="tel" autocomplete="tel" placeholder="e.g. 01XXXXXXXXX"><span class="f-err">Please enter a valid contact number (at least 6 digits).</span></div>
-        
+        <span class="overline" style="margin-bottom:18px">${isBn() ? 'ক্রেতা ও ডেলিভারির তথ্য' : 'Customer & Delivery Details'}</span>
+        <div class="field" data-f="name">
+          <label for="f-name">${isBn() ? 'আপনার পূর্ণ নাম *' : 'Full name *'}</label>
+          <p class="f-hint">Full recipient name printed on the Steadfast courier parcel label.</p>
+          <input id="f-name" name="name" required minlength="2" autocomplete="name" aria-invalid="false" data-error="err-f-name" placeholder="e.g. Fariza Rahman">
+          <span class="f-err" id="err-f-name">Please enter your full name (at least 2 characters).</span>
+        </div>
+        <div class="field" data-f="phone">
+          <label for="f-phone">${isBn() ? 'মোবাইল / হোয়াটসঅ্যাপ নম্বর *' : 'Bangladeshi mobile contact *'}</label>
+          <p class="f-hint">11-digit BD mobile (01XXXXXXXXX or +8801XXXXXXXXX) — needed for COD call &amp; tracking.</p>
+          <input id="f-phone" name="phone" type="tel" required inputmode="tel" autocomplete="tel" aria-invalid="false" data-error="err-f-phone" placeholder="e.g. 017XXXXXXXX">
+          <span class="f-err" id="err-f-phone">Please enter a valid 11-digit Bangladeshi mobile number (e.g., 017XXXXXXXX).</span>
+        </div>
+        <div class="field" data-f="email">
+          <label for="f-email">Email (optional)</label>
+          <p class="f-hint">Optional email if you want digital reference confirmation.</p>
+          <input id="f-email" name="email" type="email" autocomplete="email" aria-invalid="false" data-error="err-f-email" placeholder="e.g. customer@example.com">
+          <span class="f-err" id="err-f-email">Please enter a valid email address.</span>
+        </div>
+
         <!-- Delivery Zone Selector -->
         <div class="field" data-f="zone">
-          <label style="font-weight:600;margin-bottom:8px;display:block">Delivery Zone &amp; Courier Rate *</label>
+          <label style="font-weight:600;margin-bottom:8px;display:block">${isBn() ? 'ডেলিভারি জোন ও চার্জ *' : 'Delivery Zone & Courier Rate *'}</label>
           <div class="zone-selector" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
             <label class="zone-card ${!isOut?'active':''}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid ${!isOut?'var(--chestnut)':'var(--line)'};background:${!isOut?'var(--cream2)':'var(--surface)'};border-radius:10px;cursor:pointer;transition:all .2s ease">
               <input type="radio" name="delivery_zone" value="dhaka" ${!isOut?'checked':''} style="accent-color:var(--chestnut)">
               <div>
-                <div style="font-weight:600;font-size:13.5px">Inside Dhaka</div>
-                <div style="font-size:11.5px;color:var(--ink2)">Fast Courier · ৳${fees.dhaka}</div>
+                <div style="font-weight:600;font-size:13.5px">${isBn() ? 'ঢাকার ভেতরে' : 'Inside Dhaka'}</div>
+                <div style="font-size:11.5px;color:var(--ink2)">24–72 hrs · ৳${fees.dhaka}</div>
               </div>
             </label>
             <label class="zone-card ${isOut?'active':''}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border:1.5px solid ${isOut?'var(--chestnut)':'var(--line)'};background:${isOut?'var(--cream2)':'var(--surface)'};border-radius:10px;cursor:pointer;transition:all .2s ease">
               <input type="radio" name="delivery_zone" value="outside_dhaka" ${isOut?'checked':''} style="accent-color:var(--chestnut)">
               <div>
-                <div style="font-weight:600;font-size:13.5px">Outside Dhaka</div>
-                <div style="font-size:11.5px;color:var(--ink2)">Nationwide COD · ৳${fees.outside}</div>
+                <div style="font-weight:600;font-size:13.5px">${isBn() ? 'ঢাকার বাইরে' : 'Outside Dhaka'}</div>
+                <div style="font-size:11.5px;color:var(--ink2)">3–5 days nationwide · ৳${fees.outside}</div>
               </div>
             </label>
           </div>
         </div>
 
-        <div class="field" data-f="district"><label for="f-district">District / City *</label><input id="f-district" name="district" autocomplete="address-level2" placeholder="e.g. Dhaka, Chittagong, Sylhet..."><span class="f-err">Please enter your district.</span></div>
-        <div class="field" data-f="address"><label for="f-address">Delivery address *</label><textarea id="f-address" name="address" rows="3" autocomplete="street-address" placeholder="House, road, area/thana…"></textarea><span class="f-err">Please enter your delivery address.</span></div>
+        <div class="field" data-f="district">
+          <label for="f-district">${isBn() ? 'জেলা / শহর *' : 'District / City *'}</label>
+          <p class="f-hint">City or district for Steadfast Nationwide COD routing.</p>
+          <input id="f-district" name="district" required minlength="2" autocomplete="address-level2" aria-invalid="false" data-error="err-f-district" placeholder="e.g. Dhaka, Chittagong, Sylhet">
+          <span class="f-err" id="err-f-district">Please enter your district or city.</span>
+        </div>
+        <div class="field" data-f="address">
+          <label for="f-address">${isBn() ? 'পূর্ণ ডেলিভারি ঠিকানা *' : 'Delivery address *'}</label>
+          <p class="f-hint">Include house number, road, block/sector, and nearby landmark.</p>
+          <textarea id="f-address" name="address" required minlength="5" rows="3" autocomplete="street-address" aria-invalid="false" data-error="err-f-address" placeholder="House, road, area/thana…"></textarea>
+          <span class="f-err" id="err-f-address">Please enter a complete delivery street address (at least 5 characters).</span>
+        </div>
         <div class="field"><label for="f-notes">Notes (optional)</label><textarea id="f-notes" name="notes" rows="2" placeholder="Sizing questions, colour preferences, gift wrap…"></textarea></div>
         <div class="field"><label>Preferred reply via</label>
           <div class="radio-row">
-            <label><input type="radio" name="contact" value="WhatsApp" checked> WhatsApp</label>
-            <label><input type="radio" name="contact" value="Messenger"> Messenger</label>
+            ${isRealWhatsapp() ? '<label><input type="radio" name="contact" value="WhatsApp" checked> WhatsApp</label>' : ''}
+            <label><input type="radio" name="contact" value="Messenger"${isRealWhatsapp() ? '' : ' checked'}> Messenger</label>
             <label><input type="radio" name="contact" value="Phone call"> Phone call</label>
           </div>
         </div>
+        <label class="check-row" data-f="policy">
+          <input type="checkbox" name="policy_ack" id="f-policy" required>
+          <span>${isBn()
+            ? 'আমি <a href="#/policies" style="text-decoration:underline;color:var(--chestnut)">স্টোর নীতিমালা</a> (ক্যাশ অন ডেলিভারি যাচাইকরণ, ডেলিভারি চার্জ ও রিটার্ন/এক্সচেঞ্জ শর্ত) মেনে নিচ্ছি।'
+            : 'I accept the <a href="#/policies" style="text-decoration:underline;color:var(--chestnut)">Store Policies</a> (COD courier verification, 48-hr damaged/wrong item unboxing claim, and cancellation/exchange rules).'}
+            <span class="f-err" id="err-f-policy" style="display:none;margin-top:4px">Please confirm you agree to our store policies before submitting.</span>
+          </span>
+        </label>
         <label style="display:flex;gap:9px;align-items:center;font-size:13.5px;margin:6px 0 18px"><input type="checkbox" name="clearbag" style="accent-color:var(--chestnut)"> Clear my bag after preparing the inquiry</label>
         <div id="inq-submit-error" style="margin-bottom:12px"></div>
-        <button type="submit" id="inq-submit-btn" class="btn btn-ink btn-block"><span>Prepare inquiry &amp; register order</span>${IC.arrow}</button>
-        <p class="tiny" style="margin-top:12px">Cash on Delivery applies. No payment is taken online.</p>
+        <button type="submit" id="inq-submit-btn" class="btn btn-ink btn-block"><span>${isBn() ? 'অর্ডার কনফার্মেশন ইনকোয়ারি পাঠান' : 'Prepare inquiry & register order'}</span>${IC.arrow}</button>
+        <p class="tiny" style="margin-top:12px">Cash on Delivery applies. Inside Dhaka ৳${fees.dhaka} (24–72 hrs) · Outside Dhaka ৳${fees.outside} (3–5 business days).</p>
       </form>
       <div class="panel sticky" data-reveal style="--d:.1s" id="inq-summary"></div>
     </div>
@@ -1385,15 +1604,82 @@ function pageFAQ(){
   </div></div></div>`;
 }
 function pagePolicies(){
+  const fees = getDeliveryFees();
   return `
-  <div class="page-head"><div class="container"><span class="overline" data-reveal>Plain words, no fine-print tricks</span><h1 class="h-display" data-reveal style="--d:.06s;margin-top:12px">Policies &amp; Offer Terms</h1></div></div>
+  <div class="page-head"><div class="container">
+    <span class="overline" data-reveal>Plain words · EN &amp; বাংলা</span>
+    <h1 class="h-display${isBn()?' bn':''}" data-reveal style="--d:.06s;margin-top:12px">${isBn() ? 'স্টোর নীতিমালা ও শর্তাবলী' : 'Policies &amp; Offer Terms'}</h1>
+    <p class="lede" data-reveal style="--d:.1s;margin-top:10px">Complete bilingual transparency covering Cash on Delivery verification, courier dispatch SLA, returns/exchanges, COD refusal/cancellation, high-risk selling units, vouchers, and cookie privacy.</p>
+  </div></div>
   <div class="page-body"><div class="container">
-    <div class="pol-sec" data-reveal><h3>${IC.tag} Ordering &amp; pricing</h3><p>This boutique operates an inquiry-based Cash on Delivery (COD) checkout. Adding items to the bag and registering an inquiry prepares a tracked reference without online payment. Final sizing, availability and delivery timing are confirmed with the seller via WhatsApp or Messenger.</p></div>
-    <div class="pol-sec" data-reveal><h3>${IC.truck} Advertised offers &amp; delivery</h3><p>The brand advertises first-order discounts of up to 25% (code FIRST25), flat welcome vouchers (FARIZA200), and free delivery promotions with nationwide Cash on Delivery. When entered in your order inquiry, active voucher discounts are applied directly to your order summary before submission.</p></div>
-    <div class="pol-sec" data-reveal><h3>${IC.eye} Imagery &amp; authenticity</h3><p>Real product photography is always primary across all 53 catalog pieces. Assets are mapped per SKU: main, original and alternate photographs; 1:1 and 9:16 social frames; detail close-ups; and optional AI styling previews on select fashion garments. AI previews are labelled “ai-illustration” and kept separate from real product photographs.</p></div>
-    <div class="pol-sec" data-reveal><h3>${IC.info} Privacy &amp; secure data</h3><p>Your bag and wishlist are stored in your browser's local storage. When you submit an order inquiry, your reference and contact details are registered so that you can track fulfillment status live in real-time. We never store payment card credentials, and your personal contact information is kept strictly private.</p></div>
-    <div class="pol-sec" data-reveal><h3>${IC.flower} Returns &amp; exchanges</h3><p>Return, exchange, and bespoke accessory color-customization terms are confirmed directly with the seller on WhatsApp or Messenger before courier dispatch.</p></div>
-    <div class="pol-sec" data-reveal><h3>${IC.alert} Label disclaimer</h3><p>The collection “01 — Aarong Seller Label” reflects the seller's original catalog label. Official affiliation with Aarong is unverified and is not claimed by this site.</p></div>
+    <div class="pol-sec" data-reveal>
+      <h3>${IC.truck} 1. Delivery Timeline SLA &amp; Cash on Delivery (COD)</h3>
+      <div class="bilingual-policy-grid">
+        <div class="bilingual-card">
+          <h3>English</h3>
+          <p>All orders are fulfilled on a Cash on Delivery (COD) basis via Steadfast Courier from Mirpur, Dhaka — no online prepayment is collected on this site. <b>Inside Dhaka Metro:</b> ৳${fees.dhaka}, estimated 24–72 hours after phone/Messenger confirmation. <b>Outside Dhaka (Nationwide):</b> ৳${fees.outside}, estimated 3–5 business days. Remote upazilas may require 4–7 business days.</p>
+        </div>
+        <div class="bilingual-card bn">
+          <h3>বাংলা</h3>
+          <p>আমাদের সকল অর্ডার মিরপুর, ঢাকা থেকে স্টেডফাস্ট কুরিয়ারের মাধ্যমে সম্পূর্ণ ক্যাশ অন ডেলিভারিতে (COD) পাঠানো হয়। <b>ঢাকার ভেতরে:</b> ডেলিভারি চার্জ ৳${fees.dhaka} (কনফার্মেশনের পর আনুমানিক ২৪–৭২ ঘণ্টা)। <b>ঢাকার বাইরে সারাদেশে:</b> ডেলিভারি চার্জ ৳${fees.outside} (আনুমানিক ৩–৫ কার্যদিবস)।</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="pol-sec" data-reveal>
+      <h3>${IC.flower} 2. Return, Exchange &amp; Unboxing Claim Policy</h3>
+      <div class="bilingual-policy-grid">
+        <div class="bilingual-card">
+          <h3>English</h3>
+          <p>We encourage inspecting your parcel in front of the delivery rider. If a piece arrives damaged, defective, or incorrect, report it with clear unboxing video/photos within <b>48 hours of delivery</b> via <a href="#/contact" style="text-decoration:underline;color:var(--chestnut)">Messenger Concierge</a>. Defective/incorrect items qualify for a free replacement or size exchange; change-of-mind returns must remain unworn, unwashed, and with original tags intact (return courier cost borne by customer).</p>
+        </div>
+        <div class="bilingual-card bn">
+          <h3>বাংলা</h3>
+          <p>ডেলিভারি রাইডারের সামনে পার্সেল যাচাই করে নেওয়ার অনুরোধ রইল। কোনো পণ্যে ত্রুটি বা ভুল আইটেম থাকলে ডেলিভারি পাওয়ার <b>৪৮ ঘণ্টার মধ্যে</b> আনবক্সিং ভিডিও/ছবিসহ আমাদের মেসেঞ্জারে জানান। ত্রুটিপূর্ণ পণ্যের ক্ষেত্রে ফ্রি রিপ্লেসমেন্ট দেওয়া হয়; ব্যক্তিগত কারণে এক্সচেঞ্জের জন্য পণ্য অব্যবহৃত অবস্থায় থাকতে হবে।</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="pol-sec" data-reveal>
+      <h3>${IC.alert} 3. Order Cancellation &amp; COD Refusal Policy</h3>
+      <div class="bilingual-policy-grid">
+        <div class="bilingual-card">
+          <h3>English</h3>
+          <p>Orders remain editable or cancellable free of charge until they enter <b>Confirmed / Dispatched</b> status by contacting us with your Order Reference (<code>FT-...</code>). Unreachable phone verification after 3 attempts or repeated unverified COD refusal without valid defect may result in requiring advance courier confirmation on future bookings.</p>
+        </div>
+        <div class="bilingual-card bn">
+          <h3>বাংলা</h3>
+          <p>কুরিয়ারে বুকিং হওয়ার (Confirmed/Shipped) আগ পর্যন্ত অর্ডার রেফারেন্স (<code>FT-...</code>) জানিয়ে বিনামূল্যে অর্ডার পরিবর্তন বা বাতিল করা যায়। কনফার্মেশন কলের পর অকারণে ডেলিভারি গ্রহণ না করলে পরবর্তী অর্ডারের ক্ষেত্রে অগ্রিম ডেলিভারি চার্জ প্রযোজ্য হতে পারে।</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="pol-sec" data-reveal>
+      <h3>${IC.tag} 4. Voucher Terms &amp; Selling Unit Disclosures</h3>
+      <div class="bilingual-policy-grid">
+        <div class="bilingual-card">
+          <h3>English</h3>
+          <p>Active boutique codes are <code>FIRST25</code> (25% off up to ৳500, min spend ৳2,000), <code>FARIZA200</code> (৳200 off, min spend ৳2,000), and <code>FREESHIP</code> (free delivery on orders over ৳${CONFIG.freeShippingThreshold || 3000}). Only one coupon applies per order; discounts are verified server-side. Single-unit items (including decorative mirrors, individual embroidered kurtis/three-pieces, pendants with/without chains, and single bangles vs pairs) explicitly display their <b>Selling Unit</b> before checkout.</p>
+        </div>
+        <div class="bilingual-card bn">
+          <h3>বাংলা</h3>
+          <p>অর্ডার ইনকোয়ারি ফর্মে <code>FIRST25</code> (২৫% ছাড়, সর্বোচ্চ ৳৫০০), <code>FARIZA200</code> (৳২০০ ছাড়) বা <code>FREESHIP</code> (৳৩,০০০+ অর্ডারে ফ্রি ডেলিভারি) ব্যবহার করা যাবে। প্রতিটি পণ্যের <b>বিক্রয় একক</b> (যেমন সিঙ্গেল পিস, পেয়ার/জোড়া, থ্রি-পিস বা কুর্তি, চেইনসহ বা ছাড়া) প্রোডাক্ট কার্ডে স্পষ্টভাবে উল্লেখ রয়েছে।</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="pol-sec" data-reveal>
+      <h3>${IC.eye} 5. Imagery Authenticity &amp; Seller Labels</h3>
+      <p>Real source photographs are displayed first on all curated pieces. Optional AI-styled editorial concepts are tagged <b>“AI illustration — not actual product”</b>. Collection N° 01 ("Aarong Seller Label") reflects the seller's original catalog attribution; official brand affiliation is not claimed unless explicitly stated.</p>
+    </div>
+
+    <div class="pol-sec" data-reveal>
+      <h3>${IC.info} 6. Privacy, Analytics Consent &amp; Tracking Data</h3>
+      <p>Your inquiry bag, wishlist, and recent non-PII Order Reference list remain locally in your browser. Submitted order details are stored securely in PostgreSQL (Supabase) solely for seller verification, delivery via courier, and phone-challenged tracking (<code>#/track</code>). Meta Pixel and Conversions API telemetry stay disabled unless you explicitly accept analytics cookies.</p>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+        <button type="button" class="btn btn-line btn-sm" data-act="consent-reset">Manage Cookie / Analytics Preference</button>
+      </div>
+    </div>
   </div></div>`;
 }
 function page404(){
@@ -1403,10 +1689,16 @@ function page404(){
 /* ================= LIGHTBOX ================= */
 function lbList(sku){const p=bySku(sku);const l=PHOTO_KEYS.filter(k=>p.assets&&p.assets[k]);return l.length?l:["main"];}
 function openLB(sku,key){
+  lastOverlayTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   state.lb={sku,key,scale:1,tx:0,ty:0,list:lbList(sku)};
-  $("#lightbox").classList.add("open");$("#lightbox").setAttribute("aria-hidden","false");
+  const lb=$("#lightbox");
+  lb.inert = false;
+  lb.classList.add("open");lb.setAttribute("aria-hidden","false");
+  setPageShellInert(true);
   document.body.style.overflow="hidden";
   renderLB();
+  const closeBtn = lb.querySelector('[data-act="lb-close"]');
+  if(closeBtn) setTimeout(()=>closeBtn.focus(),40);
 }
 function renderLB(){
   const {sku,key}=state.lb,p=bySku(sku),meta=KEY_META[key]||{label:key,ratio:"r45",auth:"source"};
@@ -1420,7 +1712,17 @@ function applyLB(){
   const f=$("#lb-fig");
   f.style.transform=`translate(${state.lb.tx}px,${state.lb.ty}px) scale(${state.lb.scale})`;
 }
-function closeLB(){$("#lightbox").classList.remove("open");$("#lightbox").setAttribute("aria-hidden","true");if(!state.drawer)document.body.style.overflow="";}
+function closeLB(){
+  const lb=$("#lightbox");
+  const wasOpen = lb && lb.classList.contains("open");
+  lb.classList.remove("open");lb.setAttribute("aria-hidden","true");
+  lb.inert = true;
+  if(!state.drawer){setPageShellInert(false);document.body.style.overflow="";}
+  if(wasOpen && lastOverlayTrigger && typeof lastOverlayTrigger.focus === "function"){
+    lastOverlayTrigger.focus();
+    lastOverlayTrigger = null;
+  }
+}
 function lbStep(d){
   const l=state.lb.list,i=l.indexOf(state.lb.key);
   state.lb.key=l[(i+d+l.length)%l.length];state.lb.scale=1;state.lb.tx=0;state.lb.ty=0;renderLB();
@@ -1435,12 +1737,21 @@ function stHtml(st){
 function openModal(tab){
   state.reportTab=tab||"assets";
   closeDrawer();closeSearch();closeMenu();
-  $("#modal").classList.add("open");$("#modal").setAttribute("aria-hidden","false");
-  document.body.style.overflow="hidden";
+  const dlg=$("#modal");
+  if(dlg){
+    if(typeof dlg.showModal==="function"){if(!dlg.open) dlg.showModal();}
+    else dlg.setAttribute("open","");
+  }
   renderModal();
   if(state.reportTab==="assets"&&!state.reportRan)runReport();
 }
-function closeModal(){$("#modal").classList.remove("open");$("#modal").setAttribute("aria-hidden","true");if(!state.drawer)document.body.style.overflow="";}
+function closeModal(){
+  const dlg=$("#modal");
+  if(dlg){
+    if(typeof dlg.close==="function"){if(dlg.open) dlg.close();}
+    else dlg.removeAttribute("open");
+  }
+}
 function renderModal(){
   $$(".mo-tabs .chip").forEach(c=>c.classList.toggle("on",c.dataset.tab===state.reportTab));
   const body=$("#mo-body");
@@ -1864,13 +2175,14 @@ function initMotionInView() {
   if (window.Motion && typeof window.Motion.inView === "function" && typeof window.Motion.animate === "function") {
     try {
       const targets = ".pcard:not([data-inview-bound]), .pair-card:not([data-inview-bound]), .offer:not([data-inview-bound])";
-      window.Motion.inView(targets, (element) => {
-        if (element.dataset.inviewBound) return;
+      window.Motion.inView(targets, (arg) => {
+        const element = arg && arg.target ? arg.target : arg;
+        if (!element || !element.dataset || element.dataset.inviewBound) return;
         element.dataset.inviewBound = "1";
         window.Motion.animate(
           element,
-          { opacity: [0.25, 1], transform: ["translateY(22px) scale(0.98)", "translateY(0px) scale(1)"] },
-          { type: "spring", stiffness: 280, damping: 24 }
+          { opacity: [0.25, 1], transform: ["translateY(16px)", "translateY(0px)"] },
+          { duration: 0.45, easing: [0.22, 1, 0.36, 1] }
         );
       }, { amount: 0.12 });
     } catch (e) {}
@@ -1884,6 +2196,7 @@ function openQuickView(sku) {
   const card = $("#quick-view-card");
   if (!ov || !card) return;
 
+  const oos = isProductOutOfStock(p);
   const unitBadge = p.unitBn ? `<span class="unit-badge">${esc(p.unitBn)}</span>` : '';
   const keys = ["main", "detailA", "detailB", "original"].filter(k => p.assets && p.assets[k]);
   const specLine = p.superCategory === 'Accessories'
@@ -1891,7 +2204,7 @@ function openQuickView(sku) {
     : [p.details && p.details.fabric, p.details && p.details.kameez, p.details && p.details.stitching].filter(Boolean).join(' · ');
 
   card.innerHTML = `
-    <button class="iconbtn" data-act="quick-view-close" aria-label="Close quick view" style="position:absolute;right:18px;top:18px;z-index:10">${IC.x}</button>
+    <button class="iconbtn qv-close" data-act="quick-view-close" aria-label="Close quick view" style="position:absolute;right:18px;top:18px;z-index:10">${IC.x}</button>
     <div class="qv-gallery">
       <div class="qv-main-ph ph r45" id="qv-main-fig" data-act="lb-open" data-sku="${p.sku}" data-key="main" title="Click to enlarge">
         ${ph(p, "main", { w: 800, dot: false })}
@@ -1909,23 +2222,23 @@ function openQuickView(sku) {
         <span class="overline" style="font-size:10px">${esc(p.collection ? p.collection.short : '')} · ${p.sku}</span>
         ${unitBadge}
       </div>
-      <h2 style="font-size:clamp(1.5rem, 2.5vw, 2.1rem);line-height:1.2;margin:4px 0 8px;">${esc(p.title)}</h2>
-      ${p.titleBn ? `<div class="bn" style="color:var(--chestnut);font-size:14.5px;margin-bottom:8px;">${esc(p.titleBn)}</div>` : ''}
-      <div style="font-size:20px;font-weight:600;color:var(--caramel);margin:12px 0;padding:10px 0;border-top:1.5px dashed var(--line);border-bottom:1.5px dashed var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <h2 style="font-size:clamp(1.5rem, 2.5vw, 2.1rem);line-height:1.2;margin:4px 0 8px;">${esc(tProdTitle(p))}</h2>
+      ${tProdSubTitle(p) ? `<div class="${isBn()?'':'bn'}" style="color:var(--chestnut);font-size:14.5px;margin-bottom:8px;">${esc(tProdSubTitle(p))}</div>` : ''}
+      <div style="font-size:20px;font-weight:600;color:var(--caramel);margin:12px 0;padding:10px 0;border-top:1.5px dashed var(--line);border-bottom:1.5px dashed var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
         <span>${priceText(p)}</span>
-        ${p.is_available === false ? `<span class="tag warn" style="font-size:11px">Out of stock</span>` : ''}
+        ${stockBadgeHtml(p)}
       </div>
       <p style="font-size:13.5px;color:var(--ink2);line-height:1.6;margin-bottom:12px;">
-        ${esc(p.descriptionEn || p.descriptionBn || '')}
+        ${esc(tProdDesc(p) || '')}
       </p>
       ${specLine ? `<div class="tiny bn" style="background:var(--cream2);padding:10px 14px;border-radius:9px;margin-bottom:10px;line-height:1.6"><b>বিবরণ:</b> ${esc(specLine)}</div>` : ''}
-      ${p.cautionBn ? `<div class="tiny bn" style="color:var(--ink3);margin-bottom:14px;line-height:1.5">* ${esc(p.cautionBn)}</div>` : ''}
+      ${(p.cautionBn || p.cautionEn) ? `<div class="tiny bn" style="color:var(--ink3);margin-bottom:14px;line-height:1.5">* ${esc(tCaution(p))}</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:auto;flex-wrap:wrap">
-        <button class="btn btn-ink" style="flex:1" data-act="bag-add" data-sku="${p.sku}">
-          ${IC.bag}<span>${isBn()?'ব্যাগে যোগ':'Add to Bag'}</span>
+        <button class="btn btn-ink" style="flex:1" data-act="bag-add" data-sku="${p.sku}"${oos ? ' disabled' : ''}>
+          ${IC.bag}<span>${oos ? (isBn()?'স্টক নেই':'Out of stock') : (isBn()?'ব্যাগে যোগ':'Add to Bag')}</span>
         </button>
-        <button class="btn btn-buynow" style="flex:1" data-act="buynow" data-sku="${p.sku}">
-          <span>${isBn()?'অর্ডার (COD)':'Order Now (COD)'}</span>${IC.arrow}
+        <button class="btn btn-buynow" style="flex:1" data-act="buynow" data-sku="${p.sku}"${oos ? ' disabled' : ''}>
+          <span>${oos ? (isBn()?'স্টক শেষ':'Unavailable') : (isBn()?'অর্ডার (COD)':'Order Now (COD)')}</span>${IC.arrow}
         </button>
         <button class="btn btn-line${inWish(p.sku)?' on':''}" data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" aria-pressed="${inWish(p.sku)}" aria-label="Save to wishlist">
           ${IC.heart}
@@ -1935,9 +2248,11 @@ function openQuickView(sku) {
     </div>
   `;
 
-  ov.classList.add("open");
-  ov.setAttribute("aria-hidden", "false");
-  document.body.style.overflow = "hidden";
+  if (typeof ov.showModal === "function") {
+    if (!ov.open) ov.showModal();
+  } else {
+    ov.setAttribute("open", "");
+  }
   bindImages(card);
   if (window.FT_ANIME) window.FT_ANIME.refresh();
 }
@@ -1945,10 +2260,10 @@ function openQuickView(sku) {
 function closeQuickView() {
   const ov = $("#quick-view-ov");
   if (!ov) return;
-  ov.classList.remove("open");
-  ov.setAttribute("aria-hidden", "true");
-  if (!state.drawer && !$("#modal").classList.contains("open")) {
-    document.body.style.overflow = "";
+  if (typeof ov.close === "function") {
+    if (ov.open) ov.close();
+  } else {
+    ov.removeAttribute("open");
   }
 }
 
@@ -1959,10 +2274,17 @@ function hydrate(){
   if(state.route.page==="home"){
     buildStage();
     initStageInput();
-    if(window.initThreeHero) window.initThreeHero();
-    if(window.initThreeCollections) window.initThreeCollections();
+    if(window.initThreeHero) { try { window.initThreeHero(); } catch(e) {} }
+    if(window.initThreeCollections) { try { window.initThreeCollections(); } catch(e) {} }
+    fetchAndSyncCollectionCounts();
+  } else if(state.route.page==="collections"){
+    if(window.initThreeCollections) { try { window.initThreeCollections(); } catch(e) {} }
+    fetchAndSyncCollectionCounts();
+    if(window.FT_ANIME && typeof window.FT_ANIME.animateCollectionsEntrance === "function"){
+      window.FT_ANIME.animateCollectionsEntrance(document.getElementById("collections-page-grid") || document.getElementById("app"));
+    }
   } else {
-    if(window.destroyThreeCollections) window.destroyThreeCollections();
+    if(window.destroyThreeCollections) { try { window.destroyThreeCollections(); } catch(e) {} }
   }
   if(state.route.page==="shop"||state.route.page==="fashion"||state.route.page==="accessories"||state.route.page==="collection")renderShopGrid();
   if(state.route.page==="lookbook")renderLookGrid();
@@ -2029,8 +2351,18 @@ function initStageInput(){
   });
 }
 /* ================= EVENTS ================= */
+let dialogPointerDownTarget = null;
+document.addEventListener("pointerdown",e=>{
+  dialogPointerDownTarget = (e.target && (e.target.id==="quick-view-ov" || e.target.id==="modal")) ? e.target : null;
+});
+document.addEventListener("pointerup",e=>{
+  if(dialogPointerDownTarget && e.target === dialogPointerDownTarget){
+    if(e.target.id==="quick-view-ov") closeQuickView();
+    if(e.target.id==="modal") closeModal();
+  }
+  dialogPointerDownTarget = null;
+});
 document.addEventListener("click",e=>{
-  if(e.target.id === "quick-view-ov") { closeQuickView(); return; }
   const t=e.target.closest("[data-act]");
   if(!e.target.closest(".hot-pop")&&!e.target.closest(".hot"))closeHotPop();
   if(!t)return;
@@ -2192,6 +2524,12 @@ document.addEventListener("click",e=>{
     }
     case "modal":openModal(t.dataset.tab);break;
     case "modal-close":closeModal();break;
+    case "consent-reset":{
+      const bar = document.getElementById("ft-consent-bar");
+      if(bar){bar.style.display="block";bar.scrollIntoView({behavior:RM?"auto":"smooth"});}
+      toast("Analytics cookie banner re-opened below",{icon:"info"});
+      break;
+    }
     case "modal-tab":state.reportTab=t.dataset.tab;renderModal();if(state.reportTab==="assets"&&!state.reportRan)runReport();break;
     case "report-retest":runReport();toast(`Re-testing all ${PRODUCTS.length} main photos…`,{icon:"check"});break;
     case "report-dl":{
@@ -2211,6 +2549,20 @@ function scheduleSearchTrack(val){
   }, 750);
 }
 document.addEventListener("input",e=>{
+  const fl = e.target.closest("[data-f]");
+  if(fl && fl.classList.contains("err")){
+    fl.classList.remove("err");
+    e.target.classList.remove("user-invalid-fallback");
+    e.target.setAttribute("aria-invalid","false");
+    const errEl = fl.querySelector(".f-err");
+    const errorId = e.target.dataset.error || (errEl && errEl.id);
+    if(errorId){
+      const curDesc = (e.target.getAttribute("aria-describedby") || "").split(/\s+/).filter(id => id && id !== errorId);
+      if(curDesc.length) e.target.setAttribute("aria-describedby", curDesc.join(" "));
+      else e.target.removeAttribute("aria-describedby");
+    }
+    if(errEl && fl.dataset.f === "policy") errEl.style.display = "none";
+  }
   const t=e.target.closest("[data-input]");
   if(t){
     if(t.dataset.input==="search"){state.searchSel=0;renderSearch(t.value);scheduleSearchTrack(t.value);}
@@ -2248,24 +2600,71 @@ document.addEventListener("change",e=>{
     renderInqSummary();
   }
 });
+function setFormFieldError(form, fieldName, bad) {
+  const fl = form.querySelector(`[data-f="${fieldName}"]`);
+  if (!fl) return Boolean(bad);
+  fl.classList.toggle("err", Boolean(bad));
+  const inputEl = fl.querySelector("input, textarea, select");
+  const errEl = fl.querySelector(".f-err");
+  if (inputEl) {
+    inputEl.classList.toggle("user-invalid-fallback", Boolean(bad));
+    if (bad) {
+      inputEl.setAttribute("aria-invalid", "true");
+      if (errEl && errEl.id) {
+        const cur = (inputEl.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean);
+        if (!cur.includes(errEl.id)) cur.push(errEl.id);
+        inputEl.setAttribute("aria-describedby", cur.join(" "));
+      }
+    } else {
+      inputEl.setAttribute("aria-invalid", "false");
+      if (errEl && errEl.id) {
+        const cur = (inputEl.getAttribute("aria-describedby") || "").split(/\s+/).filter(x => x && x !== errEl.id);
+        if (cur.length) inputEl.setAttribute("aria-describedby", cur.join(" "));
+        else inputEl.removeAttribute("aria-describedby");
+      }
+    }
+  }
+  if (errEl && fieldName === "policy") {
+    errEl.style.display = bad ? "block" : "none";
+  }
+  return Boolean(bad);
+}
+
+function announceValidationSummary(msg) {
+  const ann = document.getElementById("ft-live-announcer");
+  if (!ann) return;
+  ann.textContent = "";
+  setTimeout(() => { ann.textContent = msg; }, 500);
+}
+
 document.addEventListener("submit",async e=>{
   const f=e.target.closest("[data-form]");if(!f)return;
   e.preventDefault();
   const fd=new FormData(f);
-  const err=(name,bad)=>{const fl=f.querySelector(`[data-f="${name}"]`);if(fl)fl.classList.toggle("err",bad);return bad;};
+  const err=(name,bad)=>setFormFieldError(f,name,bad);
   if(f.dataset.form==="track"){
     handleTrackSearch();
     return;
   }
   if(f.dataset.form==="inquiry"){
-    const name=(fd.get("name")||"").trim(),phone=(fd.get("phone")||"").trim(),district=(fd.get("district")||"").trim(),address=(fd.get("address")||"").trim();
+    const name=(fd.get("name")||"").trim(),phone=(fd.get("phone")||"").trim(),email=(fd.get("email")||"").trim(),district=(fd.get("district")||"").trim(),address=(fd.get("address")||"").trim();
+    const policyAck = Boolean(fd.get("policy_ack"));
     const phoneValid = window.FT_COMMERCE ? window.FT_COMMERCE.normalizePhone(phone).isBdMobile : /^(\+?88)?01[3-9]\d{8}$/.test(phone.replace(/\D/g,""));
+    const emailValid = !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     let bad=false;
     bad=err("name",name.length<2)||bad;
     bad=err("phone",!phoneValid)||bad;
+    bad=err("email",!emailValid)||bad;
     bad=err("district",district.length<2)||bad;
     bad=err("address",address.length<5)||bad;
-    if(bad){toast("Please complete the highlighted fields (valid 11-digit BD mobile required)",{icon:"alert"});return;}
+    bad=err("policy",!policyAck)||bad;
+    if(bad){
+      const firstBad = f.querySelector('[aria-invalid="true"]');
+      if(firstBad && typeof firstBad.focus === "function") firstBad.focus();
+      announceValidationSummary("Please review the highlighted checkout fields and accept the store policies before submitting.");
+      toast("Please complete the highlighted fields (valid 11-digit BD mobile & policy confirmation required)",{icon:"alert"});
+      return;
+    }
     if(!state.bag.length){toast("Your bag is empty",{icon:"alert"});return;}
 
     const errBox = document.getElementById("inq-submit-error");
@@ -2281,11 +2680,12 @@ document.addEventListener("submit",async e=>{
     const zone=normalizeDeliveryZone(rawZone);
     const rawChannel = String(fd.get("contact")||"Messenger").toLowerCase();
     const contactChannel = rawChannel.includes("whatsapp") && isRealWhatsapp() ? "whatsapp" : (rawChannel.includes("messenger") ? "messenger" : "web_form");
-    const cust={name,phone,district,address,notes:(fd.get("notes")||"").trim(),contact:fd.get("contact")||"Messenger",zone};
+    const cust={name,phone,email,district,address,notes:(fd.get("notes")||"").trim(),contact:fd.get("contact")||"Messenger",zone};
 
     const orderPayload = {
       customer_name: cust.name,
       customer_phone: cust.phone,
+      customer_email: cust.email || undefined,
       customer_district: cust.district,
       customer_address: (cust.district ? cust.district + ', ' : '') + cust.address,
       delivery_zone: zone,
@@ -2305,8 +2705,9 @@ document.addEventListener("submit",async e=>{
     if(!res || !res.success){
       const msg = (res && res.error) || "Unable to register inquiry right now. Please try again or reach us on Messenger.";
       if(errBox){
-        errBox.innerHTML = `<div class="notice alert">${IC.alert}<span>${esc(msg)}</span></div>`;
+        errBox.innerHTML = `<div class="notice alert" role="alert">${IC.alert}<div><b>Order could not be placed:</b> ${esc(msg)} <div style="margin-top:8px"><button type="button" class="btn btn-line btn-sm" data-act="msg">Ask Boutique on Messenger</button></div></div></div>`;
       }
+      announceValidationSummary(msg);
       toast(msg,{icon:"alert"});
       return;
     }
@@ -2425,30 +2826,91 @@ window.addEventListener("scroll",()=>{
   });
 },{passive:true});
 window.addEventListener("resize",()=>{measureTop();if(state.route.page==="home")layoutStage(true);});
-function applyProductOverrides(overrides){
-  if(!overrides) return;
-  if(Array.isArray(overrides)){
-    overrides.forEach(row=>{
-      const p=row && row.sku ? bySku(row.sku) : null;
-      if(p && p.sku===row.sku){
-        if(row.price_bdt!==undefined && row.price_bdt!==null) p.priceBDT=Number(row.price_bdt);
-        if(row.is_available!==undefined) p.is_available=!!row.is_available;
-      }
-    });
-  }else if(typeof overrides==="object"){
-    Object.keys(overrides).forEach(sku=>{
-      const p=bySku(sku), ov=overrides[sku];
-      if(p && p.sku===sku && ov){
-        if(ov.price_bdt!==undefined) p.priceBDT=Number(ov.price_bdt);
-        if(ov.is_available!==undefined) p.is_available=!!ov.is_available;
+function applyLiveCatalog(catalogPayload) {
+  if (!catalogPayload) return;
+  if (Array.isArray(catalogPayload.collections)) {
+    catalogPayload.collections.forEach(col => {
+      if (!col || !col.slug) return;
+      const idx = COLLECTIONS.findIndex(c => c.slug === col.slug);
+      if (idx >= 0) {
+        Object.assign(COLLECTIONS[idx], col);
+      } else {
+        COLLECTIONS.push(Object.assign({
+          short: col.name,
+          acc: '#8E3B66',
+          pillar: col.superCategory || 'Fashion',
+          count: 0
+        }, col));
       }
     });
   }
+  const rows = Array.isArray(catalogPayload.products) ? catalogPayload.products : (Array.isArray(catalogPayload) ? catalogPayload : []);
+  if (rows.length) {
+    const mapBySku = new Map(rows.filter(r => r && r.sku).map(r => [r.sku, r]));
+    // Remove archived products missing from active public list when server returns full catalog
+    if (catalogPayload.collections) {
+      for (let i = PRODUCTS.length - 1; i >= 0; i--) {
+        if (!mapBySku.has(PRODUCTS[i].sku)) {
+          const removed = PRODUCTS[i];
+          if (CATALOG_REF.PRODUCTS_BY_SKU) delete CATALOG_REF.PRODUCTS_BY_SKU[removed.sku];
+          PRODUCTS.splice(i, 1);
+        }
+      }
+    }
+    rows.forEach(row => {
+      if (!row || !row.sku) return;
+      const existing = PRODUCTS.find(x => x.sku === row.sku);
+      const colObj = COLLECTIONS.find(c => c.slug === row.collectionSlug || c.id === row.colId) || (existing && existing.collection) || COLLECTIONS[0];
+      if (existing) {
+        if (row.title) existing.title = row.title;
+        if (row.titleBn) existing.titleBn = row.titleBn;
+        if (row.priceBDT !== undefined && row.priceBDT !== null) existing.priceBDT = Number(row.priceBDT);
+        else if (row.price_bdt !== undefined && row.price_bdt !== null) existing.priceBDT = Number(row.price_bdt);
+        if (row.is_available !== undefined) existing.is_available = Boolean(row.is_available);
+        if (row.stock_count !== undefined) existing.stock_count = Number(row.stock_count);
+        if (row.reserved_count !== undefined) existing.reserved_count = Number(row.reserved_count);
+        if (row.available_stock !== undefined) existing.available_stock = Number(row.available_stock);
+        if (row.stock_verified !== undefined) existing.stock_verified = Boolean(row.stock_verified);
+        if (row.price_review !== undefined) {
+          existing.price_review = Boolean(row.price_review);
+          existing.priceStatus = existing.price_review ? 'suggested' : 'approved';
+        }
+        if (row.unit) existing.unit = row.unit;
+        if (row.variants) existing.variants = row.variants;
+        if (row.assets) existing.assets = Object.assign({}, existing.assets || {}, row.assets);
+        if (colObj) existing.collection = colObj;
+      } else {
+        const newProd = Object.assign({
+          slug: row.sku.toLowerCase(),
+          colId: colObj ? colObj.id : 'DB-01',
+          col: colObj ? colObj.id : 'DB-01',
+          collection: colObj,
+          accent: (colObj && colObj.acc) || '#8E3B66',
+          priceStatus: row.price_review ? 'suggested' : 'approved'
+        }, row);
+        PRODUCTS.push(newProd);
+        if (CATALOG_REF.PRODUCTS_BY_SKU) CATALOG_REF.PRODUCTS_BY_SKU[newProd.sku] = newProd;
+      }
+    });
+    COLLECTIONS.forEach(c => {
+      c.count = PRODUCTS.filter(p => p.colId === c.id || (p.collection && p.collection.slug === c.slug)).length;
+    });
+  }
+}
+
+function applyProductOverrides(overrides){
+  if(!overrides) return;
+  if(Array.isArray(overrides)){
+    applyLiveCatalog({ products: overrides });
+  }else if(typeof overrides==="object"){
+    const rows = Object.keys(overrides).map(sku => Object.assign({ sku }, overrides[sku]));
+    applyLiveCatalog({ products: rows });
+  }
 }
 const PROMO_MSGS=[
-  `First-order 25% OFF with code <b style="color:var(--chestnut)">FIRST25</b> &nbsp;·&nbsp; Nationwide Cash on Delivery &nbsp;·&nbsp; <a href="#/shop">Shop the Boutique</a>`,
+  `First-order 25% OFF with code <b>FIRST25</b> &nbsp;·&nbsp; Nationwide Cash on Delivery &nbsp;·&nbsp; <a href="#/shop">Shop the Boutique</a>`,
   `<span class="bn">সারাদেশে ক্যাশ অন ডেলিভারি</span> &nbsp;·&nbsp; 53 pieces · 8 collections · 100% authentic photography`,
-  `৳200 Welcome Voucher with code <b style="color:var(--chestnut)">FARIZA200</b> &nbsp;·&nbsp; Real-time tracking — <a href="#/track">Track Orders</a>`
+  `৳200 Welcome Voucher with code <b>FARIZA200</b> &nbsp;·&nbsp; Real-time tracking — <a href="#/track">Track Orders</a>`
 ];
 let promoIdx=0;
 let promoTimer=null;
@@ -2519,9 +2981,16 @@ function init(){
   promoLoop();
   initConsentBanner();
 
-  /* Hydrate live catalog prices, stock status & settings from hardened server endpoints */
+  /* Hydrate live catalog prices, stock status, CMS additions & settings from hardened server endpoints */
   if(window.FT_SUPABASE){
-    if(window.FT_SUPABASE.getProducts){
+    if(window.FT_SUPABASE.getCatalog){
+      window.FT_SUPABASE.getCatalog().then(cat=>{
+        if(cat && Array.isArray(cat.products) && cat.products.length){
+          applyLiveCatalog(cat);
+          if(["home","shop","fashion","accessories","collections","collection","product","bag","inquiry"].includes(state.route.page)) render();
+        }
+      });
+    } else if(window.FT_SUPABASE.getProducts){
       window.FT_SUPABASE.getProducts().then(prods=>{
         if(prods && prods.length){
           applyProductOverrides(prods);

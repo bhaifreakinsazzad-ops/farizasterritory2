@@ -58,6 +58,8 @@
     'cancelled'
   ]);
 
+  const STAFF_ROLES = Object.freeze(['admin', 'staff']);
+
   const ALLOWED_STATUS_TRANSITIONS = Object.freeze({
     pending: ['pending', 'confirmed', 'processing', 'cancelled'],
     confirmed: ['confirmed', 'processing', 'shipped', 'cancelled'],
@@ -66,6 +68,26 @@
     delivered: ['delivered'],
     cancelled: ['cancelled']
   });
+
+  function hasRole(userRole, requiredRole) {
+    const actual = String(userRole || '').toLowerCase().trim();
+    const required = String(requiredRole || 'staff').toLowerCase().trim();
+    if (!actual || !STAFF_ROLES.includes(actual)) return false;
+    if (required === 'admin') return actual === 'admin';
+    return true;
+  }
+
+  function getAvailableStock(product) {
+    if (!product) return 0;
+    const rawStock = product.stock_count;
+    if (rawStock === undefined || rawStock === null || rawStock === '') {
+      return null;
+    }
+    const stock = Number(rawStock);
+    if (!Number.isFinite(stock)) return 0;
+    const reserved = Math.max(0, Number(product.reserved_count || 0) || 0);
+    return Math.max(0, Math.floor(stock) - Math.floor(reserved));
+  }
 
   function isPlaceholderWhatsapp(num) {
     const digits = String(num || '').replace(/\D/g, '');
@@ -206,21 +228,45 @@
 
     const normalizedItems = [];
     let subtotal = 0;
+    let requiresManualStockConfirmation = false;
 
     for (const [sku, qty] of mergedBySku.entries()) {
       const product = productsBySku && (productsBySku instanceof Map ? productsBySku.get(sku) : productsBySku[sku]);
       if (!product) {
-        return { ok: false, error: `Unknown product SKU: ${sku}.` };
+        return { ok: false, status: 400, error: `Unknown product SKU: ${sku}.` };
       }
-      if (
-        product.is_available === false ||
-        (product.stock_count !== undefined && product.stock_count !== null && Number(product.stock_count) <= 0)
-      ) {
-        return { ok: false, error: `Product ${sku} is currently marked out of stock.` };
+      if (product.is_archived === true || product.is_available === false) {
+        return { ok: false, status: 409, error: `Product ${sku} is currently marked out of stock.` };
       }
+      const avail = getAvailableStock(product);
+      if (product.stock_verified === true) {
+        const verifiedAvail = avail === null ? 0 : avail;
+        if (verifiedAvail < qty) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'INSUFFICIENT_STOCK',
+            error: verifiedAvail <= 0
+              ? `Product ${sku} is currently out of verified stock.`
+              : `Insufficient verified stock for ${sku} (requested ${qty}, available ${verifiedAvail}).`
+          };
+        }
+      } else if (avail !== null && Number(product.stock_count) > 0) {
+        if (avail < qty) {
+          return {
+            ok: false,
+            status: 409,
+            code: 'INSUFFICIENT_STOCK',
+            error: `Insufficient stock for ${sku} (requested ${qty}, available ${avail}).`
+          };
+        }
+      } else {
+        requiresManualStockConfirmation = true;
+      }
+
       const unitPrice = Number(product.priceBDT ?? product.price_bdt ?? 0);
       if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-        return { ok: false, error: `Product ${sku} does not have an active price configured.` };
+        return { ok: false, status: 400, error: `Product ${sku} does not have an active price configured.` };
       }
       const lineTotal = unitPrice * qty;
       subtotal += lineTotal;
@@ -232,8 +278,9 @@
         title: product.title || sku,
         price: unitPrice,
         qty,
-        unit: product.unitBn || product.unit || '',
-        image: imagePath
+        unit: product.selling_unit || product.unitBn || product.unit || '',
+        image: imagePath,
+        stock_verified: product.stock_verified === true
       });
     }
 
@@ -261,7 +308,8 @@
       subtotal: Math.round(subtotal),
       discount_code: discountCode,
       discount_amount: discountAmount,
-      total
+      total,
+      requires_manual_stock_confirmation: requiresManualStockConfirmation
     };
   }
 
@@ -273,17 +321,21 @@
   }
 
   function isFeedEligibleProduct(product) {
-    if (!product) return false;
+    if (!product || product.is_archived === true) return false;
     const isAvail = product.is_available !== false;
     const stockVerified = product.stock_verified === true;
     const priceApproved = product.price_review === false || product.priceStatus === 'approved';
+    const avail = getAvailableStock(product);
+    const hasStock = avail === null ? true : avail > 0;
     const price = Number(product.priceBDT ?? product.price_bdt ?? 0);
-    return isAvail && stockVerified && priceApproved && Number.isFinite(price) && price > 0;
+    return isAvail && stockVerified && priceApproved && hasStock && Number.isFinite(price) && price > 0;
   }
 
   function getProductFeedAvailability(product) {
-    if (!product || product.is_available === false) return 'out of stock';
+    if (!product || product.is_archived === true || product.is_available === false) return 'out of stock';
     if (product.stock_verified !== true) return 'out of stock';
+    const avail = getAvailableStock(product);
+    if (avail !== null && avail <= 0) return 'out of stock';
     return 'in stock';
   }
 
@@ -353,7 +405,10 @@
     DEFAULT_FREE_SHIPPING_THRESHOLD,
     DEFAULT_COUPONS,
     VALID_ORDER_STATUSES,
+    STAFF_ROLES,
     ALLOWED_STATUS_TRANSITIONS,
+    hasRole,
+    getAvailableStock,
     isPlaceholderWhatsapp,
     normalizeZone,
     normalizePhone,

@@ -92,7 +92,9 @@ async function runTest() {
   assert.strictEqual(purchaseBlockRes.headers['access-control-allow-origin'], undefined, 'Untrusted origin must not receive CORS allow header');
   console.log('PASS: Unauthenticated Purchase blocked (403) & untrusted CORS origin rejected');
 
-  console.log('--- 4. Testing server-side privileged Purchase dispatcher ---');
+  console.log('--- 4. Testing server-side privileged Purchase dispatcher (preview without token) ---');
+  const prevToken = process.env.META_CAPI_ACCESS_TOKEN;
+  delete process.env.META_CAPI_ACCESS_TOKEN;
   const serverPurchase = await handler.dispatchCapiEvent(
     {
       eventName: 'Purchase',
@@ -103,12 +105,41 @@ async function runTest() {
     },
     { allowPrivilegedEvents: true, allowTestCode: false }
   );
+  if (prevToken !== undefined) process.env.META_CAPI_ACCESS_TOKEN = prevToken;
   assert.strictEqual(serverPurchase.status, 200);
   assert.strictEqual(serverPurchase.body.success, true);
+  assert.strictEqual(serverPurchase.body.delivered, false, 'Preview mode without token must never claim delivered=true');
+  assert.strictEqual(serverPurchase.body.mode, 'preview_no_token');
   assert.strictEqual(serverPurchase.body.event_name, 'Purchase');
   const eventPayload = serverPurchase.body.payload.data[0];
   assert.ok(Array.isArray(eventPayload.user_data.ph) && eventPayload.user_data.ph[0].length === 64, 'Phone must be SHA-256 hashed');
-  console.log('PASS: Server-side privileged Purchase dispatch verified');
+  console.log('PASS: Preview Purchase returns delivered=false (never marks purchase_capi_sent_at)');
+
+  console.log('--- 5. Testing live Purchase dispatcher with mocked Meta Graph API 200 receipt ---');
+  const livePurchase = await handler.dispatchCapiEvent(
+    {
+      eventName: 'Purchase',
+      eventId: 'pur_FT-261117-LIVE',
+      eventSourceUrl: 'https://farizasterritory.com/#/track',
+      userData: { name: 'Nusrat Jahan', phone: '01812345678', district: 'Dhaka' },
+      customData: { currency: 'BDT', value: 2430, order_id: 'FT-261117-LIVE', content_ids: ['CAT-001'], num_items: 1 }
+    },
+    {
+      allowPrivilegedEvents: true,
+      allowTestCode: false,
+      accessTokenOverride: 'test_token_only',
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ events_received: 1, fbtrace_id: 'TRACE_TEST_123' })
+      })
+    }
+  );
+  assert.strictEqual(livePurchase.status, 200);
+  assert.strictEqual(livePurchase.body.delivered, true);
+  assert.strictEqual(livePurchase.body.mode, 'live_production');
+  assert.strictEqual(livePurchase.body.events_received, 1);
+  console.log('PASS: Live Purchase dispatch confirms delivered=true only on Meta Graph 200 receipt');
 }
 
 runTest().catch(err => {
