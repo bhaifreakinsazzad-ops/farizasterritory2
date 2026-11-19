@@ -1,9 +1,9 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const { createSupabaseServerStore, getSupabaseConfig } = require('./lib/supabaseServer.js');
 const capiHandler = require('./api/capi.js');
 const commerce = require('./assets/js/commerce.js');
+const { createSupabaseServerStore, getSupabaseConfig } = require('./lib/supabaseServer.js');
 
 const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_ALLOWED_AISTUDIO_FILES = new Set([
@@ -218,13 +218,10 @@ function createApp(options = {}) {
   app.get('/api/health', (req, res) => {
     const baseUrl = getCanonicalBaseUrl(req);
     const sbCfg = store.getConfigSummary ? store.getConfigSummary() : getSupabaseConfig();
-    const resolvedPixelId = process.env.META_PIXEL_ID || process.env.META_DATASET_ID || '1657670575734647';
-    const resolvedDatasetId = process.env.META_DATASET_ID || process.env.META_PIXEL_ID || '1657670575734647';
     res.status(200).json({
       ok: true,
       brand: "Fariza's Territory",
       location: 'Mirpur, Dhaka, Bangladesh',
-      canonicalSiteUrl: baseUrl,
       catalog: {
         totalProducts: catalog.PRODUCTS.length,
         totalCollections: catalog.COLLECTIONS.length,
@@ -234,8 +231,7 @@ function createApp(options = {}) {
       databaseConfigured: store.isDurableConfigured ? store.isDurableConfigured() : false,
       supabaseAnonConfigured: Boolean(sbCfg && sbCfg.anonConfigured),
       metaCapiConfigured: Boolean(process.env.META_CAPI_ACCESS_TOKEN),
-      datasetId: resolvedDatasetId,
-      pixelId: resolvedPixelId,
+      pixelId: process.env.META_PIXEL_ID || '1657670575734647',
       feeds: {
         metaCommerceCsv: `${baseUrl}/api/catalog-feed.csv`,
         googleMetaXml: `${baseUrl}/api/catalog-feed.xml`,
@@ -254,17 +250,13 @@ function createApp(options = {}) {
     const dhakaFee = Number((settings && settings.delivery_fee_dhaka) ?? commerce.DEFAULT_DELIVERY_FEES.dhaka);
     const outsideFee = Number((settings && settings.delivery_fee_outside) ?? commerce.DEFAULT_DELIVERY_FEES.outside_dhaka);
     const freeThreshold = Number((settings && settings.free_delivery_threshold) ?? commerce.DEFAULT_FREE_SHIPPING_THRESHOLD);
-    const resolvedPixelId = (settings && settings.meta_pixel_id) || process.env.META_PIXEL_ID || process.env.META_DATASET_ID || '1657670575734647';
-    const resolvedDatasetId = process.env.META_DATASET_ID || resolvedPixelId;
 
     res.status(200).json({
       ok: true,
-      canonicalSiteUrl: getCanonicalBaseUrl(req),
       supabaseUrl: sbCfg.url,
       supabaseAnonKey: sbCfg.anonKey,
       databaseConfigured: store.isDurableConfigured ? store.isDurableConfigured() : false,
-      metaDatasetId: resolvedDatasetId,
-      metaPixelId: resolvedPixelId,
+      metaPixelId: (settings && settings.meta_pixel_id) || process.env.META_PIXEL_ID || '1657670575734647',
       ga4MeasurementId: (settings && settings.ga4_measurement_id) || '',
       deliveryFees: {
         dhaka: dhakaFee,
@@ -919,8 +911,7 @@ ${itemsXml}
       brand: "Fariza's Territory",
       tagline: 'Elegance in Every Detail',
       location: 'Mirpur, Dhaka, Bangladesh',
-      datasetId: process.env.META_DATASET_ID || process.env.META_PIXEL_ID || '1657670575734647',
-      pixelId: process.env.META_PIXEL_ID || process.env.META_DATASET_ID || '1657670575734647',
+      pixelId: process.env.META_PIXEL_ID || '1657670575734647',
       totalCatalogSkus: merged.products.length,
       eligibleFeedSkus: products.length,
       collectionsCount: catalog.COLLECTIONS.length,
