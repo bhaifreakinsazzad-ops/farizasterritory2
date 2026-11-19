@@ -1006,7 +1006,6 @@ function fetchAndSyncCollectionCounts(){
     } else if (Array.isArray(liveCatalog) && liveCatalog.length) {
       applyProductOverrides(liveCatalog);
     }
-    }
     const updatedStats = computeDynamicCollectionStats(PRODUCTS);
     updateCollectionCountDomNodes(updatedStats);
     return updatedStats;
