@@ -994,13 +994,18 @@ function fetchAndSyncCollectionCounts(){
 
   const fetcher = (window.FT_SUPABASE && typeof window.FT_SUPABASE.getCatalog === "function")
     ? window.FT_SUPABASE.getCatalog()
-    : fetch("/api/catalog", { credentials: "same-origin" })
-        .then(r => r.ok ? r.json() : null)
-        .catch(() => null);
+    : ((window.FT_SUPABASE && typeof window.FT_SUPABASE.getProducts === "function")
+        ? window.FT_SUPABASE.getProducts()
+        : fetch("/api/catalog", { credentials: "same-origin" })
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null));
 
   return Promise.resolve(fetcher).then(liveCatalog => {
     if (liveCatalog && Array.isArray(liveCatalog.products) && liveCatalog.products.length) {
       applyLiveCatalog(liveCatalog);
+    } else if (Array.isArray(liveCatalog) && liveCatalog.length) {
+      applyProductOverrides(liveCatalog);
+    }
     }
     const updatedStats = computeDynamicCollectionStats(PRODUCTS);
     updateCollectionCountDomNodes(updatedStats);
