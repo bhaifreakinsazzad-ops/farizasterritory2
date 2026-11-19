@@ -600,3 +600,160 @@ test('Admin Cockpit integrates Three.js, ThreeUI.js, Anime.js, Motion.dev, and c
   );
 });
 
+// ===========================================================================
+// 11. Stock Caps, Admin Order Coupons, Validation, 404 Assets & Zero-Stock SSR
+// ===========================================================================
+test('Stock caps, admin manual order coupons, coupon/settings validation, missing asset 404s, and zero-stock SSR', async () => {
+  const catalog = loadCatalogInMemory();
+  const sampleSku = 'CAT-001';
+  const lowStockMap = {
+    [sampleSku]: Object.assign({}, catalog.PRODUCTS_BY_SKU[sampleSku], {
+      stock_count: 2,
+      stock_verified: true,
+      price_review: false,
+      is_available: true
+    }),
+    'CAT-002': Object.assign({}, catalog.PRODUCTS_BY_SKU['CAT-002'], {
+      stock_count: 0,
+      stock_verified: true,
+      price_review: false,
+      is_available: true
+    })
+  };
+
+  // Commerce stock cap & feed eligibility checks
+  assert.equal(
+    commerce.computeOrderTotals({ items: [{ sku: sampleSku, qty: 3 }], productsBySku: lowStockMap }).ok,
+    false
+  );
+  assert.equal(
+    commerce.computeOrderTotals({ items: [{ sku: sampleSku, qty: 2 }], productsBySku: lowStockMap }).ok,
+    true
+  );
+  assert.equal(commerce.isFeedEligibleProduct(lowStockMap['CAT-002']), false);
+  assert.equal(commerce.getProductFeedAvailability(lowStockMap['CAT-002']), 'out of stock');
+
+  const store = createInMemoryStore({
+    configured: true,
+    productOverrides: {
+      'CAT-001': {
+        price_bdt: 2350,
+        is_available: true,
+        stock_count: 0,
+        stock_verified: true,
+        price_review: false
+      }
+    }
+  });
+  const app = createApp({ store });
+  const { server, baseUrl } = await startTestServer(app);
+  try {
+    // Missing asset returns 404 JSON instead of SPA fallback HTML
+    const missingAssetRes = await fetch(`${baseUrl}/assets/js/does-not-exist.js`);
+    assert.equal(missingAssetRes.status, 404);
+    const missingAssetJson = await missingAssetRes.json();
+    assert.equal(missingAssetJson.ok, false);
+
+    // SSR product page emits OutOfStock when stock_count === 0
+    const ssrZeroStock = await fetch(`${baseUrl}/products/CAT-001`);
+    assert.equal(ssrZeroStock.status, 200);
+    const ssrHtml = await ssrZeroStock.text();
+    assert.ok(ssrHtml.includes('https://schema.org/OutOfStock'));
+
+    // Admin manual order rejects invalid coupon
+    const badCouponOrder = await fetch(`${baseUrl}/api/admin/orders`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer valid-admin-jwt',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        customer_name: 'Manual Buyer',
+        customer_phone: '01712345678',
+        customer_address: 'Mirpur 11',
+        delivery_zone: 'dhaka',
+        discount_code: 'NO_SUCH_CODE',
+        items: [{ sku: 'CAT-002', qty: 1 }]
+      })
+    });
+    assert.equal(badCouponOrder.status, 400);
+
+    // Admin manual order applies valid coupon FIRST25 (CAT-002 = 2150 -> 500 discount + 80 dhaka = 1730)
+    const goodCouponOrder = await fetch(`${baseUrl}/api/admin/orders`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer valid-admin-jwt',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        customer_name: 'Manual Buyer',
+        customer_phone: '01712345678',
+        customer_address: 'Mirpur 11',
+        delivery_zone: 'dhaka',
+        discount_code: 'FIRST25',
+        items: [{ sku: 'CAT-002', qty: 1 }]
+      })
+    });
+    assert.equal(goodCouponOrder.status, 201);
+    const goodBody = await goodCouponOrder.json();
+    assert.equal(goodBody.order.discount_code, 'FIRST25');
+    assert.equal(goodBody.order.discount_amount, 500);
+    assert.equal(goodBody.order.total, 1730);
+
+    // Admin coupon endpoint rejects invalid percentage > 100
+    const badPctRes = await fetch(`${baseUrl}/api/admin/coupons`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer valid-admin-jwt',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        code: 'OVER100',
+        discount_type: 'percentage',
+        discount_value: 150,
+        min_spend: 0
+      })
+    });
+    assert.equal(badPctRes.status, 400);
+
+    // Admin settings rejects negative fee and bad facebook URL
+    const badSettingsFee = await fetch(`${baseUrl}/api/admin/settings`, {
+      method: 'PUT',
+      headers: {
+        Authorization: 'Bearer valid-admin-jwt',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ delivery_fee_dhaka: -10 })
+    });
+    assert.equal(badSettingsFee.status, 400);
+
+    const badSettingsUrl = await fetch(`${baseUrl}/api/admin/settings`, {
+      method: 'PUT',
+      headers: {
+        Authorization: 'Bearer valid-admin-jwt',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ facebook_url: 'javascript:alert(1)' })
+    });
+    assert.equal(badSettingsUrl.status, 400);
+
+    // Partial settings update preserves existing untouched fields
+    const partialSettingsRes = await fetch(`${baseUrl}/api/admin/settings`, {
+      method: 'PUT',
+      headers: {
+        Authorization: 'Bearer valid-admin-jwt',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ delivery_fee_dhaka: 90 })
+    });
+    assert.equal(partialSettingsRes.status, 200);
+    const partialSettingsBody = await partialSettingsRes.json();
+    assert.equal(partialSettingsBody.settings.delivery_fee_dhaka, 90);
+    assert.equal(partialSettingsBody.settings.delivery_fee_outside, 150);
+    assert.equal(partialSettingsBody.settings.meta_pixel_id, '1657670575734647');
+  } finally {
+    await closeServer(server);
+  }
+});
+
+

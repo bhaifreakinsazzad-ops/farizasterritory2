@@ -53,6 +53,8 @@
       this.intersectionObserver = null;
       this.contextLost = false;
       this.isVisible = true;
+      this.destroyed = false;
+      this.resizeTimeout = null;
       this.boundCleanup = [];
 
       // Pre-allocated color helpers (zero per-frame allocations)
@@ -336,15 +338,14 @@
     }
 
     bindEvents() {
-      let resizeTimeout = null;
       const addListener = (target, type, fn, opts) => {
         target.addEventListener(type, fn, opts);
         this.boundCleanup.push(() => target.removeEventListener(type, fn, opts));
       };
 
       addListener(window, 'resize', () => {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(() => this.onResize(), 100);
+        clearTimeout(this.resizeTimeout);
+        this.resizeTimeout = setTimeout(() => this.onResize(), 100);
       }, { passive: true });
 
       const heroEl = document.querySelector('.hero') || document.body;
@@ -382,6 +383,7 @@
       });
 
       addListener(this.canvas, 'webglcontextrestored', () => {
+        if (this.destroyed) return;
         this.contextLost = false;
         if (this.isVisible) {
           this.clock.start();
@@ -390,6 +392,7 @@
       });
 
       addListener(document, 'visibilitychange', () => {
+        if (this.destroyed) return;
         this.isVisible = !document.hidden;
         if (this.isVisible && !this.contextLost && !this.animationFrameId && !this.softwareTimerId) {
           this.clock.start();
@@ -401,6 +404,7 @@
     setupIntersectionObserver() {
       if ('IntersectionObserver' in window) {
         this.intersectionObserver = new IntersectionObserver((entries) => {
+          if (this.destroyed) return;
           entries.forEach(entry => {
             this.isVisible = entry.isIntersecting;
             if (this.isVisible && !this.contextLost && !this.animationFrameId && !this.softwareTimerId) {
@@ -415,7 +419,7 @@
     }
 
     onResize() {
-      if (!this.canvas || !this.renderer || !this.camera) return;
+      if (this.destroyed || !this.canvas || !this.renderer || !this.camera) return;
       const width = this.canvas.clientWidth;
       const height = this.canvas.clientHeight;
       if (!width || !height) return;
@@ -441,7 +445,7 @@
     }
 
     scheduleNextFrame() {
-      if (!this.isVisible || this.contextLost) return;
+      if (this.destroyed || !this.isVisible || this.contextLost) return;
       if (isSoftwareGl) {
         this.softwareTimerId = window.setTimeout(() => {
           this.softwareTimerId = null;
@@ -453,7 +457,7 @@
     }
 
     animate() {
-      if (!this.isVisible || this.contextLost || !this.renderer) {
+      if (this.destroyed || !this.isVisible || this.contextLost || !this.renderer) {
         this.stopLoop();
         return;
       }
@@ -572,7 +576,12 @@
     }
 
     destroy() {
+      this.destroyed = true;
       this.isVisible = false;
+      if (this.resizeTimeout) {
+        clearTimeout(this.resizeTimeout);
+        this.resizeTimeout = null;
+      }
       this.stopLoop();
       if (this.intersectionObserver) {
         this.intersectionObserver.disconnect();
@@ -607,6 +616,7 @@
       }
       if (this.renderer) {
         this.renderer.dispose();
+        this.renderer = null;
       }
     }
   }

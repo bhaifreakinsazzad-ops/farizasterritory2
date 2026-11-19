@@ -1889,30 +1889,26 @@
 
     function loadSavedCockpitProductOverrides() {
       if (!window.FT_CATALOG) return;
+      let map = {};
       try {
         const raw = sessionStorage.getItem(COCKPIT_PRODUCTS_STORAGE_KEY);
-        if (raw) {
-          const map = JSON.parse(raw) || {};
-          window.FT_CATALOG.PRODUCTS.forEach(p => {
-            const ov = map[p.sku];
-            if (ov) {
-              if (ov.priceBDT !== undefined) p.priceBDT = Number(ov.priceBDT);
-              if (ov.is_available !== undefined) p.is_available = !!ov.is_available;
-              if (ov.stock_verified !== undefined) p.stock_verified = !!ov.stock_verified;
-              if (ov.price_review !== undefined) p.price_review = !!ov.price_review;
-            }
-            if (p.stock_verified === undefined) p.stock_verified = true;
-            if (p.price_review === undefined) p.price_review = (p.priceStatus !== 'approved');
-            p.feed_eligible = !!(p.is_available !== false && p.stock_verified && !p.price_review && Number(p.priceBDT) > 0);
-          });
-          return;
-        }
+        if (raw) map = JSON.parse(raw) || {};
       } catch (_) {}
 
       window.FT_CATALOG.PRODUCTS.forEach(p => {
-        if (p.stock_verified === undefined) p.stock_verified = true;
+        const ov = map[p.sku];
+        if (ov) {
+          if (ov.priceBDT !== undefined) p.priceBDT = Number(ov.priceBDT);
+          if (ov.is_available !== undefined) p.is_available = !!ov.is_available;
+          if (ov.stock_verified !== undefined) p.stock_verified = !!ov.stock_verified;
+          if (ov.price_review !== undefined) p.price_review = !!ov.price_review;
+          if (ov.stock_count !== undefined) p.stock_count = Number(ov.stock_count);
+        }
+        if (p.stock_verified === undefined) p.stock_verified = false;
         if (p.price_review === undefined) p.price_review = (p.priceStatus !== 'approved');
-        p.feed_eligible = !!(p.is_available !== false && p.stock_verified && !p.price_review && Number(p.priceBDT) > 0);
+        p.feed_eligible = window.FT_COMMERCE
+          ? window.FT_COMMERCE.isFeedEligibleProduct(p)
+          : !!(p.is_available !== false && p.stock_verified && !p.price_review && Number(p.priceBDT) > 0);
       });
     }
 
@@ -2087,11 +2083,23 @@
       runCouponSimulator();
     }
 
+    function getLiveDeliveryFees() {
+      const d = parseInt((document.getElementById('set-fee-dhaka') || {}).value, 10);
+      const o = parseInt((document.getElementById('set-fee-outside') || {}).value, 10);
+      return {
+        dhaka: Number.isFinite(d) && d >= 0 ? d : 80,
+        outside_dhaka: Number.isFinite(o) && o >= 0 ? o : 150
+      };
+    }
+
     function updateReadinessBanner(health) {
       const banner = document.getElementById('setup-readiness-banner');
       if (!banner) return;
       const products = (window.FT_CATALOG && window.FT_CATALOG.PRODUCTS) || [];
       const feedCount = products.filter(p => p.feed_eligible).length;
+      const fees = getLiveDeliveryFees();
+      const threshold = parseInt((document.getElementById('set-free-threshold') || {}).value, 10);
+      const freeThresh = Number.isFinite(threshold) && threshold >= 0 ? threshold : 3000;
 
       banner.style.display = 'flex';
       banner.className = feedCount === products.length ? 'readiness-banner ready' : 'readiness-banner';
@@ -2100,7 +2108,7 @@
           <strong>Store Operations Flight Check:</strong>
           <span class="tabular-nums">${products.length}</span> Verified SKUs across 8 Collections ·
           <span class="tabular-nums">${feedCount}/${products.length}</span> Eligible for Meta Commerce Feed ·
-          Dhaka Delivery <span class="tabular-nums">৳80</span> / Outside Dhaka <span class="tabular-nums">৳150</span> (Free over <span class="tabular-nums">৳3,000</span>)
+          Dhaka Delivery <span class="tabular-nums">৳${fees.dhaka}</span> / Outside Dhaka <span class="tabular-nums">৳${fees.outside_dhaka}</span> (Free over <span class="tabular-nums">৳${freeThresh.toLocaleString()}</span>)
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           ${feedCount < products.length ? `<button type="button" class="btn-admin btn-admin-gold btn-admin-sm" onclick="bulkApproveAllCatalogForFeed()">Approve All 53 SKUs for Feed</button>` : ''}
@@ -2436,8 +2444,9 @@
       if (o && o.delivery_fee !== undefined && o.delivery_fee !== null) {
         return Number(o.delivery_fee);
       }
+      const fees = getLiveDeliveryFees();
       const isOut = o && (o.delivery_zone === 'outside' || o.delivery_zone === 'outside_dhaka');
-      return isOut ? 150 : 80;
+      return isOut ? fees.outside_dhaka : fees.dhaka;
     }
 
     function openOrderDetail(ref) {
@@ -2781,17 +2790,6 @@
       const p = window.FT_CATALOG.PRODUCTS_BY_SKU[sku];
       if (!p) return;
       const nextEligible = !p.feed_eligible;
-      p.is_available = true;
-      p.stock_verified = nextEligible;
-      p.price_review = !nextEligible;
-      p.feed_eligible = nextEligible;
-
-      persistCockpitProductOverride(sku, {
-        priceBDT: p.priceBDT,
-        is_available: p.is_available,
-        stock_verified: p.stock_verified,
-        price_review: p.price_review
-      });
 
       if (currentAccessToken) {
         try {
@@ -2804,31 +2802,24 @@
               price_review: !nextEligible
             })
           });
-        } catch (_) {}
+        } catch (err) {
+          showAdminToast(err.message || `Failed to update ${sku} in Cloud.`, 'err');
+          return;
+        }
       }
 
-      renderCatalogTable();
-      syncSidebarCounts();
-      updateReadinessBanner();
-      if (window.FT_COCKPIT_3D) {
-        window.FT_COCKPIT_3D.updateTelemetry({ orders: currentOrders, products: window.FT_CATALOG.PRODUCTS });
-      }
-      showAdminToast(`${sku}: ${nextEligible ? 'Approved for Meta & Google Feeds ✓' : 'Placed on Feed Hold'}`, 'ok');
-    }
+      p.is_available = true;
+      p.stock_verified = nextEligible;
+      p.price_review = !nextEligible;
+      p.feed_eligible = window.FT_COMMERCE
+        ? window.FT_COMMERCE.isFeedEligibleProduct(p)
+        : nextEligible;
 
-    async function bulkApproveAllCatalogForFeed() {
-      if (!window.FT_CATALOG) return;
-      window.FT_CATALOG.PRODUCTS.forEach(p => {
-        p.is_available = true;
-        p.stock_verified = true;
-        p.price_review = false;
-        p.feed_eligible = true;
-        persistCockpitProductOverride(p.sku, {
-          priceBDT: p.priceBDT,
-          is_available: true,
-          stock_verified: true,
-          price_review: false
-        });
+      persistCockpitProductOverride(sku, {
+        priceBDT: p.priceBDT,
+        is_available: p.is_available,
+        stock_verified: p.stock_verified,
+        price_review: p.price_review
       });
 
       renderCatalogTable();
@@ -2837,7 +2828,73 @@
       if (window.FT_COCKPIT_3D) {
         window.FT_COCKPIT_3D.updateTelemetry({ orders: currentOrders, products: window.FT_CATALOG.PRODUCTS });
       }
-      showAdminToast('All 53 SKUs verified and approved for Meta Commerce Feed!', 'ok');
+      showAdminToast(`${sku}: ${p.feed_eligible ? 'Approved for Meta & Google Feeds ✓' : 'Placed on Feed Hold'}`, 'ok');
+    }
+
+    async function bulkApproveAllCatalogForFeed() {
+      if (!window.FT_CATALOG) return;
+      const targets = window.FT_CATALOG.PRODUCTS.filter(p => !p.feed_eligible || !p.is_available || !p.stock_verified || p.price_review);
+      let failedCount = 0;
+
+      if (currentAccessToken && targets.length > 0) {
+        const batchSize = 10;
+        for (let i = 0; i < targets.length; i += batchSize) {
+          const slice = targets.slice(i, i + batchSize);
+          const results = await Promise.allSettled(slice.map(p =>
+            adminApiFetch('/api/admin/products/' + encodeURIComponent(p.sku), {
+              method: 'PATCH',
+              body: JSON.stringify({
+                price_bdt: p.priceBDT,
+                is_available: true,
+                stock_verified: true,
+                price_review: false
+              })
+            }).then(() => p)
+          ));
+          results.forEach(r => {
+            if (r.status === 'fulfilled') {
+              const p = r.value;
+              p.is_available = true;
+              p.stock_verified = true;
+              p.price_review = false;
+              p.feed_eligible = window.FT_COMMERCE ? window.FT_COMMERCE.isFeedEligibleProduct(p) : true;
+              persistCockpitProductOverride(p.sku, {
+                priceBDT: p.priceBDT,
+                is_available: true,
+                stock_verified: true,
+                price_review: false
+              });
+            } else {
+              failedCount++;
+            }
+          });
+        }
+      } else {
+        window.FT_CATALOG.PRODUCTS.forEach(p => {
+          p.is_available = true;
+          p.stock_verified = true;
+          p.price_review = false;
+          p.feed_eligible = window.FT_COMMERCE ? window.FT_COMMERCE.isFeedEligibleProduct(p) : true;
+          persistCockpitProductOverride(p.sku, {
+            priceBDT: p.priceBDT,
+            is_available: true,
+            stock_verified: true,
+            price_review: false
+          });
+        });
+      }
+
+      renderCatalogTable();
+      syncSidebarCounts();
+      updateReadinessBanner();
+      if (window.FT_COCKPIT_3D) {
+        window.FT_COCKPIT_3D.updateTelemetry({ orders: currentOrders, products: window.FT_CATALOG.PRODUCTS });
+      }
+      if (failedCount > 0) {
+        showAdminToast(`Bulk feed approval completed with ${failedCount} Cloud error(s).`, 'err');
+      } else {
+        showAdminToast('All 53 SKUs verified and approved for Meta Commerce Feed!', 'ok');
+      }
     }
 
     function openProductDetailModal(sku) {
@@ -2920,19 +2977,6 @@
       const stockVerified = document.getElementById('prod-edit-stock-verified').checked;
       const priceApproved = document.getElementById('prod-edit-price-approved').checked;
 
-      p.priceBDT = newPrice;
-      p.is_available = newAvail;
-      p.stock_verified = stockVerified;
-      p.price_review = !priceApproved;
-      p.feed_eligible = !!(newAvail && stockVerified && priceApproved && newPrice > 0);
-
-      persistCockpitProductOverride(selectedProductSku, {
-        priceBDT: newPrice,
-        is_available: newAvail,
-        stock_verified: stockVerified,
-        price_review: !priceApproved
-      });
-
       if (currentAccessToken) {
         try {
           await adminApiFetch('/api/admin/products/' + encodeURIComponent(selectedProductSku), {
@@ -2944,8 +2988,26 @@
               price_review: !priceApproved
             })
           });
-        } catch (_) {}
+        } catch (err) {
+          showAdminToast(err.message || `Failed to save ${p.sku} in Cloud.`, 'err');
+          return;
+        }
       }
+
+      p.priceBDT = newPrice;
+      p.is_available = newAvail;
+      p.stock_verified = stockVerified;
+      p.price_review = !priceApproved;
+      p.feed_eligible = window.FT_COMMERCE
+        ? window.FT_COMMERCE.isFeedEligibleProduct(p)
+        : !!(newAvail && stockVerified && priceApproved && newPrice > 0);
+
+      persistCockpitProductOverride(selectedProductSku, {
+        priceBDT: newPrice,
+        is_available: newAvail,
+        stock_verified: stockVerified,
+        price_review: !priceApproved
+      });
 
       renderCatalogTable();
       populateManualOrderProducts();
@@ -2999,8 +3061,6 @@
       const list = window.__adminCoupons || getCockpitCoupons();
       const target = list.find(c => c.code === code);
       if (!target) return;
-      target.is_active = newStatus;
-      saveCockpitCoupons(list);
 
       if (currentAccessToken) {
         try {
@@ -3008,8 +3068,14 @@
             method: 'POST',
             body: JSON.stringify(Object.assign({}, target, { is_active: newStatus }))
           });
-        } catch (_) {}
+        } catch (err) {
+          showAdminToast(err.message || `Failed to update coupon ${code} in Cloud.`, 'err');
+          return;
+        }
       }
+
+      target.is_active = newStatus;
+      saveCockpitCoupons(list);
 
       await renderCouponsTable();
       runCouponSimulator();
@@ -3023,7 +3089,8 @@
       const box = document.getElementById('sim-result-box');
       if (!box) return;
 
-      const fee = zone === 'outside_dhaka' ? 150 : 80;
+      const fees = getLiveDeliveryFees();
+      const fee = zone === 'outside_dhaka' ? fees.outside_dhaka : fees.dhaka;
       const coupons = window.__adminCoupons || getCockpitCoupons();
       const found = coupons.find(c => c.code === code);
 
@@ -3141,21 +3208,28 @@
     async function quickSaveCourier(ref, courierName, trackingNum) {
       const o = currentOrders.find(ord => ord.order_ref === ref);
       if (!o) return;
-      if (courierName !== null) o.courier_name = courierName;
-      if (trackingNum !== null) o.tracking_number = trackingNum.trim();
-      saveCockpitOrders(currentOrders);
+      const nextCourier = courierName !== null ? courierName : o.courier_name;
+      const nextTracking = trackingNum !== null ? trackingNum.trim() : o.tracking_number;
 
       if (currentAccessToken) {
         try {
           await adminApiFetch('/api/admin/orders/' + encodeURIComponent(ref), {
             method: 'PATCH',
             body: JSON.stringify({
-              courier_name: o.courier_name,
-              tracking_number: o.tracking_number
+              courier_name: nextCourier,
+              tracking_number: nextTracking
             })
           });
-        } catch (_) {}
+        } catch (err) {
+          showAdminToast(err.message || `Failed to update dispatch info for ${ref} in Cloud.`, 'err');
+          renderCourierTable();
+          return;
+        }
       }
+
+      o.courier_name = nextCourier;
+      o.tracking_number = nextTracking;
+      saveCockpitOrders(currentOrders);
       showAdminToast(`Updated dispatch info for ${ref}.`, 'ok');
     }
 
@@ -3241,6 +3315,9 @@
       if (!shell) return;
       const collapsed = shell.classList.toggle('collapsed');
       if (btn) btn.textContent = collapsed ? '▴ Show 3D Cockpit' : '▾ Hide 3D Cockpit';
+      if (window.FT_COCKPIT_3D && typeof window.FT_COCKPIT_3D.setPaused === 'function') {
+        window.FT_COCKPIT_3D.setPaused(collapsed);
+      }
     }
 
     // Callback invoked when clicking a 3D ThreeUI element inside the WebGL scene
@@ -3349,7 +3426,7 @@
         productsBySku: window.FT_CATALOG.PRODUCTS_BY_SKU,
         zone,
         district: zone === 'dhaka' ? 'Dhaka' : 'Outside Dhaka',
-        deliveryFees: { dhaka: 80, outside_dhaka: 150 },
+        deliveryFees: getLiveDeliveryFees(),
         coupon: couponObj
       });
 
@@ -3384,6 +3461,15 @@
       const notes = document.getElementById('man-notes').value.trim();
       const items = getComposedManualItems();
 
+      if (name.length < 2) {
+        showAdminToast('Please enter a valid customer name (at least 2 characters).', 'err');
+        return;
+      }
+      if (address.length < 4) {
+        showAdminToast('Please enter a complete delivery address.', 'err');
+        return;
+      }
+
       const phoneInfo = window.FT_COMMERCE ? window.FT_COMMERCE.normalizePhone(phone) : { isBdMobile: phone.length >= 11, canonical11: phone };
       if (!phoneInfo.isBdMobile) {
         showAdminToast('Please enter a valid 11-digit Bangladeshi mobile number (e.g. 017XXXXXXXX).', 'err');
@@ -3400,6 +3486,7 @@
               customer_address: address,
               delivery_zone: zone,
               customer_district: zone === 'dhaka' ? 'Dhaka' : 'Outside Dhaka',
+              discount_code: code || undefined,
               customer_notes: notes || 'Manual order created from Admin Cockpit',
               items
             })
@@ -3418,12 +3505,16 @@
       // Cockpit Local Operator execution
       const coupons = window.__adminCoupons || getCockpitCoupons();
       const couponObj = code ? coupons.find(c => c.code === code) : null;
+      if (code && (!couponObj || couponObj.is_active === false)) {
+        showAdminToast(`Coupon "${code}" is invalid or inactive.`, 'err');
+        return;
+      }
       const calc = window.FT_COMMERCE.computeOrderTotals({
         items,
         productsBySku: window.FT_CATALOG.PRODUCTS_BY_SKU,
         zone,
         district: zone === 'dhaka' ? 'Dhaka' : 'Outside Dhaka',
-        deliveryFees: { dhaka: 80, outside_dhaka: 150 },
+        deliveryFees: getLiveDeliveryFees(),
         coupon: couponObj
       });
 
@@ -3474,27 +3565,38 @@
 
     async function submitNewCoupon() {
       const code = document.getElementById('coup-code').value.trim().toUpperCase();
-      if (!code) return;
+      if (!code) {
+        showAdminToast('Please enter a coupon code.', 'err');
+        return;
+      }
       const type = document.getElementById('coup-type').value;
-      const val = parseFloat(document.getElementById('coup-val').value) || 0;
-      const min = parseFloat(document.getElementById('coup-min').value) || 0;
+      const val = parseFloat(document.getElementById('coup-val').value);
+      const min = parseFloat(document.getElementById('coup-min').value);
       const notes = document.getElementById('coup-notes').value.trim();
+
+      if (!Number.isFinite(val) || val < 0) {
+        showAdminToast('Discount value must be a valid non-negative number.', 'err');
+        return;
+      }
+      if (type === 'percentage' && (val <= 0 || val > 100)) {
+        showAdminToast('Percentage discount must be between 1 and 100.', 'err');
+        return;
+      }
+      if (type === 'fixed' && val <= 0) {
+        showAdminToast('Fixed discount value must be greater than 0.', 'err');
+        return;
+      }
+      const minSpend = Number.isFinite(min) && min >= 0 ? min : 0;
 
       const newCoupon = {
         code,
         discount_type: type,
         discount_value: val,
-        min_spend: min,
+        min_spend: minSpend,
         max_discount: type === 'percentage' ? 500 : val,
         is_active: true,
         notes
       };
-
-      const list = window.__adminCoupons || getCockpitCoupons();
-      const idx = list.findIndex(c => c.code === code);
-      if (idx >= 0) list[idx] = newCoupon;
-      else list.unshift(newCoupon);
-      saveCockpitCoupons(list);
 
       if (currentAccessToken) {
         try {
@@ -3502,8 +3604,17 @@
             method: 'POST',
             body: JSON.stringify(newCoupon)
           });
-        } catch (_) {}
+        } catch (err) {
+          showAdminToast(err.message || `Failed to save coupon ${code} in Cloud.`, 'err');
+          return;
+        }
       }
+
+      const list = window.__adminCoupons || getCockpitCoupons();
+      const idx = list.findIndex(c => c.code === code);
+      if (idx >= 0) list[idx] = newCoupon;
+      else list.unshift(newCoupon);
+      saveCockpitCoupons(list);
 
       closeNewCouponModal();
       await renderCouponsTable();
@@ -3535,11 +3646,18 @@
           badge.textContent = data.success ? 'Verified ✓' : 'Error';
           badge.className = data.success ? 'st-label st-delivered' : 'st-label st-cancelled';
           out.textContent = JSON.stringify(data, null, 2);
+          showAdminToast(data.success ? `Meta CAPI ${eventType} verified.` : 'Meta CAPI returned an error.', data.success ? 'ok' : 'err');
           return;
-        } catch (_) {}
+        } catch (err) {
+          badge.textContent = 'Error';
+          badge.className = 'st-label st-cancelled';
+          out.textContent = JSON.stringify({ success: false, error: err.message || 'CAPI diagnostic request failed.' }, null, 2);
+          showAdminToast(err.message || 'Meta CAPI diagnostic failed.', 'err');
+          return;
+        }
       }
 
-      // If non-privileged event, we can also test against public /api/capi or display verified diagnostic structure
+      // Cockpit Local Operator diagnostic preview (not authenticated to Cloud)
       const diagnosticResponse = {
         success: true,
         mode: 'cockpit_diagnostic_verified',
@@ -3572,6 +3690,11 @@
       const threshold = parseInt(document.getElementById('set-free-threshold').value, 10);
       const promo = document.getElementById('set-promo').value.trim();
 
+      if ((Number.isFinite(dhaka) && dhaka < 0) || (Number.isFinite(outside) && outside < 0) || (Number.isFinite(threshold) && threshold < 0)) {
+        showAdminToast('Delivery fees and free-delivery threshold must be non-negative.', 'err');
+        return;
+      }
+
       const payload = {
         whatsapp_number: wa,
         messenger_username: fb || 'farizasterritory143',
@@ -3590,11 +3713,20 @@
             method: 'PUT',
             body: JSON.stringify(payload)
           });
+          updateReadinessBanner();
+          runCouponSimulator();
+          recalcManualOrderPreview();
           showAdminToast('Store settings saved in Supabase Cloud!', 'ok');
           return;
-        } catch (_) {}
+        } catch (err) {
+          showAdminToast(err.message || 'Failed to save store settings in Cloud.', 'err');
+          return;
+        }
       }
 
+      updateReadinessBanner();
+      runCouponSimulator();
+      recalcManualOrderPreview();
       showAdminToast('Store settings updated in Cockpit configuration!', 'ok');
     }
 

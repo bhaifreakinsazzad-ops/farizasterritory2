@@ -218,6 +218,17 @@
       ) {
         return { ok: false, error: `Product ${sku} is currently marked out of stock.` };
       }
+      if (
+        product.stock_count !== undefined &&
+        product.stock_count !== null &&
+        Number.isFinite(Number(product.stock_count)) &&
+        qty > Number(product.stock_count)
+      ) {
+        return {
+          ok: false,
+          error: `Requested quantity (${qty}) exceeds available stock (${Number(product.stock_count)}) for ${sku}.`
+        };
+      }
       const unitPrice = Number(product.priceBDT ?? product.price_bdt ?? 0);
       if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
         return { ok: false, error: `Product ${sku} does not have an active price configured.` };
@@ -275,14 +286,16 @@
   function isFeedEligibleProduct(product) {
     if (!product) return false;
     const isAvail = product.is_available !== false;
+    const hasStockCount = product.stock_count === undefined || product.stock_count === null || Number(product.stock_count) > 0;
     const stockVerified = product.stock_verified === true;
     const priceApproved = product.price_review === false || product.priceStatus === 'approved';
     const price = Number(product.priceBDT ?? product.price_bdt ?? 0);
-    return isAvail && stockVerified && priceApproved && Number.isFinite(price) && price > 0;
+    return isAvail && hasStockCount && stockVerified && priceApproved && Number.isFinite(price) && price > 0;
   }
 
   function getProductFeedAvailability(product) {
     if (!product || product.is_available === false) return 'out of stock';
+    if (product.stock_count !== undefined && product.stock_count !== null && Number(product.stock_count) <= 0) return 'out of stock';
     if (product.stock_verified !== true) return 'out of stock';
     return 'in stock';
   }

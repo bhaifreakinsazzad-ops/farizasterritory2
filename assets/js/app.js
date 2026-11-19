@@ -14,7 +14,16 @@
   const KEY_META = window.FT_CATALOG ? window.FT_CATALOG.KEY_META : {};
   const PHOTO_KEYS = window.FT_CATALOG ? window.FT_CATALOG.PHOTO_KEYS : [];
   const VERIFIED_CATALOG = window.FT_CATALOG ? window.FT_CATALOG.VERIFIED_CATALOG : {};
-  const bySku = sku => (window.FT_CATALOG && window.FT_CATALOG.PRODUCTS_BY_SKU[sku]) || PRODUCTS[0];
+  const normalizeSkuParam = sku => String(sku || '').trim().toUpperCase();
+  const bySkuExact = sku => {
+    const k = normalizeSkuParam(sku);
+    return (k && window.FT_CATALOG && window.FT_CATALOG.PRODUCTS_BY_SKU[k]) || null;
+  };
+  const bySku = sku => bySkuExact(sku) || PRODUCTS[0];
+  const isProductAvailable = p => !!p && p.is_available !== false && (p.stock_count === undefined || p.stock_count === null || Number(p.stock_count) > 0);
+  const maxQtyForProduct = p => (p && p.stock_count !== undefined && p.stock_count !== null && Number.isFinite(Number(p.stock_count)))
+    ? Math.max(0, Math.min(20, Number(p.stock_count)))
+    : 20;
   const colById = id => COLLECTIONS.find(c => c.id === id || c.id === String(id).padStart(2, '0') || c.slug === id) || { name: 'Collection', short: 'Collection', acc: '#8E3B66' };
 
   const priceText = p => {
@@ -23,8 +32,8 @@
   return `৳${p.priceBDT.toLocaleString('en-US')}`;
 };
   const subtotalNum = items => items.reduce((sum, it) => {
-    const p = bySku(it.sku);
-    return sum + ((p.priceBDT || 0) * it.qty);
+    const p = bySkuExact(it.sku);
+    return sum + ((p && p.priceBDT ? p.priceBDT : 0) * it.qty);
   }, 0);
   const subtotalText = items => `${subtotalNum(items).toLocaleString('en-US')} BDT`;
 
@@ -233,8 +242,8 @@ function bindImages(root){
 }
 function testAsset(sku,key){
   return new Promise(res=>{
-    const p=bySku(sku), a=p.assets?p.assets[key]:null;
-    if(!a){setAssetStatus(sku,key,"na");res("na");return;}
+    const p=bySkuExact(sku), a=p&&p.assets?p.assets[key]:null;
+    if(!p||!a){setAssetStatus(sku,key,"na");res("na");return;}
     setAssetStatus(sku,key,"pending");
     const im=new Image(); let done=false;
     const fin=st=>{if(done)return;done=true;setAssetStatus(sku,key,st);res(st);};
@@ -269,28 +278,53 @@ function syncCommerce(){
   if(state.route.page==="inquiry"&&!state.inqDone) renderInqSummary();
 }
 function addToBag(sku,qty,quiet){
-  const prod = bySku(sku);
-  if(window.FT_ANALYTICS && prod){
-    window.FT_ANALYTICS.trackAddToCart(prod, qty||1);
+  const prod = bySkuExact(sku);
+  if(!prod){
+    if(!quiet) toast("Product SKU not found",{icon:"alert"});
+    return false;
   }
-  qty=qty||1;
-  const it=inBag(sku);
-  if(it) it.qty=Math.min(99,it.qty+qty); else state.bag.push({sku,qty});
+  if(!isProductAvailable(prod)){
+    if(!quiet) toast(`${prod.title} is currently out of stock`,{icon:"alert"});
+    return false;
+  }
+  qty = Math.max(1, parseInt(qty, 10) || 1);
+  const maxQty = maxQtyForProduct(prod);
+  const it = inBag(prod.sku);
+  const currentQty = it ? it.qty : 0;
+  if(currentQty >= maxQty){
+    if(!quiet) toast(`Maximum available quantity (${maxQty}) already in bag for ${prod.title}`,{icon:"info",action:"View bag",onAction:()=>openDrawer("bag")});
+    return false;
+  }
+  const targetQty = Math.min(maxQty, currentQty + qty);
+  const addedQty = targetQty - currentQty;
+  if(window.FT_ANALYTICS && prod){
+    window.FT_ANALYTICS.trackAddToCart(prod, addedQty);
+  }
+  if(it) it.qty = targetQty; else state.bag.push({sku:prod.sku,qty:targetQty});
   syncCommerce();
   if(!quiet){
-    toast(`${bySku(sku).title} added to inquiry bag`,{icon:"bag",action:"View bag",onAction:()=>openDrawer("bag")});
+    const cappedNote = targetQty < currentQty + qty ? ` (capped at ${maxQty} available)` : "";
+    toast(`${prod.title} added to inquiry bag${cappedNote}`,{icon:"bag",action:"View bag",onAction:()=>openDrawer("bag")});
     if(window.FT_ANIME && typeof window.FT_ANIME.flyToBag === 'function'){
-      const srcEl = document.querySelector(`[data-sku="${sku}"] img`)
+      const srcEl = document.querySelector(`[data-sku="${prod.sku}"] img`)
         || document.getElementById('qv-main-fig')
         || document.querySelector('#gal-main img')
-        || document.querySelector(`[data-sku="${sku}"]`);
+        || document.querySelector(`[data-sku="${prod.sku}"]`);
       if(srcEl) window.FT_ANIME.flyToBag(srcEl);
     }
   }
+  return true;
 }
 function buyNow(sku,qty){
+  const prod = bySkuExact(sku);
+  if(!isProductAvailable(prod)){
+    toast(`${prod ? prod.title : sku} is currently out of stock`,{icon:"alert"});
+    return;
+  }
   qty = qty || 1;
-  addToBag(sku, qty, true);
+  const it = inBag(prod.sku);
+  const added = addToBag(prod.sku, qty, true);
+  if(!added && !it) return;
   closeQuickView();
   closeDrawer();
   location.hash = "#/inquiry";
@@ -303,7 +337,9 @@ function removeFromBag(sku){
 }
 function setQty(sku,d){
   const it=inBag(sku); if(!it)return;
-  it.qty=Math.max(1,Math.min(99,it.qty+d)); syncCommerce();
+  const prod=bySkuExact(sku);
+  const maxQty=prod ? Math.max(1, maxQtyForProduct(prod)) : 20;
+  it.qty=Math.max(1,Math.min(maxQty,it.qty+d)); syncCommerce();
 }
 function toggleWish(sku){
   const i=state.wish.indexOf(sku);
@@ -413,13 +449,14 @@ function pcard(p,i){
   const cautionStr = tCaution(p);
   const unitBadge = unitStr ? `<span class="unit-badge" title="${esc(cautionStr)}">${esc(unitStr)}</span>` : '';
   const isCaution = !!cautionStr;
-  const outBadge = p.is_available === false ? `<span class="tag warn" style="font-size:10px;padding:2px 7px">Out of stock</span>` : '';
-  const overlayLabel = (p.colId==="01"||p.col==="01") ? "Label unverified" : (p.is_available === false ? "Out of stock" : "");
+  const avail = isProductAvailable(p);
+  const outBadge = !avail ? `<span class="tag warn" style="font-size:10px;padding:2px 7px">Out of stock</span>` : '';
+  const overlayLabel = (p.colId==="01"||p.col==="01") ? "Label unverified" : (!avail ? "Out of stock" : "");
   const primaryTitle = tProdTitle(p);
   const subTitle = tProdSubTitle(p);
   return `<article class="pcard" data-reveal style="--d:${(i%4)*.07}s;--pc-acc:${p.accent}">
     <div class="pc-actions">
-      <button data-act="bag-add" data-sku="${p.sku}" aria-label="Add ${esc(p.title)} to inquiry bag" title="Add to bag">${IC.bag}</button>
+      <button data-act="bag-add" data-sku="${p.sku}"${!avail?' disabled aria-disabled="true"':''} aria-label="Add ${esc(p.title)} to inquiry bag" title="${!avail?'Out of stock':'Add to bag'}">${IC.bag}</button>
       <button data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" class="${inWish(p.sku)?"on":""}" aria-pressed="${inWish(p.sku)}" aria-label="Save ${esc(p.title)} to wishlist" title="Wishlist">${IC.heart}</button>
       <button data-act="quick-view" data-sku="${p.sku}" aria-label="Quick view of ${esc(p.title)}" title="Quick view">${IC.zoom}</button>
     </div>
@@ -433,12 +470,12 @@ function pcard(p,i){
       ${subTitle ? `<div class="tiny${isBn()?'':' bn'}" style="color:var(--chestnut)">${esc(subTitle)}</div>` : ''}
       <div class="pc-meta">
         <span class="pc-sku">${p.sku}</span>
-        <span class="pc-price">${priceText(p)}${p.priceStatus === 'suggested' ? ' <span class="tiny">· প্রাক্কলিত</span>' : ''}</span>
+        <span class="pc-price">${priceText(p)}${(p.priceStatus === 'suggested' || p.price_review === true) ? ' <span class="tiny">· প্রাক্কলিত</span>' : ''}</span>
       </div>
       ${isCaution ? `<div class="tiny pc-caution">* ${esc(cautionStr)}</div>` : ''}
       <div style="display:flex;gap:6px;margin-top:8px">
-        <button type="button" class="btn btn-line btn-sm" style="flex:1;padding:7px 10px;font-size:11.5px;justify-content:center" data-act="bag-add" data-sku="${p.sku}">${IC.bag}<span>${isBn()?'ব্যাগে যোগ':'Add to Bag'}</span></button>
-        <button type="button" class="btn btn-buynow btn-sm" style="flex:1;padding:7px 10px;font-size:11.5px;justify-content:center" data-act="buynow" data-sku="${p.sku}"><span>${isBn()?'অর্ডার (COD)':'Order COD'}</span>${IC.arrow}</button>
+        <button type="button" class="btn btn-line btn-sm" style="flex:1;padding:7px 10px;font-size:11.5px;justify-content:center" data-act="bag-add" data-sku="${p.sku}"${!avail?' disabled aria-disabled="true"':''}>${IC.bag}<span>${!avail?(isBn()?'স্টক নেই':'Out of Stock'):(isBn()?'ব্যাগে যোগ':'Add to Bag')}</span></button>
+        <button type="button" class="btn btn-buynow btn-sm" style="flex:1;padding:7px 10px;font-size:11.5px;justify-content:center" data-act="buynow" data-sku="${p.sku}"${!avail?' disabled aria-disabled="true"':''}><span>${isBn()?'অর্ডার (COD)':'Order COD'}</span>${IC.arrow}</button>
       </div>
     </div>
   </article>`;
@@ -635,7 +672,19 @@ function stageList(){
 }
 function buildStage(){
   const stage=$("#stage"); if(!stage)return;
-  state.stage.list=stageList(); state.stage.idx=Math.min(state.stage.idx,state.stage.list.length-1);
+  state.stage.list=stageList();
+  if(!state.stage.list.length){
+    state.stage.idx=0;
+    stage.innerHTML=`<div class="empty" style="margin:auto;padding:40px 16px">${IC.flower}<p>No pieces in this selection.</p></div>`;
+    $("#stage-col-label").textContent="";
+    $("#stage-title").textContent="";
+    $("#stage-count").textContent="00 / 00";
+    $("#stage-prog").style.width="0%";
+    const bar=$("#trio-bar"); if(bar) bar.innerHTML="";
+    const panel=$("#piece-panel"); if(panel) panel.innerHTML=`<div class="empty">${IC.flower}<p>No piece selected.</p></div>`;
+    return;
+  }
+  state.stage.idx=Math.max(0,Math.min(state.stage.idx,state.stage.list.length-1));
   stage.innerHTML=state.stage.list.map((sku,i)=>{
     const p=bySku(sku);
     return `<article class="s-card off" data-i="${i}" data-sku="${sku}" role="option" aria-selected="false" aria-label="${esc(p.title)} — ${p.sku}">
@@ -664,6 +713,7 @@ function buildStage(){
 function layoutStage(instant){
   const stage=$("#stage"); if(!stage)return;
   const n=state.stage.list.length, idx=state.stage.idx;
+  if(!n || !state.stage.list[idx])return;
   const W=stage.clientWidth;
   const cw=Math.min(300,Math.max(200,W*0.30));
   stage.style.setProperty("--cw",cw+"px");
@@ -698,6 +748,7 @@ function layoutStage(instant){
 }
 function focusStage(i){
   const n=state.stage.list.length;
+  if(!n)return;
   state.stage.idx=((i%n)+n)%n;
   closeHotPop();
   layoutStage();
@@ -706,6 +757,7 @@ function focusStage(i){
 function renderTrio(){
   const bar=$("#trio-bar"); if(!bar)return;
   const list=state.stage.list,n=list.length,idx=state.stage.idx;
+  if(!n || !list[idx]){bar.innerHTML="";return;}
   const trio=[list[idx],list[(idx+1)%n],list[(idx+2)%n]].filter((v,i,a)=>a.indexOf(v)===i);
   bar.innerHTML=`<div><span class="tb-t">Complete the set</span><span class="tb-s">Curated ${trio.length===3?"trio":"set"} of ${trio.length} piece${trio.length>1?"s":""} · reference prices shown in product details</span></div>
     <div class="trio-thumbs">${trio.map(s=>ph(bySku(s),"main",{mini:true,w:120,dot:false})).join("")}</div>
@@ -714,20 +766,24 @@ function renderTrio(){
 }
 function renderPiecePanel(){
   const panel=$("#piece-panel"); if(!panel)return;
-  const p=bySku(state.stage.list[state.stage.idx]);
+  if(!state.stage.list.length){panel.innerHTML="";return;}
+  const p=bySkuExact(state.stage.list[state.stage.idx]);
+  if(!p)return;
+  const avail=isProductAvailable(p);
   const assets=["main","original","detailA","socialSquare"].filter(k=>p.assets&&p.assets[k]);
   panel.innerHTML=`
     <div class="pp-head"><span class="overline">In this piece</span><span class="tiny">${assets.length} views</span></div>
     <span class="tag" style="background:color-mix(in srgb,${p.accent} 16%,var(--cream3));color:var(--ink2)">${esc(p.collection.short)}</span>
     ${(p.colId==="01"||p.col==="01")?`<span class="tag warn" style="margin-left:6px">Label unverified</span>`:""}
+    ${!avail?`<span class="tag warn" style="margin-left:6px">Out of stock</span>`:""}
     <h2 class="pp-title">${esc(p.title)}</h2>
     <span class="pp-sku">${p.sku} · ${esc(p.slug)}</span>
     <div class="pp-price"><b>${priceText(p)}</b><span class="tiny">Catalog reference · confirm</span></div>
     <div class="pp-assets">${assets.map(k=>`<button data-act="lb-open" data-sku="${p.sku}" data-key="${k}" aria-label="View ${KEY_META[k].label}" style="padding:0;border:0;background:none">${ph(p,k,{mini:true,w:200,dot:false,ratio:"r45"})}</button>`).join("")}</div>
     <p class="small">Fabric, sizing and availability are confirmed by the seller. Tap the <b>+</b> hotspots on the photo for fabric close-ups.</p>
     <div class="pp-actions">
-      <button class="btn btn-ink btn-block" data-act="bag-add" data-sku="${p.sku}">${IC.bag}<span>${isBn()?'ব্যাগে যোগ করুন':'Add to inquiry bag'}</span></button>
-      <button class="btn btn-buynow btn-block" data-act="buynow" data-sku="${p.sku}"><span>${isBn()?'সরাসরি অর্ডার করুন (COD)':'Order Now · Cash on Delivery'}</span>${IC.arrow}</button>
+      <button class="btn btn-ink btn-block" data-act="bag-add" data-sku="${p.sku}"${!avail?' disabled aria-disabled="true"':''}>${IC.bag}<span>${!avail?(isBn()?'স্টক নেই':'Currently out of stock'):(isBn()?'ব্যাগে যোগ করুন':'Add to inquiry bag')}</span></button>
+      <button class="btn btn-buynow btn-block" data-act="buynow" data-sku="${p.sku}"${!avail?' disabled aria-disabled="true"':''}><span>${isBn()?'সরাসরি অর্ডার করুন (COD)':'Order Now · Cash on Delivery'}</span>${IC.arrow}</button>
       <a class="btn btn-line btn-block" href="#/product/${p.sku}"><span>${isBn()?'বিস্তারিত ও ছবি দেখুন':'Full details & gallery'}</span>${IC.arrow}</a>
       <button class="wish-line${inWish(p.sku)?" on":""}" data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" aria-pressed="${inWish(p.sku)}">${IC.heart}<span>${inWish(p.sku)?"Saved to wishlist":"Save to wishlist"}</span></button>
     </div>
@@ -875,9 +931,10 @@ function pageCollections(){
 }
 /* ================= PRODUCT PAGE ================= */
 function pageProduct(sku){
-  const p=bySku(sku);
+  const p=bySkuExact(sku);
   if(!p)return page404();
-  state.gal={sku,key:"main"};
+  state.gal={sku:p.sku,key:"main"};
+  const avail=isProductAvailable(p);
   const nProds=PRODUCTS.length, idx=PRODUCTS.indexOf(p), prev=PRODUCTS[(idx-1+nProds)%nProds], next=PRODUCTS[(idx+1)%nProds];
   const sameCol = PRODUCTS.filter(x => (x.colId === p.colId || x.col === p.col) && x.sku !== p.sku).slice(0, 2);
   const crossCategory = PRODUCTS.filter(x => x.superCategory !== p.superCategory).slice(0, 2);
@@ -906,16 +963,16 @@ function pageProduct(sku){
       <div class="prod-info" data-reveal style="--d:.1s">
         <span class="tag" style="background:color-mix(in srgb,${p.accent} 16%,var(--cream3));color:var(--ink2)">${esc(p.collection.name)}</span>
         ${(p.colId==="01"||p.col==="01")?`<span class="tag warn" style="margin-left:6px">Seller label · unverified</span>`:""}
-        ${p.is_available===false?`<span class="tag warn" style="margin-left:6px">Currently out of stock · Inquire</span>`:""}
+        ${!avail?`<span class="tag warn" style="margin-left:6px">Currently out of stock · Inquire</span>`:""}
         <h1 class="pi-title${isBn()?' bn':''}">${esc(tProdTitle(p))}</h1>
         ${tProdSubTitle(p) ? `<div class="${isBn()?'':'bn'}" style="color:var(--chestnut);font-size:15px;margin:2px 0 4px">${esc(tProdSubTitle(p))}</div>` : ''}
         <span class="pp-sku">${p.sku} · ${esc(p.slug)}</span>
-        <div class="pi-price"><b>${priceText(p)}</b><span class="tiny">${p.priceStatus === 'suggested' ? 'Provisional reference · confirm with seller' : 'Boutique catalog price · Cash on Delivery'}</span></div>
+        <div class="pi-price"><b>${priceText(p)}</b><span class="tiny">${(p.priceStatus === 'suggested' || p.price_review === true) ? 'Provisional reference · confirm with seller' : 'Boutique catalog price · Cash on Delivery'}</span></div>
         <p class="small${isBn()?' bn':''}" style="margin-bottom:16px">${esc(tProdDesc(p) || "Listed BDT prices come from the official boutique catalog and are confirmed before courier dispatch. First-order offer up to 25%* and free delivery* as advertised.")}</p>
         <div class="pi-buy" style="flex-wrap:wrap">
-          <span class="qty" aria-label="Quantity"><button data-act="piq-dec" aria-label="Decrease quantity">${IC.minus}</button><output id="pi-qty">1</output><button data-act="piq-inc" aria-label="Increase quantity">${IC.plus}</button></span>
-          <button class="btn btn-ink" data-act="bag-add-qty" data-sku="${p.sku}">${IC.bag}<span>${isBn()?'ব্যাগে যোগ করুন':'Add to inquiry bag'}</span></button>
-          <button class="btn btn-buynow" data-act="buynow-qty" data-sku="${p.sku}"><span>${isBn()?'অর্ডার করুন (COD)':'Order Now (COD)'}</span>${IC.arrow}</button>
+          <span class="qty" aria-label="Quantity"><button data-act="piq-dec" aria-label="Decrease quantity"${!avail?' disabled':''}>${IC.minus}</button><output id="pi-qty">1</output><button data-act="piq-inc" aria-label="Increase quantity"${!avail?' disabled':''}>${IC.plus}</button></span>
+          <button class="btn btn-ink" data-act="bag-add-qty" data-sku="${p.sku}"${!avail?' disabled aria-disabled="true"':''}>${IC.bag}<span>${!avail?(isBn()?'স্টক নেই':'Out of Stock'):(isBn()?'ব্যাগে যোগ করুন':'Add to inquiry bag')}</span></button>
+          <button class="btn btn-buynow" data-act="buynow-qty" data-sku="${p.sku}"${!avail?' disabled aria-disabled="true"':''}><span>${isBn()?'অর্ডার করুন (COD)':'Order Now (COD)'}</span>${IC.arrow}</button>
         </div>
         <div class="pi-buy" style="flex-wrap:wrap">
           ${messengerBtn("Ask on Messenger",p.sku)}
@@ -941,7 +998,7 @@ function pageProduct(sku){
             ${p.details && p.details.fabric ? `<div class="prov-row"><span>Fabric</span><span>${esc(p.details.fabric)}</span></div>` : ''}
           `}
           ${p.descriptionBn ? `<p class="bn" style="color:var(--ink2);margin-top:12px;line-height:1.8">${esc(p.descriptionBn)}</p>` : ''}
-          <div class="prov-row"><span>Availability</span><span>Confirmed by seller on inquiry</span></div>
+          <div class="prov-row"><span>Availability</span><span>${avail ? 'In Stock (Confirmed before courier dispatch)' : 'Currently Out of Stock · Inquire for restock'}</span></div>
         </div></details>
         <details class="acc"><summary>About our product photos ${IC.chev}</summary><div class="acc-body">
           <p>Real source photography is shown first. Detail images are crops of the photographed garments, not additional shooting angles. Optional AI-generated styling previews are illustrations and are identified separately.</p>
@@ -961,10 +1018,10 @@ function pageProduct(sku){
     <div class="rel-grid">${related.map((r,i)=>pcard(r,i)).join("")}</div>
   </div></div>
   <div class="mobile-buy" id="mobile-buy">
-    <div class="mb-t"><b>${esc(tProdTitle(p))}</b><span class="tiny">${priceText(p)} · COD</span></div>
+    <div class="mb-t"><b>${esc(tProdTitle(p))}</b><span class="tiny">${priceText(p)} · ${avail?'COD':'Out of stock'}</span></div>
     <div style="display:flex;gap:6px">
-      <button class="btn btn-line btn-sm" data-act="bag-add-qty" data-sku="${p.sku}">${IC.bag}<span>Bag</span></button>
-      <button class="btn btn-buynow btn-sm" data-act="buynow-qty" data-sku="${p.sku}"><span>Order COD</span>${IC.arrow}</button>
+      <button class="btn btn-line btn-sm" data-act="bag-add-qty" data-sku="${p.sku}"${!avail?' disabled':''}>${IC.bag}<span>Bag</span></button>
+      <button class="btn btn-buynow btn-sm" data-act="buynow-qty" data-sku="${p.sku}"${!avail?' disabled':''}><span>Order COD</span>${IC.arrow}</button>
     </div>
   </div>`;
 }
@@ -1585,8 +1642,13 @@ async function handleTrackSearch(optRef, optPhone){
   const wrap = document.getElementById("track-result-wrap");
   if(!wrap) return;
   if(!ref || !phone){
-    wrap.innerHTML = `<div class="notice alert">${IC.alert}<span>Please enter both your Order Reference and matching Bangladeshi phone number to verify and view order status.</span></div>`;
-    if(ref && !phone && phoneInp) phoneInp.focus();
+    if(optRef && !phone){
+      wrap.innerHTML = `<div class="notice info">${IC.info}<span>Reference <b>${esc(ref)}</b> selected. Enter the mobile phone number used with this order above and click Check Status.</span></div>`;
+      if(phoneInp) phoneInp.focus();
+    } else {
+      wrap.innerHTML = `<div class="notice alert">${IC.alert}<span>Please enter both your Order Reference and matching Bangladeshi phone number to verify and view order status.</span></div>`;
+      if(ref && !phone && phoneInp) phoneInp.focus();
+    }
     return;
   }
   wrap.innerHTML = '<div style="text-align:center;padding:30px;color:var(--ink2)">Verifying order credentials...</div>';
@@ -1768,13 +1830,25 @@ function render(){
   const r=parseRoute();state.route=r;
   const app=$("#app");const token=++renderToken;
   closeHotPop();closeDrawer();closeSearch();closeMenu();closeLB();closeModal();
-  document.body.classList.toggle("has-mbuy",r.page==="product"&&!!bySku(r.param));
+  document.body.classList.toggle("has-mbuy",r.page==="product"&&!!bySkuExact(r.param));
   let html,title=TITLES[r.page]||"Fariza's Territory",desc="Elegance in Every Detail — Fariza's Territory, Mirpur, Dhaka.";
   switch(r.page){
     case "home":html=pageHome();break;
-    case "shop":html=pageShop();break;
-    case "fashion":state.shop.pillar="Fashion";html=pageShop();break;
-    case "accessories":state.shop.pillar="Accessories";html=pageShop();break;
+    case "shop":
+      state.shop.c=r.query.c||"all";
+      state.shop.pillar=r.query.pillar||"all";
+      html=pageShop();
+      break;
+    case "fashion":
+      state.shop.pillar="Fashion";
+      state.shop.c=r.query.c||"all";
+      html=pageShop();
+      break;
+    case "accessories":
+      state.shop.pillar="Accessories";
+      state.shop.c=r.query.c||"all";
+      html=pageShop();
+      break;
     case "collections":html=pageCollections();break;
     case "collection":{
       const targetCol = colById(r.param);
@@ -1789,7 +1863,7 @@ function render(){
       break;
     }
     case "lookbook":html=pageLookbook();break;
-    case "product":{const p=bySku(r.param);html=pageProduct(r.param);if(p){title=`${p.title} (${p.sku}) — Fariza's Territory`;desc=`${p.title} — ${p.collection.name}. Real boutique photography, fabric close-ups and Messenger inquiry. Catalog reference prices available; final amount confirmed by seller.`;}break;}
+    case "product":{const p=bySkuExact(r.param);html=pageProduct(r.param);if(p){title=`${p.title} (${p.sku}) — Fariza's Territory`;desc=`${p.title} — ${p.collection.name}. Real boutique photography, fabric close-ups and Messenger inquiry. Catalog reference prices available; final amount confirmed by seller.`;}else{title="Product not found — Fariza's Territory";}break;}
     case "about":html=pageAbout();break;
     case "bag":html=pageBag();break;
     case "inquiry":html=pageInquiry();break;
@@ -1799,14 +1873,16 @@ function render(){
     case "policies":html=pagePolicies();break;
     default:html=page404();title="Page not found — Fariza's Territory";
   }
+  app.dataset.swapped="0";
   const swap=()=>{
-    if(token!==renderToken)return;
+    if(token!==renderToken||app.dataset.swapped==="1")return;
+    app.dataset.swapped="1";
     app.innerHTML=html;
     document.title=title;
     const md=document.querySelector('meta[name="description"]');if(md)md.setAttribute("content",desc);
     const ogt=document.querySelector('meta[property="og:title"]');if(ogt)ogt.setAttribute("content",title);
     const ogd=document.querySelector('meta[property="og:description"]');if(ogd)ogd.setAttribute("content",desc);
-    const activeProd = r.page==="product" ? bySku(r.param) : null;
+    const activeProd = r.page==="product" ? bySkuExact(r.param) : null;
     const ogi=document.querySelector('meta[property="og:image"]');
     if(ogi) ogi.setAttribute("content", activeProd ? assetSrc(activeProd,"socialSquare",1000) : "assets/products/CAT-001/socialSquare.webp");
     let prodLd = document.getElementById("dynamic-product-ld");
@@ -1825,7 +1901,7 @@ function render(){
           "@type":"Offer",
           "priceCurrency":"BDT",
           "price":activeProd.priceBDT || 0,
-          "availability":activeProd.is_available === false ? "https://schema.org/OutOfStock" : "https://schema.org/InStock"
+          "availability":isProductAvailable(activeProd) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
         }
       });
     } else if(prodLd) {
@@ -1836,8 +1912,19 @@ function render(){
     hydrate();
     fx(app,{opacity:[0,1],transform:["translateY(14px)","translateY(0)"]},{duration:.5});
   };
+  if(app.getAnimations){
+    try{app.getAnimations().forEach(anim=>anim.cancel());}catch(_){}
+  }
   if(RM||!app.innerHTML){swap();}
-  else{const a=app.animate([{opacity:1},{opacity:0}],{duration:140,fill:"forwards"});a.onfinish=swap;setTimeout(()=>{if(token===renderToken&&!app.dataset.swapped){}},200);}
+  else{
+    try{
+      const a=app.animate([{opacity:1},{opacity:0}],{duration:140,fill:"forwards"});
+      a.onfinish=swap;
+      setTimeout(()=>{if(token===renderToken&&app.dataset.swapped!=="1")swap();},200);
+    }catch(_){
+      swap();
+    }
+  }
 }
 /* ================= MOTION.DEV & QUICK VIEW CORE ================= */
 function initScrollProgressBar() {
@@ -1878,11 +1965,12 @@ function initMotionInView() {
 }
 
 function openQuickView(sku) {
-  const p = bySku(sku);
+  const p = bySkuExact(sku);
   if (!p) return;
   const ov = $("#quick-view-ov");
   const card = $("#quick-view-card");
   if (!ov || !card) return;
+  const avail = isProductAvailable(p);
 
   const unitBadge = p.unitBn ? `<span class="unit-badge">${esc(p.unitBn)}</span>` : '';
   const keys = ["main", "detailA", "detailB", "original"].filter(k => p.assets && p.assets[k]);
@@ -1913,7 +2001,7 @@ function openQuickView(sku) {
       ${p.titleBn ? `<div class="bn" style="color:var(--chestnut);font-size:14.5px;margin-bottom:8px;">${esc(p.titleBn)}</div>` : ''}
       <div style="font-size:20px;font-weight:600;color:var(--caramel);margin:12px 0;padding:10px 0;border-top:1.5px dashed var(--line);border-bottom:1.5px dashed var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px">
         <span>${priceText(p)}</span>
-        ${p.is_available === false ? `<span class="tag warn" style="font-size:11px">Out of stock</span>` : ''}
+        ${!avail ? `<span class="tag warn" style="font-size:11px">Out of stock</span>` : ''}
       </div>
       <p style="font-size:13.5px;color:var(--ink2);line-height:1.6;margin-bottom:12px;">
         ${esc(p.descriptionEn || p.descriptionBn || '')}
@@ -1921,10 +2009,10 @@ function openQuickView(sku) {
       ${specLine ? `<div class="tiny bn" style="background:var(--cream2);padding:10px 14px;border-radius:9px;margin-bottom:10px;line-height:1.6"><b>বিবরণ:</b> ${esc(specLine)}</div>` : ''}
       ${p.cautionBn ? `<div class="tiny bn" style="color:var(--ink3);margin-bottom:14px;line-height:1.5">* ${esc(p.cautionBn)}</div>` : ''}
       <div style="display:flex;gap:8px;margin-top:auto;flex-wrap:wrap">
-        <button class="btn btn-ink" style="flex:1" data-act="bag-add" data-sku="${p.sku}">
-          ${IC.bag}<span>${isBn()?'ব্যাগে যোগ':'Add to Bag'}</span>
+        <button class="btn btn-ink" style="flex:1" data-act="bag-add" data-sku="${p.sku}"${!avail?' disabled aria-disabled="true"':''}>
+          ${IC.bag}<span>${!avail?(isBn()?'স্টক নেই':'Out of Stock'):(isBn()?'ব্যাগে যোগ':'Add to Bag')}</span>
         </button>
-        <button class="btn btn-buynow" style="flex:1" data-act="buynow" data-sku="${p.sku}">
+        <button class="btn btn-buynow" style="flex:1" data-act="buynow" data-sku="${p.sku}"${!avail?' disabled aria-disabled="true"':''}>
           <span>${isBn()?'অর্ডার (COD)':'Order Now (COD)'}</span>${IC.arrow}
         </button>
         <button class="btn btn-line${inWish(p.sku)?' on':''}" data-act="wish" data-sku="${p.sku}" data-heart="${p.sku}" aria-pressed="${inWish(p.sku)}" aria-label="Save to wishlist">
@@ -1963,11 +2051,15 @@ function hydrate(){
     if(window.initThreeCollections) window.initThreeCollections();
   } else {
     if(window.destroyThreeCollections) window.destroyThreeCollections();
+    if(window.ftThreeHero && typeof window.ftThreeHero.destroy === 'function'){
+      window.ftThreeHero.destroy();
+      window.ftThreeHero = null;
+    }
   }
   if(state.route.page==="shop"||state.route.page==="fashion"||state.route.page==="accessories"||state.route.page==="collection")renderShopGrid();
   if(state.route.page==="lookbook")renderLookGrid();
   if(state.route.page==="product"){
-    const prod = bySku(state.route.param);
+    const prod = bySkuExact(state.route.param);
     if(prod){
       renderGallery();
       if(window.FT_ANALYTICS && window.FT_ANALYTICS.trackViewContent) window.FT_ANALYTICS.trackViewContent(prod);
@@ -2025,7 +2117,7 @@ function initStageInput(){
   stage.addEventListener("keydown",e=>{
     if(e.key==="ArrowRight"){e.preventDefault();focusStage(state.stage.idx+1);}
     if(e.key==="ArrowLeft"){e.preventDefault();focusStage(state.stage.idx-1);}
-    if(e.key==="Enter"){location.hash="#/product/"+state.stage.list[state.stage.idx];}
+    if(e.key==="Enter"&&state.stage.list[state.stage.idx]){location.hash="#/product/"+state.stage.list[state.stage.idx];}
   });
 }
 /* ================= EVENTS ================= */
@@ -2068,11 +2160,16 @@ document.addEventListener("click",e=>{
     case "hot-close":closeHotPop();break;
     case "trio":{
       const skus=t.dataset.skus.split(",").filter(Boolean);
-      skus.forEach(s=>addToBag(s,1,true));
-      toast(`Curated set of ${skus.length} added to bag`,{icon:"bag",action:"View bag",onAction:()=>openDrawer("bag")});
-      if(window.FT_ANIME && typeof window.FT_ANIME.flyToBag === "function"){
-        const srcEl=t.closest(".pair-card") || $("#trio-bar") || t;
-        window.FT_ANIME.flyToBag(srcEl);
+      let addedCount=0;
+      skus.forEach(s=>{ if(addToBag(s,1,true)) addedCount++; });
+      if(addedCount>0){
+        toast(`Added ${addedCount} piece${addedCount>1?'s':''} to inquiry bag`,{icon:"bag",action:"View bag",onAction:()=>openDrawer("bag")});
+        if(window.FT_ANIME && typeof window.FT_ANIME.flyToBag === "function"){
+          const srcEl=t.closest(".pair-card") || $("#trio-bar") || t;
+          window.FT_ANIME.flyToBag(srcEl);
+        }
+      } else {
+        toast("Selected pieces are currently unavailable or at max quantity",{icon:"alert"});
       }
       break;
     }
@@ -2081,7 +2178,13 @@ document.addEventListener("click",e=>{
     case "bag-add-qty":{const q=+($("#pi-qty")?$("#pi-qty").textContent:"1")||1;addToBag(sku,q);break;}
     case "buynow":buyNow(sku,1);break;
     case "buynow-qty":{const q=+($("#pi-qty")?$("#pi-qty").textContent:"1")||1;buyNow(sku,q);break;}
-    case "piq-inc":case "piq-dec":{const o=$("#pi-qty");if(o)o.textContent=Math.max(1,Math.min(99,+o.textContent+(act==="piq-inc"?1:-1)));break;}
+    case "piq-inc":case "piq-dec":{
+      const o=$("#pi-qty");
+      const p=bySkuExact(state.route.param);
+      const maxQ=p ? Math.max(1, maxQtyForProduct(p)) : 20;
+      if(o) o.textContent=Math.max(1,Math.min(maxQ,+o.textContent+(act==="piq-inc"?1:-1)));
+      break;
+    }
     case "bag-inc":setQty(sku,1);break;
     case "bag-dec":setQty(sku,-1);break;
     case "bag-del":removeFromBag(sku);break;
@@ -2091,7 +2194,7 @@ document.addEventListener("click",e=>{
     case "quick-view":openQuickView(sku);break;
     case "quick-view-close":closeQuickView();break;
     case "qv-switch":{
-      const p=bySku(sku);
+      const p=bySkuExact(sku);
       if(!p)break;
       const fig=$("#qv-main-fig");
       if(fig){
@@ -2427,39 +2530,42 @@ window.addEventListener("scroll",()=>{
 window.addEventListener("resize",()=>{measureTop();if(state.route.page==="home")layoutStage(true);});
 function applyProductOverrides(overrides){
   if(!overrides) return;
+  const applyRow = (p, row) => {
+    if(!p || !row) return;
+    if(row.price_bdt!==undefined && row.price_bdt!==null) p.priceBDT=Number(row.price_bdt);
+    if(row.priceBDT!==undefined && row.priceBDT!==null) p.priceBDT=Number(row.priceBDT);
+    if(row.stock_count!==undefined && row.stock_count!==null) p.stock_count=Number(row.stock_count);
+    if(row.stock_verified!==undefined) p.stock_verified=!!row.stock_verified;
+    if(row.price_review!==undefined) p.price_review=!!row.price_review;
+    if(row.is_available!==undefined) p.is_available=!!row.is_available;
+    if(p.stock_count!==undefined && Number(p.stock_count)<=0) p.is_available=false;
+  };
   if(Array.isArray(overrides)){
     overrides.forEach(row=>{
-      const p=row && row.sku ? bySku(row.sku) : null;
-      if(p && p.sku===row.sku){
-        if(row.price_bdt!==undefined && row.price_bdt!==null) p.priceBDT=Number(row.price_bdt);
-        if(row.is_available!==undefined) p.is_available=!!row.is_available;
-      }
+      const p=row && row.sku ? bySkuExact(row.sku) : null;
+      if(p) applyRow(p, row);
     });
   }else if(typeof overrides==="object"){
     Object.keys(overrides).forEach(sku=>{
-      const p=bySku(sku), ov=overrides[sku];
-      if(p && p.sku===sku && ov){
-        if(ov.price_bdt!==undefined) p.priceBDT=Number(ov.price_bdt);
-        if(ov.is_available!==undefined) p.is_available=!!ov.is_available;
-      }
+      const p=bySkuExact(sku), ov=overrides[sku];
+      if(p && ov) applyRow(p, ov);
     });
   }
 }
-const PROMO_MSGS=[
+const BASE_PROMO_MSGS=[
   `First-order 25% OFF with code <b style="color:var(--chestnut)">FIRST25</b> &nbsp;·&nbsp; Nationwide Cash on Delivery &nbsp;·&nbsp; <a href="#/shop">Shop the Boutique</a>`,
   `<span class="bn">সারাদেশে ক্যাশ অন ডেলিভারি</span> &nbsp;·&nbsp; 53 pieces · 8 collections · 100% authentic photography`,
   `৳200 Welcome Voucher with code <b style="color:var(--chestnut)">FARIZA200</b> &nbsp;·&nbsp; Real-time tracking — <a href="#/track">Track Orders</a>`
 ];
+let PROMO_MSGS=BASE_PROMO_MSGS.slice();
 let promoIdx=0;
 let promoTimer=null;
 function promoLoop(){
   if(state.promoOff)return;
-  if(CONFIG.promoText){
-    const customHtml = esc(CONFIG.promoText);
-    if(!PROMO_MSGS.includes(customHtml)) PROMO_MSGS.unshift(customHtml);
-  }
+  PROMO_MSGS = CONFIG.promoText ? [esc(CONFIG.promoText), ...BASE_PROMO_MSGS] : BASE_PROMO_MSGS.slice();
+  promoIdx = 0;
   const initEl=$("#promo-msg");
-  if(initEl && CONFIG.promoText) initEl.innerHTML=PROMO_MSGS[0];
+  if(initEl) initEl.innerHTML=PROMO_MSGS[0];
   if(RM) return;
   if(promoTimer) clearInterval(promoTimer);
   promoTimer = setInterval(()=>{
@@ -2500,6 +2606,8 @@ function initConsentBanner(){
 
 /* ================= INIT ================= */
 function init(){
+  state.bag = (Array.isArray(state.bag) ? state.bag : []).filter(it => it && bySkuExact(it.sku));
+  state.wish = (Array.isArray(state.wish) ? state.wish : []).filter(sku => !!bySkuExact(sku));
   document.body.classList.toggle("no-whatsapp",!isRealWhatsapp());
   syncFloatingWa();
   if(state.promoOff)$("#site-top").classList.add("no-promo");
@@ -2541,6 +2649,8 @@ function init(){
         if(s.promo_text){ CONFIG.promoText = s.promo_text; promoLoop(); }
         document.body.classList.toggle("no-whatsapp",!isRealWhatsapp());
         syncFloatingWa();
+        if(state.route.page==="inquiry"&&!state.inqDone) renderInqSummary();
+        else if(state.route.page==="product") render();
       });
     }
   }

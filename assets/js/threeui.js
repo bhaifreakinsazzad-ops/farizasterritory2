@@ -448,6 +448,11 @@
     const mesh = new THREE.Mesh(geo, mat);
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.y = 0.01;
+    mesh.dispose = function () {
+      geo.dispose();
+      mat.dispose();
+      tex.dispose();
+    };
     return mesh;
   }
 

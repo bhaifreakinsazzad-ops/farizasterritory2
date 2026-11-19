@@ -43,11 +43,32 @@ $$;
 REVOKE ALL ON FUNCTION public.is_staff_admin() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_staff_admin() TO authenticated, service_role;
 
+CREATE OR REPLACE FUNCTION public.is_staff_super_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    auth.role() = 'service_role'
+    OR EXISTS (
+      SELECT 1
+      FROM public.staff_users su
+      WHERE su.user_id = auth.uid()
+        AND su.is_active = true
+        AND su.role = 'admin'
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.is_staff_super_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_staff_super_admin() TO authenticated, service_role;
+
 -- 3. RECONCILE ORDERS COLUMNS FOR SERVER-SIDE VALIDATION, IDEMPOTENCY & ATTRIBUTION
 ALTER TABLE public.orders
   ADD COLUMN IF NOT EXISTS customer_email TEXT,
   ADD COLUMN IF NOT EXISTS customer_district TEXT,
-  ADD COLUMN IF NOT EXISTS contact_channel TEXT DEFAULT 'WhatsApp',
+  ADD COLUMN IF NOT EXISTS contact_channel TEXT DEFAULT 'web_form',
   ADD COLUMN IF NOT EXISTS attribution JSONB,
   ADD COLUMN IF NOT EXISTS idempotency_key TEXT,
   ADD COLUMN IF NOT EXISTS purchase_capi_sent_at TIMESTAMPTZ,
@@ -146,17 +167,5 @@ CREATE POLICY "orders_staff_only" ON public.orders
 CREATE POLICY "staff_users_self_select" ON public.staff_users
   FOR SELECT USING (auth.uid() = user_id OR public.is_staff_admin());
 CREATE POLICY "staff_users_admin_manage" ON public.staff_users
-  FOR ALL USING (
-    auth.role() = 'service_role'
-    OR EXISTS (
-      SELECT 1 FROM public.staff_users su
-      WHERE su.user_id = auth.uid() AND su.is_active = true AND su.role = 'admin'
-    )
-  )
-  WITH CHECK (
-    auth.role() = 'service_role'
-    OR EXISTS (
-      SELECT 1 FROM public.staff_users su
-      WHERE su.user_id = auth.uid() AND su.is_active = true AND su.role = 'admin'
-    )
-  );
+  FOR ALL USING (public.is_staff_super_admin())
+  WITH CHECK (public.is_staff_super_admin());

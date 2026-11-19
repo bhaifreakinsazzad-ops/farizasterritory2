@@ -192,6 +192,7 @@
   window.FT_ANALYTICS = {
     eventsLog: [],
     pixelInitialized: false,
+    _initPromise: null,
 
     getConsent: function () {
       try {
@@ -226,56 +227,68 @@
     },
 
     init: function () {
-      if (!this.hasConsent()) return;
-      const attribution = this.getAttribution();
-      if (attribution && attribution.fbclid) {
-        try {
-          if (!document.cookie.includes('_fbc=')) {
-            const fbcVal = 'fb.1.' + Date.now() + '.' + attribution.fbclid;
-            document.cookie = '_fbc=' + fbcVal + '; path=/; max-age=7776000; SameSite=Lax';
+      if (!this.hasConsent()) return Promise.resolve();
+      if (this._initPromise) return this._initPromise;
+      const self = this;
+      const readyPromise = window.FT_CONFIG_READY && typeof window.FT_CONFIG_READY.then === 'function'
+        ? window.FT_CONFIG_READY
+        : Promise.resolve();
+
+      this._initPromise = Promise.resolve(readyPromise)
+        .catch(function () {})
+        .then(function () {
+          if (!self.hasConsent()) return;
+          const attribution = self.getAttribution();
+          if (attribution && attribution.fbclid) {
+            try {
+              if (!document.cookie.includes('_fbc=')) {
+                const fbcVal = 'fb.1.' + Date.now() + '.' + attribution.fbclid;
+                document.cookie = '_fbc=' + fbcVal + '; path=/; max-age=7776000; SameSite=Lax';
+              }
+            } catch (_) {}
           }
-        } catch (_) {}
-      }
 
-      const pixelId = window.FT_CONFIG.analytics.metaPixelId;
-      const ga4Id = window.FT_CONFIG.analytics.ga4MeasurementId;
+          const pixelId = window.FT_CONFIG.analytics.metaPixelId;
+          const ga4Id = window.FT_CONFIG.analytics.ga4MeasurementId;
 
-      if (pixelId && !this.pixelInitialized) {
-        this.pixelInitialized = true;
-        if (!window.fbq) {
-          !function (f, b, e, v, n, t, s) {
-            if (f.fbq) return;
-            n = f.fbq = function () {
-              n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-            };
-            if (!f._fbq) f._fbq = n;
-            n.push = n;
-            n.loaded = !0;
-            n.version = '2.0';
-            n.queue = [];
-            t = b.createElement(e);
-            t.async = !0;
-            t.src = v;
-            s = b.getElementsByTagName(e)[0];
-            s.parentNode.insertBefore(t, s);
-          }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
-        }
-        window.fbq('init', pixelId);
-        const initEventId = window.__FT_INITIAL_PAGEVIEW_ID || ('pv_init_' + Date.now());
-        window.fbq('track', 'PageView', {}, { eventID: initEventId });
-        this.sendToCAPI('PageView', {}, initEventId);
-      }
+          if (pixelId && !self.pixelInitialized) {
+            self.pixelInitialized = true;
+            if (!window.fbq) {
+              !function (f, b, e, v, n, t, s) {
+                if (f.fbq) return;
+                n = f.fbq = function () {
+                  n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+                };
+                if (!f._fbq) f._fbq = n;
+                n.push = n;
+                n.loaded = !0;
+                n.version = '2.0';
+                n.queue = [];
+                t = b.createElement(e);
+                t.async = !0;
+                t.src = v;
+                s = b.getElementsByTagName(e)[0];
+                s.parentNode.insertBefore(t, s);
+              }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+            }
+            window.fbq('init', pixelId);
+            const initEventId = window.__FT_INITIAL_PAGEVIEW_ID || ('pv_init_' + Date.now());
+            window.fbq('track', 'PageView', {}, { eventID: initEventId });
+            self.sendToCAPI('PageView', {}, initEventId);
+          }
 
-      if (ga4Id && !window.gtag) {
-        const script = document.createElement('script');
-        script.async = true;
-        script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(ga4Id);
-        document.head.appendChild(script);
-        window.dataLayer = window.dataLayer || [];
-        window.gtag = function () { window.dataLayer.push(arguments); };
-        window.gtag('js', new Date());
-        window.gtag('config', ga4Id);
-      }
+          if (ga4Id && !window.gtag) {
+            const script = document.createElement('script');
+            script.async = true;
+            script.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(ga4Id);
+            document.head.appendChild(script);
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = function () { window.dataLayer.push(arguments); };
+            window.gtag('js', new Date());
+            window.gtag('config', ga4Id);
+          }
+        });
+      return this._initPromise;
     },
 
     getCookie: function (name) {

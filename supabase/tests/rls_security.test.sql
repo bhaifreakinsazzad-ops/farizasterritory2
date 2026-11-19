@@ -68,6 +68,27 @@ BEGIN
   IF threshold_val IS NOT NULL AND threshold_val <> 3000 THEN
     RAISE EXCEPTION 'POLICY FAIL: free_delivery_threshold expected 3000, got %', threshold_val;
   END IF;
+
+  -- 6. Verify is_staff_super_admin() exists as SECURITY DEFINER and no self-referential policy exists on staff_users
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'is_staff_super_admin' AND p.prosecdef = true
+  ) THEN
+    RAISE EXCEPTION 'SECURITY FAIL: public.is_staff_super_admin() SECURITY DEFINER function missing';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'staff_users'
+      AND (
+        COALESCE(qual, '') ~* 'staff_users'
+        OR COALESCE(with_check, '') ~* 'staff_users'
+      )
+  ) THEN
+    RAISE EXCEPTION 'SECURITY FAIL: self-referential policy detected on public.staff_users';
+  END IF;
 END $$;
 
 ROLLBACK;
