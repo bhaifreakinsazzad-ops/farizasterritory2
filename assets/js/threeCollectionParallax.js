@@ -297,7 +297,6 @@
             num: card.querySelector('.cc-num'),
             name: card.querySelector('.cc-name'),
             bn: card.querySelector('.col-card-bn') || card.querySelector('.bn'),
-            note: card.querySelector('.cc-note'),
             count: card.querySelector('.cc-count'),
             thumbs: card.querySelector('.cc-thumbs'),
             go: card.querySelector('.cc-go')
@@ -453,13 +452,6 @@
       const { card } = state;
 
       const onPointerEnter = (e) => {
-        if (card.getAttribute('data-entrance-animating') === '1') {
-          card.removeAttribute('data-entrance-animating');
-          if (typeof anime !== 'undefined' && typeof anime.remove === 'function') {
-            anime.remove(card);
-          }
-          card.style.opacity = '1';
-        }
         state.hovered = true;
         state.targetHover = 1;
         state.settled = false;
@@ -640,9 +632,6 @@
     }
 
     applyDomParallax(s) {
-      if (s.card.getAttribute('data-entrance-animating') === '1' && !s.hovered) {
-        return;
-      }
       const hover = s.hoverAmount;
       if (hover < 0.001 && Math.abs(s.tiltX) < 0.0005 && Math.abs(s.tiltY) < 0.0005) {
         if (s.card.style.transform) s.card.style.transform = '';
@@ -651,7 +640,6 @@
         if (l.num && l.num.style.transform) l.num.style.transform = '';
         if (l.name && l.name.style.transform) l.name.style.transform = '';
         if (l.bn && l.bn.style.transform) l.bn.style.transform = '';
-        if (l.note && l.note.style.transform) l.note.style.transform = '';
         if (l.count && l.count.style.transform) l.count.style.transform = '';
         if (l.thumbs && l.thumbs.style.transform) l.thumbs.style.transform = '';
         if (l.go && l.go.style.transform) l.go.style.transform = '';
@@ -669,12 +657,11 @@
       // Multi-plane staggered depth shift inside the card
       const px = s.nx * hover;
       const py = -s.ny * hover;
-      const { num, name, bn, note, count, thumbs, go } = s.layers;
+      const { num, name, bn, count, thumbs, go } = s.layers;
 
       if (num) num.style.transform = `translate3d(${(px * 4).toFixed(2)}px, ${(py * 3).toFixed(2)}px, 6px)`;
       if (name) name.style.transform = `translate3d(${(px * 8.5).toFixed(2)}px, ${(py * 6.5).toFixed(2)}px, 16px)`;
       if (bn) bn.style.transform = `translate3d(${(px * 7).toFixed(2)}px, ${(py * 5).toFixed(2)}px, 12px)`;
-      if (note) note.style.transform = `translate3d(${(px * 6).toFixed(2)}px, ${(py * 4.5).toFixed(2)}px, 11px)`;
       if (count) count.style.transform = `translate3d(${(px * 5.5).toFixed(2)}px, ${(py * 4).toFixed(2)}px, 10px)`;
       if (thumbs) thumbs.style.transform = `translate3d(${(px * 13).toFixed(2)}px, ${(py * 9.5).toFixed(2)}px, 26px)`;
       if (go) go.style.transform = `translate3d(${(px * 9).toFixed(2)}px, ${(py * 6.5).toFixed(2)}px, 18px)`;
