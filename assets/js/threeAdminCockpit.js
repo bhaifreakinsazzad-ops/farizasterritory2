@@ -688,6 +688,8 @@
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       if ('SRGBColorSpace' in THREE) {
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+      } else if ('sRGBEncoding' in THREE) {
+        this.renderer.outputEncoding = THREE.sRGBEncoding;
       }
 
       const hemi = new THREE.HemisphereLight(0xFDF0DD, 0x1E1D1B, 1.0);

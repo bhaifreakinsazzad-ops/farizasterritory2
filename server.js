@@ -141,10 +141,12 @@ function createApp(options = {}) {
     maxAge: '7d'
   }));
   app.use('/assets', express.static(path.join(__dirname, 'assets'), {
-    maxAge: '1h',
+    maxAge: 0,
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('.webp') || filePath.endsWith('.jpg') || filePath.endsWith('.png')) {
         res.setHeader('Cache-Control', 'public, max-age=86400');
+      } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+        res.setHeader('Cache-Control', 'no-cache, must-revalidate');
       }
     }
   }));
@@ -1122,6 +1124,7 @@ Sitemap: ${baseUrl}/sitemap.xml
       initialHash: ''
     });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     res.status(200).send(html);
   });
 

@@ -234,7 +234,11 @@
         beads.setMatrixAt(i, dummy.matrix);
       }
       beads.instanceMatrix.needsUpdate = true;
-      beads.computeBoundingSphere();
+      if (typeof beads.computeBoundingSphere === 'function') {
+        beads.computeBoundingSphere();
+      } else {
+        beads.frustumCulled = false;
+      }
       group.add(beads);
 
       this.mandalaGroup = group;

@@ -591,5 +591,12 @@ test('Admin Cockpit integrates Three.js, ThreeUI.js, Anime.js, Motion.dev, and c
   assert.equal(typeof threeUiMod.createCompositePillar, 'function');
   assert.equal(typeof cockpit3dMod.AdminCockpit3D, 'function');
   assert.equal(typeof cockpit3dMod.SkuInspector3D, 'function');
+
+  // Verify threeHero.js guards InstancedMesh.computeBoundingSphere for Three.js r128
+  const threeHeroJs = fs.readFileSync(path.join(rootDir, 'assets/js/threeHero.js'), 'utf8');
+  assert.ok(
+    threeHeroJs.includes("typeof beads.computeBoundingSphere === 'function'"),
+    'threeHero.js must guard computeBoundingSphere() for Three.js r128 compatibility'
+  );
 });
 
