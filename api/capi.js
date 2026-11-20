@@ -34,6 +34,11 @@ const ipBuckets = new Map();
 
 function checkCapiRateLimit(ip) {
   const now = Date.now();
+  if (ipBuckets.size > 5000) {
+    for (const [k, v] of ipBuckets.entries()) {
+      if (!v || now > v.resetAt) ipBuckets.delete(k);
+    }
+  }
   const windowMs = 60 * 1000;
   const maxReqs = 80;
   const entry = ipBuckets.get(ip);
@@ -216,7 +221,9 @@ function buildCapiPayload(params, options = {}) {
       : [String(rawCustom.content_ids)];
   }
   if (rawCustom.content_type) customData.content_type = String(rawCustom.content_type);
-  if (rawCustom.num_items !== undefined && rawCustom.num_items !== null) customData.num_items = Number(rawCustom.num_items);
+  if (rawCustom.num_items !== undefined && rawCustom.num_items !== null && Number.isFinite(Number(rawCustom.num_items))) {
+    customData.num_items = Number(rawCustom.num_items);
+  }
   if (rawCustom.order_id) customData.order_id = String(rawCustom.order_id).slice(0, 80);
   if (rawCustom.promo_code) customData.promo_code = String(rawCustom.promo_code).slice(0, 40);
   if (rawCustom.contact_channel) customData.contact_channel = String(rawCustom.contact_channel).slice(0, 40);

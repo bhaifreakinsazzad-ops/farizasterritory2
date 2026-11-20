@@ -263,7 +263,6 @@
       } else {
         requiresManualStockConfirmation = true;
       }
-
       const unitPrice = Number(product.priceBDT ?? product.price_bdt ?? 0);
       if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
         return { ok: false, status: 400, error: `Product ${sku} does not have an active price configured.` };
@@ -323,6 +322,7 @@
   function isFeedEligibleProduct(product) {
     if (!product || product.is_archived === true) return false;
     const isAvail = product.is_available !== false;
+    const hasStockCount = product.stock_count === undefined || product.stock_count === null || Number(product.stock_count) > 0;
     const stockVerified = product.stock_verified === true;
     const priceApproved = product.price_review === false || product.priceStatus === 'approved';
     const avail = getAvailableStock(product);

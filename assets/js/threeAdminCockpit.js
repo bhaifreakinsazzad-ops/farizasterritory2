@@ -64,7 +64,11 @@
       this.clock = null;
       this.frameId = 0;
       this.isVisible = true;
+      this.isPaused = false;
+      this.destroyed = false;
       this.contextLost = false;
+      this.resizeTimer = null;
+      this.boundCleanup = [];
 
       this.rootGroup = null;
       this.collectionsGroup = null;
@@ -523,14 +527,29 @@
     }
 
     bindEvents() {
-      let resizeTimer = null;
-      window.addEventListener('resize', () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => this.onResize(), 80);
+      const addListener = (target, type, fn, opts) => {
+        target.addEventListener(type, fn, opts);
+        this.boundCleanup.push(() => target.removeEventListener(type, fn, opts));
+      };
+
+      addListener(window, 'resize', () => {
+        clearTimeout(this.resizeTimer);
+        this.resizeTimer = setTimeout(() => this.onResize(), 80);
       }, { passive: true });
 
+      addListener(document, 'visibilitychange', () => {
+        if (this.destroyed) return;
+        this.isVisible = !document.hidden;
+        if (this.isVisible && !this.isPaused && !this.contextLost) {
+          this.clock.start();
+          this.scheduleNextFrame();
+        } else {
+          this.stopLoop();
+        }
+      });
+
       let lastRaycastTime = 0;
-      this.canvas.addEventListener('pointermove', (e) => {
+      addListener(this.canvas, 'pointermove', (e) => {
         const rect = this.canvas.getBoundingClientRect();
         const nx = ((e.clientX - rect.left) / (rect.width || 1)) * 2 - 1;
         const ny = -((e.clientY - rect.top) / (rect.height || 1)) * 2 + 1;
@@ -557,7 +576,7 @@
         this.canvas.style.cursor = hitMesh ? 'pointer' : 'grab';
       }, { passive: true });
 
-      this.canvas.addEventListener('pointerleave', () => {
+      addListener(this.canvas, 'pointerleave', () => {
         this.pointerOffset.targetX = 0;
         this.pointerOffset.targetY = 0;
         if (this.hoveredPanel) {
@@ -567,7 +586,7 @@
         this.canvas.style.cursor = 'default';
       }, { passive: true });
 
-      this.canvas.addEventListener('click', (e) => {
+      addListener(this.canvas, 'click', (e) => {
         const rect = this.canvas.getBoundingClientRect();
         const nx = ((e.clientX - rect.left) / (rect.width || 1)) * 2 - 1;
         const ny = -((e.clientY - rect.top) / (rect.height || 1)) * 2 + 1;
@@ -582,11 +601,13 @@
         }
       });
 
-      this.canvas.addEventListener('webglcontextlost', (e) => {
+      addListener(this.canvas, 'webglcontextlost', (e) => {
         e.preventDefault();
         this.contextLost = true;
+        this.stopLoop();
       });
-      this.canvas.addEventListener('webglcontextrestored', () => {
+      addListener(this.canvas, 'webglcontextrestored', () => {
+        if (this.destroyed) return;
         this.contextLost = false;
         this.scheduleNextFrame();
       });
@@ -602,12 +623,33 @@
       this.renderer.setSize(w, h, false);
     }
 
+    stopLoop() {
+      if (this.frameId) {
+        cancelAnimationFrame(this.frameId);
+        clearTimeout(this.frameId);
+        this.frameId = 0;
+      }
+    }
+
+    setPaused(paused) {
+      this.isPaused = Boolean(paused);
+      if (this.isPaused) {
+        this.stopLoop();
+      } else if (!this.destroyed && this.isVisible && !this.contextLost) {
+        this.stopLoop();
+        if (this.clock) this.clock.start();
+        this.onResize();
+        this.scheduleNextFrame();
+      }
+    }
+
     afterDraw(cb) {
       const gl = this.renderer && this.renderer.getContext ? this.renderer.getContext() : null;
       if (gl && typeof gl.fenceSync === 'function') {
         const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
         gl.flush();
         const poll = () => {
+          if (this.destroyed || this.isPaused) return;
           const state = sync && gl.getSyncParameter(sync, gl.SYNC_STATUS);
           if (state === gl.UNSIGNALED) {
             this.frameId = window.setTimeout(poll, 5);
@@ -623,7 +665,8 @@
     }
 
     scheduleNextFrame() {
-      if (!this.isVisible || this.contextLost) return;
+      if (this.destroyed || this.isPaused || !this.isVisible || this.contextLost) return;
+      this.stopLoop();
       if (isSoftwareGl) {
         this.afterDraw(() => this.tick());
       } else {
@@ -632,7 +675,7 @@
     }
 
     tick() {
-      if (!this.isVisible || this.contextLost || !this.renderer) return;
+      if (this.destroyed || this.isPaused || !this.isVisible || this.contextLost || !this.renderer) return;
 
       const delta = Math.min(this.clock.getDelta(), 0.1);
       const elapsed = this.clock.getElapsedTime();
@@ -670,6 +713,41 @@
 
       this.renderer.render(this.scene, this.camera);
       this.scheduleNextFrame();
+    }
+
+    destroy() {
+      this.destroyed = true;
+      this.isVisible = false;
+      this.stopLoop();
+      if (this.resizeTimer) {
+        clearTimeout(this.resizeTimer);
+        this.resizeTimer = null;
+      }
+      while (this.boundCleanup.length > 0) {
+        const off = this.boundCleanup.pop();
+        try { off(); } catch (_) {}
+      }
+      if (this.rootGroup) {
+        this.rootGroup.traverse(obj => {
+          if (typeof obj.dispose === 'function') {
+            try { obj.dispose(); } catch (_) {}
+          }
+          if (obj.geometry) obj.geometry.dispose();
+          if (obj.material) {
+            if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+            else obj.material.dispose();
+          }
+        });
+      }
+      if (this.pipelineDial) this.pipelineDial.dispose();
+      if (this.logisticsDial) this.logisticsDial.dispose();
+      if (this.pipelineCards) {
+        Object.values(this.pipelineCards).forEach(card => card && card.dispose());
+      }
+      if (this.renderer) {
+        this.renderer.dispose();
+        this.renderer = null;
+      }
     }
   }
 
@@ -771,23 +849,33 @@
     }
 
     loadProduct(product) {
-      if (!product) return;
+      if (!product || this._disposed) return;
       const imgPath = '/' + String((product.assets && product.assets.main) || `assets/products/${product.sku}/main.webp`).replace(/^\/+/, '');
       const loader = new THREE.TextureLoader();
       loader.load(imgPath, (tex) => {
+        if (this._disposed || !this.renderer) {
+          if (tex && typeof tex.dispose === 'function') tex.dispose();
+          return;
+        }
         window.ThreeUI.applyTextureColorSpace(tex, this.renderer);
+        const oldTex = this._currentTex || (this.artMaterial && this.artMaterial.map);
+        this._currentTex = tex;
         this.artMaterial.map = tex;
         this.artMaterial.needsUpdate = true;
+        if (oldTex && oldTex !== tex && typeof oldTex.dispose === 'function') {
+          oldTex.dispose();
+        }
         this.requestRender();
       });
       this.requestRender();
     }
 
     requestRender() {
-      if (this._rendering) return;
+      if (this._rendering || this._disposed || !this.renderer) return;
       this._rendering = true;
-      requestAnimationFrame(() => {
+      this._rafId = requestAnimationFrame(() => {
         this._rendering = false;
+        if (this._disposed || !this.renderer) return;
         this.currentRotY += (this.targetRotY - this.currentRotY) * 0.18;
         this.currentRotX += (this.targetRotX - this.currentRotX) * 0.18;
         this.frameGroup.rotation.y = this.currentRotY;
@@ -797,6 +885,28 @@
           this.requestRender();
         }
       });
+    }
+
+    dispose() {
+      this._disposed = true;
+      if (this._rafId) cancelAnimationFrame(this._rafId);
+      if (this._currentTex && typeof this._currentTex.dispose === 'function') {
+        this._currentTex.dispose();
+        this._currentTex = null;
+      }
+      if (this.frameGroup) {
+        this.frameGroup.traverse(obj => {
+          if (obj.geometry) obj.geometry.dispose();
+          if (obj.material) {
+            if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+            else obj.material.dispose();
+          }
+        });
+      }
+      if (this.renderer) {
+        this.renderer.dispose();
+        this.renderer = null;
+      }
     }
   }
 
@@ -818,6 +928,11 @@
     setMode(mode) {
       if (this.instance && !this.instance.failed) this.instance.setMode(mode);
     },
+    setPaused(paused) {
+      if (this.instance && typeof this.instance.setPaused === 'function') {
+        this.instance.setPaused(paused);
+      }
+    },
     updateTelemetry(data) {
       if (this.instance && !this.instance.failed) this.instance.updateTelemetry(data);
     },
@@ -827,6 +942,9 @@
         const el = document.getElementById(targetId);
         if (!el) return;
         if (!this.skuInspector || this.skuInspector.canvas !== el) {
+          if (this.skuInspector && typeof this.skuInspector.dispose === 'function') {
+            this.skuInspector.dispose();
+          }
           this.skuInspector = new SkuInspector3D(targetId);
         }
         if (this.skuInspector && !this.skuInspector.failed) {

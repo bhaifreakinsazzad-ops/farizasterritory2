@@ -18,6 +18,7 @@ DROP POLICY IF EXISTS "collections_staff_write" ON public.collections;
 DROP POLICY IF EXISTS "collections_public_select" ON public.collections;
 
 DROP INDEX IF EXISTS idx_orders_idempotency_key;
+DROP FUNCTION IF EXISTS public.is_staff_super_admin();
 DROP FUNCTION IF EXISTS public.is_staff_admin();
 DROP FUNCTION IF EXISTS private.is_super_admin();
 DROP FUNCTION IF EXISTS private.is_staff_member();

@@ -89,11 +89,32 @@ $$;
 REVOKE ALL ON FUNCTION public.is_staff_admin() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.is_staff_admin() TO authenticated, service_role;
 
+CREATE OR REPLACE FUNCTION public.is_staff_super_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    auth.role() = 'service_role'
+    OR EXISTS (
+      SELECT 1
+      FROM public.staff_users su
+      WHERE su.user_id = auth.uid()
+        AND su.is_active = true
+        AND su.role = 'admin'
+    );
+$$;
+
+REVOKE ALL ON FUNCTION public.is_staff_super_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_staff_super_admin() TO authenticated, service_role;
+
 -- 3. RECONCILE ORDERS COLUMNS FOR SERVER-SIDE VALIDATION, IDEMPOTENCY & ATTRIBUTION
 ALTER TABLE public.orders
   ADD COLUMN IF NOT EXISTS customer_email TEXT,
   ADD COLUMN IF NOT EXISTS customer_district TEXT,
-  ADD COLUMN IF NOT EXISTS contact_channel TEXT DEFAULT 'WhatsApp',
+  ADD COLUMN IF NOT EXISTS contact_channel TEXT DEFAULT 'web_form',
   ADD COLUMN IF NOT EXISTS attribution JSONB,
   ADD COLUMN IF NOT EXISTS idempotency_key TEXT,
   ADD COLUMN IF NOT EXISTS purchase_capi_sent_at TIMESTAMPTZ,

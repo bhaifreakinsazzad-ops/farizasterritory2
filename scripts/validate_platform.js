@@ -42,9 +42,12 @@ if (fashionCount !== 18 || accCount !== 35) {
 assert.ok(commerce && typeof commerce.computeOrderTotals === 'function', 'commerce.js exports computeOrderTotals');
 assert.strictEqual(commerce.DEFAULT_FREE_SHIPPING_THRESHOLD, 3000, 'Canonical free shipping threshold is 3000 BDT');
 
-// 2. Check image assets on disk
+// 2. Check all supplied image assets on disk across KEYS
 let missingAssets = 0;
 let checkedAssets = 0;
+const slotsToCheck = Array.isArray(catalog.KEYS) && catalog.KEYS.length
+  ? catalog.KEYS
+  : ['main', 'original', 'alternate', 'socialSquare', 'storyReel', 'detailA', 'detailB', 'aiStylingPreview'];
 
 catalog.PRODUCTS.forEach(p => {
   if (!p.assets || !p.assets.main) {
@@ -53,26 +56,45 @@ catalog.PRODUCTS.forEach(p => {
     return;
   }
 
-  checkedAssets++;
-  if (!fs.existsSync(p.assets.main)) {
-    console.error(`Missing main asset for ${p.sku}: ${p.assets.main}`);
-    missingAssets++;
-  }
-
-  if (p.assets.socialSquare) {
+  slotsToCheck.forEach(slot => {
+    const assetPath = p.assets[slot];
+    if (!assetPath) return;
     checkedAssets++;
-    if (!fs.existsSync(p.assets.socialSquare)) {
-      console.error(`Missing socialSquare asset for ${p.sku}: ${p.assets.socialSquare}`);
+    if (!fs.existsSync(assetPath)) {
+      console.error(`Missing ${slot} asset for ${p.sku}: ${assetPath}`);
       missingAssets++;
     }
-  }
+  });
 });
 
-console.log(`Checked ${checkedAssets} image assets on disk. Missing: ${missingAssets}`);
+console.log(`Checked ${checkedAssets} image assets on disk across all slots. Missing: ${missingAssets}`);
 
 if (missingAssets > 0) {
   console.error('FAIL: Some image files are missing on disk!');
   process.exit(1);
+}
+
+// Verify supabase/seed.sql asset URLs exist on disk
+if (fs.existsSync('supabase/seed.sql')) {
+  const seedSql = fs.readFileSync('supabase/seed.sql', 'utf8');
+  const seedAssets = new Set();
+  const seedAssetRegex = /'(assets\/products\/[^']+)'/g;
+  let m;
+  while ((m = seedAssetRegex.exec(seedSql)) !== null) {
+    seedAssets.add(m[1]);
+  }
+  let missingSeedAssets = 0;
+  seedAssets.forEach(relPath => {
+    if (!fs.existsSync(relPath)) {
+      console.error(`Missing asset referenced in supabase/seed.sql: ${relPath}`);
+      missingSeedAssets++;
+    }
+  });
+  if (missingSeedAssets > 0) {
+    console.error('FAIL: supabase/seed.sql references missing files on disk!');
+    process.exit(1);
+  }
+  console.log(`Verified ${seedAssets.size} unique asset paths in supabase/seed.sql.`);
 }
 
 // 3. Verify collection integrity & JavaScript files exist with zero syntax errors
@@ -169,6 +191,8 @@ assert.ok(!/service_role/i.test(configJs), 'config.js must never reference servi
 assert.ok(fs.existsSync('supabase/migrations/02_security_hardening.sql'), '02_security_hardening.sql must exist');
 const migration02 = fs.readFileSync('supabase/migrations/02_security_hardening.sql', 'utf8');
 assert.ok(!/FOR ALL\s+USING\s*\(\s*true\s*\)/i.test(migration02), '02_security_hardening.sql must not contain permissive FOR ALL USING (true)');
+assert.ok(/CREATE OR REPLACE FUNCTION private\.is_super_admin\(\)/i.test(migration02), '02_security_hardening.sql must define private.is_super_admin()');
+assert.ok(/CREATE POLICY "staff_users_admin_manage"[\s\S]*?private\.is_super_admin\(\)/i.test(migration02), 'staff_users_admin_manage must use non-recursive private.is_super_admin() helper');
 assert.ok(fs.existsSync('supabase/migrations/02_security_hardening_rollback.sql'), '02_security_hardening_rollback.sql must exist');
 
 assert.ok(fs.existsSync('supabase/migrations/03_handover_reconciliation.sql'), '03_handover_reconciliation.sql must exist');
@@ -189,11 +213,17 @@ assert.ok(!indexHtmlRaw.includes('@supabase/supabase-js@2"'), 'index.html must n
 assert.ok(!adminHtml.includes('@supabase/supabase-js@2"'), 'admin.html must not use unpinned @supabase/supabase-js@2');
 assert.ok(!ghlHtmlRaw.includes('@supabase/supabase-js@2"'), 'ghl-bundle.html must not use unpinned @supabase/supabase-js@2');
 assert.ok(!ghlHtmlRaw.includes('8801700000000'), 'ghl-bundle.html must not embed placeholder 8801700000000');
+assert.ok(ghlHtmlRaw.includes('id="ft-consent-bar"'), 'ghl-bundle.html must include GDPR consent banner');
+assert.ok(!/fbq\s*\(\s*['"]track['"]/i.test(ghlHtmlRaw), 'ghl-bundle.html must not fire Meta Pixel fbq("track") eagerly before consent');
 
 assert.ok(fs.existsSync('docs/SELLER_53_SKU_LEDGER.csv'), 'docs/SELLER_53_SKU_LEDGER.csv must exist');
 
 assert.ok(!fs.existsSync('netlify.toml'), 'Misleading static netlify.toml must be removed');
-assert.ok(!fs.existsSync('vercel.json'), 'Misleading static vercel.json must be removed');
+if (fs.existsSync('vercel.json')) {
+  const vercelCfg = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+  const hasExpressRewrite = Array.isArray(vercelCfg.rewrites) && vercelCfg.rewrites.some(r => r && r.destination === '/api/index.js');
+  assert.ok(hasExpressRewrite, 'vercel.json must route requests through /api/index.js Express bridge');
+}
 
 // 6. Verify .env.example Canonical Template & Secret Hygiene
 const { parseDotEnvContent } = require('../lib/supabaseServer.js');

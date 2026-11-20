@@ -1662,6 +1662,15 @@
       showAuthGate('Signed out safely.');
     }
 
+    function getLiveDeliveryFees() {
+      const d = parseInt((document.getElementById('set-fee-dhaka') || {}).value, 10);
+      const o = parseInt((document.getElementById('set-fee-outside') || {}).value, 10);
+      return {
+        dhaka: Number.isFinite(d) && d >= 0 ? d : 80,
+        outside_dhaka: Number.isFinite(o) && o >= 0 ? o : 150
+      };
+    }
+
     function updateReadinessBanner(health) {
       const banner = document.getElementById('setup-readiness-banner');
       if (!banner) return;
@@ -1892,8 +1901,9 @@
       if (o && o.delivery_fee !== undefined && o.delivery_fee !== null) {
         return Number(o.delivery_fee);
       }
+      const fees = getLiveDeliveryFees();
       const isOut = o && (o.delivery_zone === 'outside' || o.delivery_zone === 'outside_dhaka');
-      return isOut ? 150 : 80;
+      return isOut ? fees.outside_dhaka : fees.dhaka;
     }
 
     function openOrderDetail(ref) {
@@ -2677,6 +2687,11 @@
       const threshold = parseInt(document.getElementById('set-free-threshold').value, 10);
       const promo = document.getElementById('set-promo').value.trim();
 
+      if ((Number.isFinite(dhaka) && dhaka < 0) || (Number.isFinite(outside) && outside < 0) || (Number.isFinite(threshold) && threshold < 0)) {
+        showAdminToast('Delivery fees and free-delivery threshold must be non-negative.', 'err');
+        return;
+      }
+
       try {
         await adminApiFetch('/api/admin/settings', {
           method: 'PUT',
@@ -2714,12 +2729,26 @@
       const qty = parseInt(document.getElementById('man-qty').value, 10) || 1;
       const notes = document.getElementById('man-notes').value.trim();
 
+      if (name.length < 2) {
+        showAdminToast('Please enter a valid customer name (at least 2 characters).', 'err');
+        return;
+      }
+      if (address.length < 4) {
+        showAdminToast('Please enter a complete delivery address.', 'err');
+        return;
+      }
+      const phoneInfo = window.FT_COMMERCE ? window.FT_COMMERCE.normalizePhone(phone) : { isBdMobile: phone.length >= 11, canonical11: phone };
+      if (!phoneInfo.isBdMobile) {
+        showAdminToast('Please enter a valid 11-digit Bangladeshi mobile number (e.g. 017XXXXXXXX).', 'err');
+        return;
+      }
+
       try {
         const res = await adminApiFetch('/api/admin/orders', {
           method: 'POST',
           body: JSON.stringify({
             customer_name: name,
-            customer_phone: phone,
+            customer_phone: phoneInfo.canonical11,
             customer_address: address,
             delivery_zone: zone,
             customer_district: zone === 'dhaka' ? 'Dhaka' : 'Outside Dhaka',
@@ -2745,11 +2774,28 @@
 
     async function submitNewCoupon() {
       const code = document.getElementById('coup-code').value.trim().toUpperCase();
-      if (!code) return;
+      if (!code) {
+        showAdminToast('Please enter a coupon code.', 'err');
+        return;
+      }
       const type = document.getElementById('coup-type').value;
-      const val = parseFloat(document.getElementById('coup-val').value) || 0;
-      const min = parseFloat(document.getElementById('coup-min').value) || 0;
+      const val = parseFloat(document.getElementById('coup-val').value);
+      const min = parseFloat(document.getElementById('coup-min').value);
       const notes = document.getElementById('coup-notes').value.trim();
+
+      if (!Number.isFinite(val) || val < 0) {
+        showAdminToast('Discount value must be a valid non-negative number.', 'err');
+        return;
+      }
+      if (type === 'percentage' && (val <= 0 || val > 100)) {
+        showAdminToast('Percentage discount must be between 1 and 100.', 'err');
+        return;
+      }
+      if (type === 'fixed' && val <= 0) {
+        showAdminToast('Fixed discount value must be greater than 0.', 'err');
+        return;
+      }
+      const minSpend = Number.isFinite(min) && min >= 0 ? min : 0;
 
       try {
         await adminApiFetch('/api/admin/coupons', {
@@ -2758,7 +2804,7 @@
             code,
             discount_type: type,
             discount_value: val,
-            min_spend: min,
+            min_spend: minSpend,
             max_discount: type === 'percentage' ? 500 : val,
             is_active: true,
             notes

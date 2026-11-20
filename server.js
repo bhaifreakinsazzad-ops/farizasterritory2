@@ -118,6 +118,11 @@ function createRateLimiter(windowMs, maxRequests) {
     const rawIp = (req.ip || (req.socket && req.socket.remoteAddress) || '127.0.0.1').toString();
     const ip = rawIp.replace(/^::ffff:/i, '');
     const now = Date.now();
+    if (buckets.size > 5000) {
+      for (const [k, v] of buckets.entries()) {
+        if (!v || now > v.resetAt) buckets.delete(k);
+      }
+    }
     const entry = buckets.get(ip);
     if (!entry || now > entry.resetAt) {
       buckets.set(ip, { count: 1, resetAt: now + windowMs });
@@ -221,6 +226,9 @@ function createApp(options = {}) {
       }
     }
   }));
+  app.use(['/assets', '/public/assets'], (req, res) => {
+    res.status(404).json({ ok: false, error: 'Asset not found.' });
+  });
 
   async function buildMergedCatalog(opts = {}) {
     const includeArchived = Boolean(opts.includeArchived);
@@ -822,37 +830,49 @@ function createApp(options = {}) {
     const customerName = String(body.customer_name || body.name || '').trim();
     const phoneInfo = commerce.normalizePhone(body.customer_phone || body.phone || '');
     const customerAddress = String(body.customer_address || body.address || '').trim();
+    const district = String(body.customer_district || body.district || '').trim();
     if (customerName.length < 2 || !phoneInfo.isBdMobile || customerAddress.length < 4) {
       return res.status(400).json({ ok: false, error: 'Valid name, Bangladeshi mobile, and address are required.' });
     }
     const merged = await buildMergedCatalog();
     const settings = await store.getStoreSettings();
+    const requestedCoupon = String(body.discount_code || body.discountCode || '').trim().toUpperCase();
+    let couponObj = null;
+    if (requestedCoupon) {
+      couponObj = await store.getCouponByCode(requestedCoupon);
+      if (!couponObj || !couponObj.is_active) {
+        return res.status(400).json({ ok: false, error: `Coupon code '${requestedCoupon}' is invalid or inactive.` });
+      }
+    }
     const computed = commerce.computeOrderTotals({
       items: body.items,
       productsBySku: merged.productsBySku,
       zone: body.delivery_zone || body.deliveryZone,
-      district: body.customer_district || body.district || '',
+      district,
       deliveryFees: {
         dhaka: settings && settings.delivery_fee_dhaka,
         outside_dhaka: settings && settings.delivery_fee_outside
       },
-      coupon: null
+      coupon: couponObj
     });
     if (!computed.ok) {
       return res.status(computed.status || 400).json({ ok: false, error: computed.error });
     }
     const nowIso = new Date().toISOString();
+    const fullAddress = district && !customerAddress.toLowerCase().includes(district.toLowerCase())
+      ? `${district}, ${customerAddress}`
+      : customerAddress;
     const orderRecord = {
       order_ref: commerce.generateOrderRef(),
       customer_name: customerName,
       customer_phone: phoneInfo.canonical11,
-      customer_district: body.customer_district || (computed.delivery_zone === 'dhaka' ? 'Dhaka' : 'Outside Dhaka'),
-      customer_address: customerAddress,
+      customer_district: district || (computed.delivery_zone === 'dhaka' ? 'Dhaka' : 'Outside Dhaka'),
+      customer_address: fullAddress,
       delivery_zone: computed.delivery_zone,
       delivery_fee: computed.delivery_fee,
       subtotal: computed.subtotal,
-      discount_code: null,
-      discount_amount: 0,
+      discount_code: computed.discount_code,
+      discount_amount: computed.discount_amount,
       total: computed.total,
       payment_method: 'Cash on Delivery (COD)',
       contact_channel: body.contact_channel || 'messenger',
@@ -1256,12 +1276,34 @@ function createApp(options = {}) {
     if (!['percentage', 'fixed', 'free_shipping'].includes(discountType)) {
       return res.status(400).json({ ok: false, error: 'Invalid discount_type.' });
     }
+    const discountValue = Number(body.discount_value ?? 0);
+    if (!Number.isFinite(discountValue) || discountValue < 0) {
+      return res.status(400).json({ ok: false, error: 'discount_value must be a non-negative number.' });
+    }
+    if (discountType === 'percentage' && (discountValue <= 0 || discountValue > 100)) {
+      return res.status(400).json({ ok: false, error: 'Percentage coupon discount_value must be between 1 and 100.' });
+    }
+    if (discountType === 'fixed' && discountValue <= 0) {
+      return res.status(400).json({ ok: false, error: 'Fixed coupon discount_value must be greater than 0.' });
+    }
+    const minSpend = Number(body.min_spend ?? 0);
+    if (!Number.isFinite(minSpend) || minSpend < 0) {
+      return res.status(400).json({ ok: false, error: 'min_spend must be a non-negative number.' });
+    }
+    let maxDiscount = null;
+    if (body.max_discount !== undefined && body.max_discount !== null && body.max_discount !== '') {
+      const parsedMax = Number(body.max_discount);
+      if (!Number.isFinite(parsedMax) || parsedMax < 0) {
+        return res.status(400).json({ ok: false, error: 'max_discount must be a non-negative number.' });
+      }
+      maxDiscount = parsedMax;
+    }
     const coupon = {
       code,
       discount_type: discountType,
-      discount_value: Math.max(0, Number(body.discount_value || 0)),
-      min_spend: Math.max(0, Number(body.min_spend || 0)),
-      max_discount: body.max_discount !== undefined && body.max_discount !== null ? Math.max(0, Number(body.max_discount)) : null,
+      discount_value: discountValue,
+      min_spend: minSpend,
+      max_discount: maxDiscount,
       is_active: body.is_active !== false,
       notes: String(body.notes || '').slice(0, 200)
     };
@@ -1281,6 +1323,20 @@ function createApp(options = {}) {
   app.put('/api/admin/settings', requireAdminAuth, requireOwnerAdmin, async (req, res) => {
     const body = req.body || {};
     const prev = await store.getStoreSettings();
+    for (const numField of ['delivery_fee_dhaka', 'delivery_fee_outside', 'free_delivery_threshold']) {
+      if (body[numField] !== undefined && body[numField] !== null && body[numField] !== '') {
+        const val = Number(body[numField]);
+        if (!Number.isFinite(val) || val < 0) {
+          return res.status(400).json({ ok: false, error: `${numField} must be a non-negative number.` });
+        }
+      }
+    }
+    if (body.facebook_url !== undefined && String(body.facebook_url || '').trim() !== '') {
+      const fbUrl = String(body.facebook_url).trim();
+      if (!/^https?:\/\//i.test(fbUrl)) {
+        return res.status(400).json({ ok: false, error: 'facebook_url must start with http:// or https://.' });
+      }
+    }
     const saved = await store.updateStoreSettings(body);
     if (!saved.ok) {
       return res.status(saved.status || 500).json({ ok: false, error: saved.error });
@@ -1708,7 +1764,7 @@ Sitemap: ${baseUrl}/sitemap.xml
           url: canonical,
           priceCurrency: 'BDT',
           price: String(product.priceBDT || 0),
-          availability: product.is_available === false
+          availability: (product.is_available === false || (product.stock_count !== undefined && product.stock_count !== null && Number(product.stock_count) <= 0))
             ? 'https://schema.org/OutOfStock'
             : 'https://schema.org/InStock',
           itemCondition: 'https://schema.org/NewCondition'

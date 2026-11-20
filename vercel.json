@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "{index.html,admin.html,robots.txt,sitemap.xml,assets/**,vendor/**,lib/**,api/**}"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/capi", "destination": "/api/capi.js" },
+    { "source": "/(.*)", "destination": "/api/index.js" }
+  ]
+}
